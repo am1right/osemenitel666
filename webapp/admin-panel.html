@@ -593,20 +593,20 @@
                 ? `➕ Начислить очки (${gameTitle})`
                 : `➖ Списать очки (${gameTitle})`;
             openInputModal(title, async (val) => {
-                if (!val || val <= 0) return;
                 const delta = direction * val;
+                showToast('⏳ Сохраняю...', '');
                 try {
-                    const res = await fetch(`${API}/api/admin/player/${userId}/score`, {
+                    const res = await fetchWithTimeout(`${API}/api/admin/player/${userId}/score`, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ username: user.username, game_name: gameName, delta })
                     });
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data.detail || 'error');
-                    showToast(`Новый счёт: ${data.new_score}`, 'success');
+                    let data; try { data = await res.json(); } catch(_) { data = {}; }
+                    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+                    showToast(`✅ Новый счёт: ${data.new_score}`, 'success');
                     await openPlayerModal(userId);
                     loadPlayers(true);
-                } catch(e) { showToast('Ошибка начисления очков: ' + (e.message || ''), 'error'); }
+                } catch(e) { console.error('[score]', e); showToast('Ошибка: ' + e.message, 'error'); }
             });
         }
 
@@ -614,43 +614,42 @@
         function promptWallet(userId, direction) {
             const title = direction > 0 ? '➕ Начислить Stars' : '➖ Списать Stars';
             openInputModal(title, async (val) => {
-                if (!val || val <= 0) return;
                 const amount = direction * val;
+                showToast('⏳ Сохраняю...', '');
                 try {
-                    const res = await fetch(`${API}/api/admin/player/${userId}/wallet`, {
+                    const res = await fetchWithTimeout(`${API}/api/admin/player/${userId}/wallet`, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ username: user.username, amount, description: direction > 0 ? 'Начисление админом' : 'Списание админом' })
                     });
-                    let data;
-                    try { data = await res.json(); } catch(_) { data = {}; }
+                    let data; try { data = await res.json(); } catch(_) { data = {}; }
                     if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
-                    document.getElementById('modal-wallet-val').textContent = `${data.balance} ⭐`;
-                    if (_currentPlayer) _currentPlayer.wallet.balance = data.balance;
-                    showToast(`Баланс: ${data.balance} ⭐`, 'success');
+                    const walletEl = document.getElementById('modal-wallet-val');
+                    if (walletEl) walletEl.textContent = `${data.balance} ⭐`;
+                    if (_currentPlayer && _currentPlayer.wallet) _currentPlayer.wallet.balance = data.balance;
+                    showToast(`✅ Баланс: ${data.balance} ⭐`, 'success');
                     loadPlayers(true);
-                } catch(e) { showToast('Ошибка Stars: ' + (e.message || ''), 'error'); }
+                } catch(e) { console.error('[wallet]', e); showToast('Ошибка: ' + e.message, 'error'); }
             });
         }
 
         function promptEnergy(userId, direction) {
             const title = direction > 0 ? '➕ Начислить энергию' : '➖ Списать энергию';
             openInputModal(title, async (val) => {
-                if (!val || val <= 0) return;
-                const amount = direction * val;
+                const delta = direction * val;
+                showToast('⏳ Сохраняю...', '');
                 try {
-                    const res = await fetch(`${API}/api/admin/player/${userId}/energy`, {
+                    const res = await fetchWithTimeout(`${API}/api/admin/player/${userId}/energy`, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ username: user.username, delta: amount })
+                        body: JSON.stringify({ username: user.username, delta })
                     });
-                    let data;
-                    try { data = await res.json(); } catch(_) { data = {}; }
+                    let data; try { data = await res.json(); } catch(_) { data = {}; }
                     if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
                     const el = document.getElementById('modal-energy-val');
                     if (el) el.innerHTML = formatEnergyVal(data.amount);
-                    showToast(`Энергия: ${data.amount}`, 'success');
-                } catch(e) { showToast('Ошибка энергии: ' + (e.message || ''), 'error'); }
+                    showToast(`✅ Энергия: ${data.amount}`, 'success');
+                } catch(e) { console.error('[energy]', e); showToast('Ошибка: ' + e.message, 'error'); }
             });
         }
 
@@ -706,6 +705,21 @@
             } catch(e) { showToast('Ошибка', 'error'); }
         }
 
+        // ── Fetch с таймаутом ─────────────────────────────────────
+        async function fetchWithTimeout(url, options = {}, timeoutMs = 20000) {
+            const ctrl = new AbortController();
+            const tid = setTimeout(() => ctrl.abort(), timeoutMs);
+            try {
+                const res = await fetch(url, { ...options, signal: ctrl.signal });
+                return res;
+            } catch (e) {
+                if (e.name === 'AbortError') throw new Error('Сервер не ответил (таймаут). Попробуй ещё раз.');
+                throw e;
+            } finally {
+                clearTimeout(tid);
+            }
+        }
+
         // ── Input modal ───────────────────────────────────────────
         let _inputCallback = null;
 
@@ -713,11 +727,15 @@
             _inputCallback = callback;
             document.getElementById('input-modal-title').textContent = title;
             document.getElementById('input-modal-field').value = '';
+            const confirmBtn = document.getElementById('input-modal-confirm');
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Подтвердить';
             document.getElementById('input-modal').classList.add('open');
             setTimeout(() => document.getElementById('input-modal-field').focus(), 100);
-            document.getElementById('input-modal-confirm').onclick = () => {
-                const val = parseInt(document.getElementById('input-modal-field').value, 10);
-                if (!val || val <= 0) { showToast('Введите положительное число', 'error'); return; }
+            confirmBtn.onclick = () => {
+                const raw = document.getElementById('input-modal-field').value.trim();
+                const val = parseInt(raw, 10);
+                if (isNaN(val) || val <= 0) { showToast('Введите положительное число', 'error'); return; }
                 closeInputModal();
                 if (_inputCallback) _inputCallback(val);
             };

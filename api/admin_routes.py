@@ -161,26 +161,3 @@ except ImportError as e:
 except Exception as e:
     router = None
     logger.error("[ADMIN_ROUTES] Ошибка инициализации: %s", e, exc_info=True)
-
-
-# ── Debug endpoint (временный, можно удалить после диагностики) ──────
-try:
-    if router is not None:
-        @router.get("/debug/auth")
-        async def admin_debug_auth(username: str = ""):
-            """
-            Временный эндпоинт для диагностики авторизации.
-            GET /api/admin/debug/auth?username=rostips
-            Показывает: список ADMIN_USERNAMES, результат проверки.
-            Удали этот эндпоинт после того как убедишься что всё работает.
-            """
-            clean = (username or "").lstrip("@").lower()
-            return {
-                "input_username": username,
-                "cleaned": clean,
-                "admin_usernames": sorted(ADMIN_USERNAMES),
-                "is_admin": clean in ADMIN_USERNAMES,
-                "env_raw": os.getenv("ADMIN_USERNAMES", "(not set, using default)"),
-            }
-except Exception:
-    pass

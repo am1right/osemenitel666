@@ -1241,10 +1241,6 @@ def admin_adjust_score(user_id: int, game_name: str, delta: int) -> Dict[str, An
     return {"game_name": game_name, "new_score": new_score}
 
 
-def _ensure_bans_table(cursor) -> None:
-    pass
-
-
 def admin_set_blocked(user_id: int, blocked: bool, reason: str = "") -> None:
     conn = get_connection()
     cur  = _cursor(conn)
