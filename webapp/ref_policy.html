@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Реферальная программа | Chin Games</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <!-- hCaptcha — sitekey подставляется динамически -->
+    <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+    <style>
+        * {
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            -webkit-tap-highlight-color: transparent !important;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --neon-cyan:   #00ffff;
+            --neon-green:  #00ff64;
+            --neon-purple: #7a04eb;
+            --neon-pink:   #ff00ff;
+            --bg-dark:     #1a103d;
+        }
+
+        html, body {
+            margin: 0; padding: 0;
+            background: linear-gradient(180deg, #0d081a 0%, #120b2e 35%, #1a103d 100%);
+            min-height: 100vh;
+            font-family: 'Rajdhani', sans-serif;
+            color: #fff;
+        }
+
+        /* Сетка на фоне */
+        .bg-grid {
+            position: fixed; top: 0; left: 0; width: 200%; height: 200%;
+            background-image:
+                linear-gradient(rgba(188,19,254,0.12) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,243,255,0.12) 1px, transparent 1px);
+            background-size: 40px 40px;
+            transform: perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);
+            animation: gridMove 20s linear infinite;
+            z-index: 0; opacity: 0.4;
+        }
+        @keyframes gridMove {
+            0%   { transform: perspective(500px) rotateX(60deg) translateY(0)    translateZ(-200px) }
+            100% { transform: perspective(500px) rotateX(60deg) translateY(40px) translateZ(-200px) }
+        }
+
+        .page {
+            position: relative; z-index: 1;
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+            align-items: center;
+            padding: 24px 16px calc(32px + env(safe-area-inset-bottom, 0px));
+            max-width: 480px; margin: 0 auto;
+        }
+
+        /* Логотип */
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem; font-weight: 900;
+            color: var(--neon-cyan);
+            text-shadow: 0 0 16px rgba(0,255,255,0.7);
+            letter-spacing: 3px; text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .logo-sub {
+            font-size: 0.72rem; color: rgba(255,255,255,0.3);
+            letter-spacing: 1.5px; text-transform: uppercase;
+            margin-bottom: 28px;
+        }
+
+        /* Шаги */
+        .steps {
+            display: flex; gap: 8px; align-items: center;
+            margin-bottom: 24px;
+        }
+        .step {
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+        }
+        .step__dot {
+            width: 28px; height: 28px; border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.15);
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Orbitron', sans-serif; font-size: 0.65rem; font-weight: 700;
+            color: rgba(255,255,255,0.3);
+            transition: all 0.3s;
+        }
+        .step--active .step__dot {
+            border-color: var(--neon-cyan);
+            color: var(--neon-cyan);
+            box-shadow: 0 0 10px rgba(0,255,255,0.4);
+        }
+        .step--done .step__dot {
+            background: var(--neon-green);
+            border-color: var(--neon-green);
+            color: #000;
+        }
+        .step__label {
+            font-size: 0.6rem; color: rgba(255,255,255,0.3);
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .step--active .step__label { color: var(--neon-cyan); }
+        .step--done .step__label   { color: var(--neon-green); }
+        .step-line {
+            flex: 1; height: 1px;
+            background: rgba(255,255,255,0.1);
+            margin-bottom: 14px;
+        }
+
+        /* Карточка политики */
+        .policy-card {
+            width: 100%;
+            background: rgba(0,0,0,0.55);
+            border: 1px solid rgba(0,255,100,0.25);
+            border-radius: 18px;
+            padding: 20px 18px;
+            margin-bottom: 16px;
+        }
+        .policy-card__title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem; font-weight: 700;
+            color: var(--neon-green); letter-spacing: 1px;
+            text-transform: uppercase; margin-bottom: 14px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .policy-card__title::before {
+            content: '📋';
+        }
+
+        .policy-scroll {
+            max-height: 220px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y !important;
+            overscroll-behavior: contain;
+            padding-right: 6px;
+            margin-bottom: 14px;
+        }
+        .policy-scroll::-webkit-scrollbar { width: 3px; }
+        .policy-scroll::-webkit-scrollbar-thumb {
+            background: rgba(0,255,100,0.3); border-radius: 2px;
+        }
+
+        .policy-item {
+            display: flex; gap: 10px; margin-bottom: 12px;
+            font-size: 0.88rem; line-height: 1.45;
+            color: rgba(255,255,255,0.75);
+        }
+        .policy-item__num {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.65rem; font-weight: 700;
+            color: var(--neon-green);
+            background: rgba(0,255,100,0.08);
+            border: 1px solid rgba(0,255,100,0.2);
+            border-radius: 50%; width: 22px; height: 22px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; margin-top: 1px;
+        }
+
+        /* Индикатор прокрутки */
+        .scroll-hint {
+            font-size: 0.72rem; color: rgba(255,255,255,0.3);
+            text-align: center; margin-bottom: 14px;
+            transition: opacity 0.3s;
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+        }
+        .scroll-hint.hidden { opacity: 0; pointer-events: none; }
+
+        /* Чекбокс согласия */
+        .accept-row {
+            display: flex; align-items: flex-start; gap: 12px;
+            padding: 12px 14px;
+            background: rgba(0,255,100,0.05);
+            border: 1px solid rgba(0,255,100,0.2);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .accept-row:active { background: rgba(0,255,100,0.1); }
+        .accept-check {
+            width: 22px; height: 22px; flex-shrink: 0;
+            border: 2px solid rgba(0,255,100,0.4);
+            border-radius: 5px;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s; margin-top: 1px;
+            background: transparent;
+        }
+        .accept-check.checked {
+            background: var(--neon-green);
+            border-color: var(--neon-green);
+        }
+        .accept-check.checked::after {
+            content: '✓';
+            color: #000; font-size: 0.85rem; font-weight: 900;
+        }
+        .accept-text {
+            font-size: 0.85rem; color: rgba(255,255,255,0.7); line-height: 1.4;
+        }
+        .accept-text b { color: rgba(255,255,255,0.95); }
+
+        /* Капча */
+        .captcha-section {
+            width: 100%; margin-bottom: 16px;
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            opacity: 0.4; pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .captcha-section.enabled { opacity: 1; pointer-events: auto; }
+        .captcha-label {
+            font-family: 'Orbitron', sans-serif; font-size: 0.65rem;
+            color: rgba(0,255,255,0.5); letter-spacing: 1px;
+            text-transform: uppercase; align-self: flex-start;
+        }
+        .captcha-wrap {
+            display: flex; justify-content: center; width: 100%;
+        }
+
+        /* Кнопка продолжить */
+        .btn-continue {
+            width: 100%; padding: 15px;
+            background: linear-gradient(135deg, rgba(0,255,100,0.18), rgba(0,200,80,0.08));
+            border: 1px solid rgba(0,255,100,0.5);
+            border-radius: 14px;
+            font-family: 'Orbitron', sans-serif; font-size: 0.78rem; font-weight: 700;
+            color: var(--neon-green); cursor: pointer; letter-spacing: 0.5px;
+            transition: all 0.2s;
+            box-shadow: 0 0 12px rgba(0,255,100,0.1);
+            opacity: 0.4; pointer-events: none;
+        }
+        .btn-continue.enabled {
+            opacity: 1; pointer-events: auto;
+        }
+        .btn-continue.enabled:active {
+            transform: scale(0.97);
+            box-shadow: 0 0 24px rgba(0,255,100,0.3);
+        }
+        .btn-continue.loading {
+            opacity: 0.6; pointer-events: none;
+        }
+
+        /* Состояния экранов */
+        .screen { display: none; flex-direction: column; align-items: center; width: 100%; }
+        .screen.active { display: flex; }
+
+        /* Экран успеха */
+        .success-icon {
+            font-size: 4rem; margin-bottom: 16px;
+            filter: drop-shadow(0 0 20px rgba(0,255,100,0.6));
+            animation: successPulse 2s ease-in-out infinite;
+        }
+        @keyframes successPulse {
+            0%, 100% { filter: drop-shadow(0 0 20px rgba(0,255,100,0.6)); transform: scale(1); }
+            50% { filter: drop-shadow(0 0 32px rgba(0,255,100,0.9)); transform: scale(1.05); }
+        }
+        .success-title {
+            font-family: 'Orbitron', sans-serif; font-size: 1.1rem; font-weight: 900;
+            color: var(--neon-green); text-shadow: 0 0 16px rgba(0,255,100,0.6);
+            text-align: center; margin-bottom: 8px;
+        }
+        .success-sub {
+            font-size: 0.9rem; color: rgba(255,255,255,0.5); text-align: center;
+            line-height: 1.5; margin-bottom: 28px;
+        }
+        .reward-box {
+            width: 100%; background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(0,255,100,0.2); border-radius: 14px;
+            padding: 16px; margin-bottom: 20px;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+        }
+        .reward-item {
+            background: rgba(0,255,100,0.04);
+            border: 1px solid rgba(0,255,100,0.12);
+            border-radius: 10px; padding: 12px; text-align: center;
+        }
+        .reward-item__val {
+            font-family: 'Orbitron', sans-serif; font-size: 1.5rem; font-weight: 900;
+            color: var(--neon-green); text-shadow: 0 0 10px rgba(0,255,100,0.5);
+        }
+        .reward-item__label {
+            font-size: 0.7rem; color: rgba(255,255,255,0.4);
+            text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px;
+        }
+        .progress-hint {
+            font-size: 0.82rem; color: rgba(255,255,255,0.45); text-align: center;
+            padding: 10px 14px;
+            background: rgba(255,200,0,0.05);
+            border: 1px solid rgba(255,200,0,0.15);
+            border-radius: 10px; margin-bottom: 20px; line-height: 1.5;
+        }
+        .progress-hint b { color: rgba(255,215,0,0.9); }
+        .btn-play {
+            width: 100%; padding: 15px;
+            background: linear-gradient(135deg, rgba(0,255,255,0.18), rgba(0,100,255,0.08));
+            border: 1px solid rgba(0,255,255,0.5);
+            border-radius: 14px;
+            font-family: 'Orbitron', sans-serif; font-size: 0.78rem; font-weight: 700;
+            color: var(--neon-cyan); cursor: pointer; letter-spacing: 0.5px;
+            transition: all 0.2s;
+        }
+        .btn-play:active { transform: scale(0.97); }
+
+        /* Ошибка */
+        .error-msg {
+            font-size: 0.8rem; color: #ff5555;
+            text-align: center; margin-top: 10px;
+            min-height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+
+    <div class="page">
+        <div class="logo">CHIN GAMES</div>
+        <div class="logo-sub">Реферальная программа</div>
+
+        <!-- Индикатор шагов -->
+        <div class="steps">
+            <div class="step step--active" id="step1">
+                <div class="step__dot">1</div>
+                <div class="step__label">Политика</div>
+            </div>
+            <div class="step-line"></div>
+            <div class="step" id="step2">
+                <div class="step__dot">2</div>
+                <div class="step__label">Капча</div>
+            </div>
+            <div class="step-line"></div>
+            <div class="step" id="step3">
+                <div class="step__dot">3</div>
+                <div class="step__label">Готово</div>
+            </div>
+        </div>
+
+        <!-- ── Экран 1: Политика + Капча ── -->
+        <div class="screen active" id="screen-policy">
+
+            <div class="policy-card">
+                <div class="policy-card__title">Политика реферальной системы</div>
+
+                <div class="policy-scroll" id="policy-scroll">
+                    <div class="policy-item">
+                        <div class="policy-item__num">1</div>
+                        <div>Запрещено создавать несколько аккаунтов для получения реферальных наград.</div>
+                    </div>
+                    <div class="policy-item">
+                        <div class="policy-item__num">2</div>
+                        <div>Запрещено использование ботов, скриптов, эмуляторов, макросов и любого автоматизированного ПО.</div>
+                    </div>
+                    <div class="policy-item">
+                        <div class="policy-item__num">3</div>
+                        <div>Запрещено самореферал — регистрировать себя по своей же ссылке.</div>
+                    </div>
+                    <div class="policy-item">
+                        <div class="policy-item__num">4</div>
+                        <div>Реферальная награда начисляется только после того, как приглашённый друг <b>отыграет минимум 3 полноценные игры</b>.</div>
+                    </div>
+                    <div class="policy-item">
+                        <div class="policy-item__num">5</div>
+                        <div>Администрация оставляет за собой право заблокировать аккаунт и обнулить все награды при подозрении в нарушении правил.</div>
+                    </div>
+                    <div class="policy-item">
+                        <div class="policy-item__num">6</div>
+                        <div>Все подозрительные аккаунты проверяются вручную.</div>
+                    </div>
+                </div>
+
+                <div class="scroll-hint" id="scroll-hint">
+                    ↕ Прокрути вниз чтобы прочитать всё
+                </div>
+
+                <div class="accept-row" id="accept-row" onclick="toggleAccept()">
+                    <div class="accept-check" id="accept-check"></div>
+                    <div class="accept-text">
+                        Я прочитал и принимаю <b>Политику реферальной системы</b>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Капча (активируется после принятия политики) -->
+            <div class="captcha-section" id="captcha-section">
+                <div class="captcha-label">Подтвердите, что вы человек</div>
+                <div class="captcha-wrap">
+                    <div id="hcaptcha-widget"></div>
+                </div>
+            </div>
+
+            <button class="btn-continue" id="btn-continue" onclick="submitPolicy()">
+                ✅ Продолжить
+            </button>
+            <div class="error-msg" id="error-msg"></div>
+        </div>
+
+        <!-- ── Экран 2: Успех ── -->
+        <div class="screen" id="screen-success">
+            <div class="success-icon">🎉</div>
+            <div class="success-title">Всё готово!</div>
+            <div class="success-sub">
+                Ты успешно присоединился по реферальной ссылке
+            </div>
+
+            <div class="progress-hint">
+                ⏳ Твой пригласитель получит награду, когда ты<br>
+                <b>отыграешь 3 игры</b>. Дерзай — это быстро!
+            </div>
+
+            <div class="reward-box">
+                <div class="reward-item">
+                    <div class="reward-item__val">2 ⭐</div>
+                    <div class="reward-item__label">Stars другу</div>
+                </div>
+                <div class="reward-item">
+                    <div class="reward-item__val" style="display:flex;align-items:center;justify-content:center;gap:6px;">2 <img src="icons/enegry.png" alt="" style="width:22px;height:22px;object-fit:contain;filter:drop-shadow(0 0 6px rgba(0,255,255,0.7));"></div>
+                    <div class="reward-item__label">Энергия другу</div>
+                </div>
+            </div>
+
+            <button class="btn-play" onclick="goToGame()">
+                🎮 Играть!
+            </button>
+        </div>
+
+        <!-- ── Экран: Уже принял ── -->
+        <div class="screen" id="screen-already">
+            <div class="success-icon">✅</div>
+            <div class="success-title">Уже принято</div>
+            <div class="success-sub">
+                Ты уже принял политику реферальной программы ранее
+            </div>
+            <button class="btn-play" onclick="goToGame()">
+                🎮 Играть!
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const API = 'https://chin-games-bot.onrender.com';
+        const tg  = window.Telegram?.WebApp;
+
+        // Получаем user_id из Telegram WebApp или из URL-параметра
+        let USER_ID = tg?.initDataUnsafe?.user?.id || null;
+        if (!USER_ID) {
+            const urlParams = new URLSearchParams(window.location.search);
+            USER_ID = parseInt(urlParams.get('user_id')) || null;
+        }
+
+        let policyRead    = false;
+        let policyAccepted = false;
+        let captchaToken  = null;
+        let hCaptchaWidgetId = null;
+
+        // ── Инициализация ────────────────────────────────────────────
+        window.addEventListener('DOMContentLoaded', async () => {
+            if (tg) {
+                tg.ready();
+                tg.expand();
+                tg.BackButton.show();
+                tg.BackButton.onClick(() => tg.close());
+            }
+
+            // Проверяем: может уже принял?
+            if (USER_ID) {
+                try {
+                    const res = await fetch(`${API}/api/referral/status?invitee_id=${USER_ID}`);
+                    const data = await res.json();
+                    if (data.registered && data.policy_accepted) {
+                        showScreen('screen-already');
+                        return;
+                    }
+                    if (!data.registered) {
+                        // Не реферал вообще — закрываем или редиректим
+                        showScreen('screen-already');
+                        return;
+                    }
+                } catch(e) {}
+            }
+
+            // Загружаем sitekey и инициализируем капчу
+            try {
+                const r = await fetch(`${API}/api/referral/policy_sitekey`);
+                const { sitekey } = await r.json();
+                if (sitekey && typeof hcaptcha !== 'undefined') {
+                    hCaptchaWidgetId = hcaptcha.render('hcaptcha-widget', {
+                        sitekey,
+                        theme: 'dark',
+                        callback: onCaptchaSuccess,
+                        'expired-callback': onCaptchaExpired,
+                    });
+                }
+            } catch(e) {
+                console.warn('hCaptcha load error:', e);
+            }
+
+            // Отслеживаем прокрутку политики
+            const scroll = document.getElementById('policy-scroll');
+            scroll.addEventListener('scroll', checkScrollRead);
+            // Короткий таймаут — если контент влезает без скролла
+            setTimeout(checkScrollRead, 800);
+        });
+
+        function checkScrollRead() {
+            const el = document.getElementById('policy-scroll');
+            const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 10;
+            if (atBottom && !policyRead) {
+                policyRead = true;
+                document.getElementById('scroll-hint').classList.add('hidden');
+            }
+        }
+
+        function toggleAccept() {
+            policyAccepted = !policyAccepted;
+            const check = document.getElementById('accept-check');
+            check.classList.toggle('checked', policyAccepted);
+
+            // Активируем капчу
+            const captchaSection = document.getElementById('captcha-section');
+            captchaSection.classList.toggle('enabled', policyAccepted);
+
+            updateSteps();
+            updateContinueBtn();
+        }
+
+        function onCaptchaSuccess(token) {
+            captchaToken = token;
+            document.getElementById('step2').classList.add('step--done');
+            updateContinueBtn();
+        }
+
+        function onCaptchaExpired() {
+            captchaToken = null;
+            document.getElementById('step2').classList.remove('step--done');
+            updateContinueBtn();
+        }
+
+        function updateSteps() {
+            const s1 = document.getElementById('step1');
+            const s2 = document.getElementById('step2');
+            s1.className = 'step' + (policyAccepted ? ' step--done' : ' step--active');
+            s2.className = 'step' + (policyAccepted ? (captchaToken ? ' step--done' : ' step--active') : '');
+        }
+
+        function updateContinueBtn() {
+            const btn = document.getElementById('btn-continue');
+            // Требуем: принял политику + прошёл капчу
+            const ready = policyAccepted && (captchaToken || !document.getElementById('hcaptcha-widget').children.length);
+            btn.classList.toggle('enabled', ready);
+        }
+
+        async function submitPolicy() {
+            if (!USER_ID) {
+                showError('Не удалось определить пользователя. Открой через Telegram.');
+                return;
+            }
+            if (!policyAccepted) {
+                showError('Пожалуйста, примите политику реферальной системы.');
+                return;
+            }
+
+            const btn = document.getElementById('btn-continue');
+            btn.classList.add('loading');
+            btn.textContent = '⏳ Проверка...';
+            showError('');
+
+            try {
+                const res = await fetch(`${API}/api/referral/accept_policy`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        invitee_id:    USER_ID,
+                        captcha_token: captchaToken || '',
+                    })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    if (data.detail === 'captcha_failed') {
+                        showError('Капча не пройдена. Попробуй ещё раз.');
+                        if (hCaptchaWidgetId !== null) hcaptcha.reset(hCaptchaWidgetId);
+                        captchaToken = null;
+                    } else {
+                        showError('Ошибка сервера. Попробуй позже.');
+                    }
+                    btn.classList.remove('loading');
+                    btn.textContent = '✅ Продолжить';
+                    return;
+                }
+
+                // Успех
+                document.getElementById('step3').classList.add('step--done');
+                showScreen('screen-success');
+
+            } catch(e) {
+                showError('Нет соединения. Проверь интернет и попробуй снова.');
+                btn.classList.remove('loading');
+                btn.textContent = '✅ Продолжить';
+            }
+        }
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        function showError(msg) {
+            document.getElementById('error-msg').textContent = msg;
+        }
+
+        function goToGame() {
+            if (tg) {
+                tg.close();
+            } else {
+                window.location.href = 'index.html';
+            }
+        }
+    </script>
+</body>
+</html>

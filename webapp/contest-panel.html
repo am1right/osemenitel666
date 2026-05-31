@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Соревнование | Chin Games</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        * { user-select:none!important;-webkit-user-select:none!important;-webkit-tap-highlight-color:transparent!important;box-sizing:border-box; }
+        html,body { overscroll-behavior:none!important;overflow:hidden!important;height:100%!important;position:fixed!important;width:100%!important;margin:0!important;padding:0!important; }
+        :root { --neon-cyan:#00ffff;--neon-pink:#ff00ff;--neon-purple:#7a04eb; }
+        body { font-family:'Rajdhani',sans-serif;background:linear-gradient(180deg,#0d081a 0%,#120b2e 35%,#1a103d 100%);color:#fff;display:flex;flex-direction:column; }
+        .bg-grid { position:fixed;top:0;left:0;width:200%;height:200%;background-image:linear-gradient(rgba(188,19,254,0.15) 1px,transparent 1px),linear-gradient(90deg,rgba(0,243,255,0.15) 1px,transparent 1px);background-size:40px 40px;transform:perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);animation:gridMove 20s linear infinite;z-index:0;opacity:0.5; }
+        @keyframes gridMove { 0%{transform:perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px)}100%{transform:perspective(500px) rotateX(60deg) translateY(40px) translateZ(-200px)} }
+        .scroll-area { position:relative;z-index:1;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y!important;padding:16px; }
+
+        /* Шапка */
+        .page-title { font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;color:#fff;text-align:center;margin-bottom:6px;text-shadow:0 0 10px rgba(188,19,254,0.6); }
+        .page-sub { font-size:12px;color:rgba(255,255,255,0.4);text-align:center;margin-bottom:24px; }
+
+        /* Секции */
+        .section { background:rgba(0,0,0,0.5);border:1px solid rgba(0,255,255,0.15);border-radius:16px;padding:18px;margin-bottom:16px; }
+        .section-label { font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(0,255,255,0.6);margin-bottom:12px; }
+
+        /* Выбор опций (таблетки) */
+        .pill-group { display:flex;gap:8px;flex-wrap:wrap; }
+        .pill { flex:1;min-width:70px;padding:10px 6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:10px;text-align:center;cursor:pointer;font-family:'Orbitron',sans-serif;font-size:11px;color:rgba(255,255,255,0.5);transition:all 0.2s; }
+        .pill:active { transform:scale(0.95); }
+        .pill.selected { background:rgba(0,255,255,0.15);border-color:#00ffff;color:#00ffff;text-shadow:0 0 8px rgba(0,255,255,0.5);box-shadow:0 0 12px rgba(0,255,255,0.15); }
+        .pill.prize-pill.selected { background:rgba(188,19,254,0.2);border-color:#bc13fe;color:#e000ff;text-shadow:0 0 8px rgba(188,19,254,0.5);box-shadow:0 0 12px rgba(188,19,254,0.2); }
+
+        /* Инпуты */
+        .field { margin-bottom:14px; }
+        .field label { display:block;font-size:11px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px; }
+        .field input, .field select {
+            width:100%;padding:11px 14px;background:rgba(0,0,0,0.5);
+            border:1px solid rgba(0,255,255,0.25);border-radius:10px;
+            color:#fff;font-family:'Rajdhani',sans-serif;font-size:15px;
+            outline:none;-webkit-appearance:none;
+        }
+        .field input:focus, .field select:focus { border-color:#00ffff;box-shadow:0 0 10px rgba(0,255,255,0.15); }
+        .field select option { background:#1a1040; }
+
+        /* Строка предупреждения */
+        .hint { font-size:12px;color:rgba(255,255,255,0.35);margin-top:6px; }
+        .hint.warn { color:#ffaa00; }
+        .hint.err  { color:#ff4444; }
+
+        /* Сводка */
+        .summary { background:rgba(122,4,235,0.15);border:1px solid rgba(188,19,254,0.3);border-radius:14px;padding:16px;margin-bottom:16px;display:none; }
+        .summary-row { display:flex;justify-content:space-between;align-items:center;font-size:14px;padding:4px 0; }
+        .summary-row span:first-child { color:rgba(255,255,255,0.5); }
+        .summary-row span:last-child { color:#fff;font-weight:700; }
+
+        /* Кнопка запуска */
+        .launch-btn {
+            width:100%;padding:16px;
+            background:linear-gradient(135deg,#7a04eb,#ff00ff);
+            border:none;border-radius:14px;
+            font-family:'Orbitron',sans-serif;font-size:13px;font-weight:700;
+            color:#fff;text-transform:uppercase;letter-spacing:1.5px;
+            cursor:pointer;margin-bottom:12px;
+            box-shadow:0 4px 20px rgba(188,19,254,0.4);
+            transition:all 0.2s;
+        }
+        .launch-btn:active { transform:scale(0.97); }
+        .launch-btn:disabled { opacity:0.4;cursor:not-allowed;transform:none; }
+
+        /* Активные соревнования в панели */
+        .active-card { background:rgba(0,0,0,0.5);border:1px solid rgba(188,19,254,0.3);border-radius:12px;padding:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center; }
+        .active-card__info { flex:1; }
+        .active-card__title { font-family:'Orbitron',sans-serif;font-size:11px;color:#e000ff;margin-bottom:4px; }
+        .active-card__sub { font-size:12px;color:rgba(255,255,255,0.5); }
+        .cancel-btn { padding:8px 14px;background:rgba(255,68,68,0.2);border:1px solid rgba(255,68,68,0.4);border-radius:8px;color:#ff4444;font-family:'Orbitron',sans-serif;font-size:10px;cursor:pointer;flex-shrink:0;margin-left:10px; }
+        .cancel-btn:active { transform:scale(0.95); }
+
+        /* Бэк */
+        .back-btn { display:flex;align-items:center;gap:6px;color:rgba(255,255,255,0.45);font-family:'Orbitron',sans-serif;font-size:10px;cursor:pointer;margin-bottom:20px;padding:6px 0; }
+        .back-btn:active { color:#00ffff; }
+
+        /* Toast */
+        .toast { position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(80px);background:rgba(0,0,0,0.9);border:1px solid rgba(0,255,255,0.3);border-radius:12px;padding:12px 20px;font-size:14px;color:#fff;z-index:9999;transition:transform 0.3s ease;white-space:nowrap; }
+        .toast.show { transform:translateX(-50%) translateY(0); }
+        .toast.success { border-color:rgba(0,255,100,0.5);color:#00ff88; }
+        .toast.error   { border-color:rgba(255,68,68,0.5);color:#ff4444; }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="toast" id="toast"></div>
+
+    <div class="scroll-area" id="scroll-area">
+        <div class="back-btn" onclick="history.back()">← Назад</div>
+
+        <div class="page-title">Настроить соревнование</div>
+        <div class="page-sub">Только для администраторов</div>
+
+        <!-- Активные -->
+        <div class="section" id="active-section" style="display:none;">
+            <div class="section-label">Активные сейчас</div>
+            <div id="active-list"></div>
+        </div>
+
+        <!-- Игра -->
+        <div class="section">
+            <div class="section-label">Игра</div>
+            <div class="pill-group" id="game-pills">
+                <div class="pill" data-val="math" onclick="selectPill('game',this)"><img src="icons/math.png" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 0 4px rgba(255,255,255,0.3))"> Math</div>
+                <div class="pill" data-val="2048" onclick="selectPill('game',this)"><img src="icons/2048.png" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 0 4px rgba(255,255,255,0.3))"> 2048</div>
+                <div class="pill" data-val="snake" onclick="selectPill('game',this)"><img src="icons/snake.png" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 0 4px rgba(255,255,255,0.3))"> Snake</div>
+                <div class="pill" data-val="flappy" onclick="selectPill('game',this)"><img src="icons/bird.png" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 0 4px rgba(255,255,255,0.3))"> Flappy</div>
+            </div>
+        </div>
+
+        <!-- Победители -->
+        <div class="section">
+            <div class="section-label">Количество победителей</div>
+            <div class="pill-group" id="winners-pills">
+                <div class="pill" data-val="1" onclick="selectPill('winners',this)">Топ 1</div>
+                <div class="pill" data-val="2" onclick="selectPill('winners',this)">Топ 2</div>
+                <div class="pill" data-val="3" onclick="selectPill('winners',this)">Топ 3</div>
+            </div>
+        </div>
+
+        <!-- Приз -->
+        <div class="section">
+            <div class="section-label">Тип приза</div>
+            <div class="pill-group" id="prize-pills">
+                <div class="pill prize-pill" data-val="stars" onclick="selectPill('prize',this)">Звёзды Telegram</div>
+                <div class="pill prize-pill" data-val="gift"  onclick="selectPill('prize',this)"><img src="icons/shop.png" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 0 4px rgba(255,255,255,0.3))"> NFT-подарок</div>
+            </div>
+
+            <!-- Звёзды -->
+            <div id="stars-section" style="display:none;margin-top:14px;">
+                <div class="field">
+                    <label>Количество звёзд</label>
+                    <input type="number" id="stars-amount" min="1" placeholder="например 100" inputmode="numeric">
+                </div>
+                <div class="section-label" style="margin-top:12px;">Как распределить?</div>
+                <div class="pill-group" id="split-pills">
+                    <div class="pill" data-val="each"  onclick="selectPill('split',this)">Каждому</div>
+                    <div class="pill" data-val="split" onclick="selectPill('split',this)">Поровну</div>
+                </div>
+                <div class="hint" id="stars-hint"></div>
+            </div>
+
+            <!-- NFT подарок -->
+            <div id="gift-section" style="display:none;margin-top:14px;">
+                <div id="gift-fields"></div>
+                <div class="hint warn" id="gift-hint"></div>
+                <div class="hint" style="margin-top:8px;padding:10px 12px;background:rgba(255,170,0,0.08);border:1px solid rgba(255,170,0,0.25);border-radius:8px;color:rgba(255,200,80,0.85);line-height:1.5;">
+                    Призы отправляются вручную после завершения соревнования. Бот уведомит победителей, а ты увидишь список в результатах.
+                </div>
+            </div>
+        </div>
+
+        <!-- Длительность -->
+        <div class="section">
+            <div class="section-label">Длительность соревнования</div>
+            <div class="pill-group" id="dur-pills">
+                <div class="pill" data-val="60"   onclick="selectPill('dur',this)">1ч</div>
+                <div class="pill" data-val="180"  onclick="selectPill('dur',this)">3ч</div>
+                <div class="pill" data-val="720"  onclick="selectPill('dur',this)">12ч</div>
+                <div class="pill" data-val="1440" onclick="selectPill('dur',this)">1д</div>
+                <div class="pill" data-val="custom" onclick="selectPill('dur',this)">Своё</div>
+            </div>
+            <div id="custom-dur" style="display:none;margin-top:12px;">
+                <div class="field">
+                    <label>Минуты</label>
+                    <input type="number" id="dur-custom" min="1" max="43200" placeholder="например 90" inputmode="numeric">
+                </div>
+            </div>
+        </div>
+
+        <!-- Сводка -->
+        <div class="summary" id="summary">
+            <div class="section-label" style="margin-bottom:10px;">Сводка</div>
+            <div class="summary-row"><span>Игра</span><span id="sum-game">—</span></div>
+            <div class="summary-row"><span>Победители</span><span id="sum-winners">—</span></div>
+            <div class="summary-row"><span>Приз</span><span id="sum-prize">—</span></div>
+            <div class="summary-row"><span>Длительность</span><span id="sum-dur">—</span></div>
+        </div>
+
+        <button class="launch-btn" id="launch-btn" onclick="launchContest()" disabled>Запустить соревнование</button>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready(); tg.expand();
+        if (tg.requestFullscreen) tg.requestFullscreen();
+        if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+
+        const API = 'https://chin-games-bot.onrender.com';
+        const ADMIN_USERNAMES = ['rostips', 'am1right'];
+        const GAME_LABELS = { math: 'Math Master', '2048': '2048', snake: 'Snake', flappy: 'Flappy Chin' };
+        const GAME_ICONS = { math: 'math', '2048': '2048', snake: 'snake', flappy: 'bird' };
+        const user = tg.initDataUnsafe?.user;
+
+        // Проверка доступа
+        if (!user || !ADMIN_USERNAMES.includes((user.username || '').toLowerCase())) {
+            document.querySelector('.scroll-area').innerHTML =
+                '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,0.4);font-family:Orbitron,sans-serif;font-size:14px;">⛔ Нет доступа</div>';
+        }
+
+        // ── Состояние ─────────────────────────────────────────
+        const state = { game: null, winners: null, prize: null, split: null, dur: null };
+
+        function selectPill(group, el) {
+            const parent = el.closest('.pill-group');
+            parent.querySelectorAll('.pill').forEach(p => p.classList.remove('selected'));
+            el.classList.add('selected');
+            state[group] = el.dataset.val;
+
+            if (group === 'prize') {
+                document.getElementById('stars-section').style.display = state.prize === 'stars' ? 'block' : 'none';
+                document.getElementById('gift-section').style.display  = state.prize === 'gift'  ? 'block' : 'none';
+                if (state.prize === 'gift') buildGiftFields();
+                updateSplitVisibility();
+            }
+            if (group === 'winners') {
+                updateSplitVisibility();
+                if (state.prize === 'gift') buildGiftFields();
+            }
+            if (group === 'dur') {
+                document.getElementById('custom-dur').style.display = state.dur === 'custom' ? 'block' : 'none';
+            }
+
+            updateHints();
+            validate();
+        }
+
+        function updateSplitVisibility() {
+            const splitPills = document.getElementById('split-pills');
+            if (state.prize === 'stars' && parseInt(state.winners || 1) > 1) {
+                splitPills.style.display = 'flex';
+            } else {
+                splitPills.style.display = 'none';
+                state.split = 'each'; // по умолчанию
+            }
+        }
+
+        function updateHints() {
+            // Звёзды hint
+            const starsEl = document.getElementById('stars-hint');
+            const starsAmt = parseInt(document.getElementById('stars-amount').value || 0);
+            const winners  = parseInt(state.winners || 1);
+            if (state.prize === 'stars' && starsAmt > 0 && winners > 1) {
+                if (state.split === 'split') {
+                    starsEl.textContent = `Каждый получит ~${Math.floor(starsAmt / winners)} ⭐`;
+                } else if (state.split === 'each') {
+                    starsEl.textContent = `Каждый получит ${starsAmt} ⭐ (итого ${starsAmt * winners} ⭐)`;
+                }
+            } else {
+                starsEl.textContent = '';
+            }
+
+            // Gift hint
+            const giftHint = document.getElementById('gift-hint');
+            if (state.prize === 'gift' && state.winners) {
+                const filled = getGiftIds().filter(u => u.startsWith('http')).length;
+                const total = parseInt(state.winners);
+                giftHint.textContent = filled < total
+                    ? `Заполнено ${filled} из ${total} призов`
+                    : `Все ${total} приза заполнены ✓`;
+                giftHint.className = 'hint ' + (filled < total ? 'warn' : '');
+            } else {
+                giftHint.textContent = '';
+            }
+        }
+
+        function getDurationMinutes() {
+            if (state.dur === 'custom') return parseInt(document.getElementById('dur-custom').value || 0);
+            return parseInt(state.dur || 0);
+        }
+
+        function getDurationLabel(min) {
+            if (!min) return '—';
+            if (min < 60) return `${min} мин`;
+            if (min < 1440) return `${min / 60}ч`;
+            return `${min / 1440}д`;
+        }
+
+        function validate() {
+            const giftIds = state.prize === 'gift' ? getGiftIds() : [];
+            const allGiftsFilled = giftIds.every(u => u.startsWith('http'));
+
+            const ok =
+                state.game &&
+                state.winners &&
+                state.prize &&
+                (state.prize !== 'stars' || parseInt(document.getElementById('stars-amount').value || 0) > 0) &&
+                (state.prize !== 'gift'  || allGiftsFilled) &&
+                (state.prize !== 'stars' || parseInt(state.winners) <= 1 || state.split) &&
+                getDurationMinutes() > 0;
+
+            document.getElementById('launch-btn').disabled = !ok;
+
+            if (ok) {
+                const winners = parseInt(state.winners);
+                const dur = getDurationMinutes();
+                let prizeText = '';
+                if (state.prize === 'stars') {
+                    const amt = parseInt(document.getElementById('stars-amount').value);
+                    prizeText = state.split === 'split'
+                        ? `${amt} ⭐ поровну`
+                        : `${amt} ⭐ каждому`;
+                } else {
+                    prizeText = winners === 1 ? 'NFT Топ 1' : giftIds.map((_, i) => `NFT Топ ${i+1}`).join(', ');
+                }
+                document.getElementById('sum-game').textContent = GAME_LABELS[state.game] || state.game;
+                document.getElementById('sum-winners').textContent = winners === 1 ? 'Топ 1' : `Топ 1–${winners}`;
+                document.getElementById('sum-prize').textContent = prizeText;
+                document.getElementById('sum-dur').textContent = getDurationLabel(dur);
+                document.getElementById('summary').style.display = 'block';
+            } else {
+                document.getElementById('summary').style.display = 'none';
+            }
+        }
+
+        // Следим за инпутами
+        document.getElementById('stars-amount').addEventListener('input', () => { updateHints(); validate(); });
+        document.getElementById('dur-custom').addEventListener('input', validate);
+
+        // ── Динамические поля NFT ─────────────────────────────
+        const PLACE_LABELS = ['🥇 Приз за Топ 1', '🥈 Приз за Топ 2', '🥉 Приз за Топ 3'];
+        const PLACE_COLORS = ['#ffd700','#c0c0c0','#cd7f32'];
+
+        function buildGiftFields() {
+            const count = parseInt(state.winners || 1);
+            const container = document.getElementById('gift-fields');
+            const prev = {};
+            container.querySelectorAll('input[data-place]').forEach(inp => {
+                prev[inp.dataset.place] = inp.value;
+            });
+            container.innerHTML = '';
+            for (let i = 0; i < count; i++) {
+                const place = i + 1;
+                const color = PLACE_COLORS[i] || '#e060ff';
+                const label = PLACE_LABELS[i] || `Приз за Топ ${place}`;
+                const prevVal = prev[place] || '';
+                const fieldId = `gift-id-${place}`;
+                const previewId = `nft-preview-${place}`;
+
+                const wrap = document.createElement('div');
+                wrap.style.cssText = 'margin-bottom:14px;';
+                wrap.innerHTML = `
+                    <div class="field" style="margin-bottom:6px;">
+                        <label style="color:${color};font-size:11px;letter-spacing:1px;">${label}</label>
+                        <input type="url" id="${fieldId}" data-place="${place}"
+                            placeholder="https://t.me/nft/..."
+                            inputmode="url" autocomplete="off"
+                            style="border-color:rgba(${hexToRgb(color)},0.35);"
+                            value="${prevVal}">
+                    </div>
+                    <div id="${previewId}" style="display:${prevVal.startsWith('http')?'block':'none'};
+                        margin-bottom:6px;padding:10px 12px;
+                        background:rgba(0,255,200,0.05);border:1px solid rgba(0,255,200,0.18);border-radius:10px;">
+                        <a href="${prevVal}" target="_blank" rel="noopener"
+                           style="display:flex;align-items:center;gap:8px;text-decoration:none;">
+                            <div style="width:32px;height:32px;background:rgba(0,255,200,0.08);border-radius:7px;
+                                display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <img src="icons/shop.png" style="width:18px;height:18px;object-fit:contain;
+                                    filter:drop-shadow(0 0 5px rgba(0,255,200,0.5));">
+                            </div>
+                            <div style="font-size:11px;color:rgba(255,255,255,0.4);word-break:break-all;">
+                                ${prevVal.length > 38 ? prevVal.slice(0,35)+'...' : prevVal}
+                            </div>
+                            <div style="margin-left:auto;font-size:10px;color:rgba(0,255,200,0.5);">→</div>
+                        </a>
+                    </div>`;
+                container.appendChild(wrap);
+
+                document.getElementById(fieldId).addEventListener('input', function() {
+                    const val = this.value.trim();
+                    const preview = document.getElementById(previewId);
+                    if (val.startsWith('http')) {
+                        const short = val.length > 38 ? val.slice(0,35)+'...' : val;
+                        preview.style.display = 'block';
+                        preview.querySelector('a').href = val;
+                        preview.querySelector('div:last-child ~ div, a > div:nth-child(2)').textContent = short;
+                    } else {
+                        preview.style.display = 'none';
+                    }
+                    updateHints(); validate();
+                });
+            }
+        }
+
+        function hexToRgb(hex) {
+            const r = parseInt(hex.slice(1,3),16);
+            const g = parseInt(hex.slice(3,5),16);
+            const b = parseInt(hex.slice(5,7),16);
+            return `${r},${g},${b}`;
+        }
+
+        function getGiftIds() {
+            const count = parseInt(state.winners || 1);
+            const ids = [];
+            for (let i = 1; i <= count; i++) {
+                const el = document.getElementById(`gift-id-${i}`);
+                ids.push(el ? el.value.trim() : '');
+            }
+            return ids;
+        }
+
+        // ── Запуск ────────────────────────────────────────────
+        async function launchContest() {
+            const btn = document.getElementById('launch-btn');
+            btn.disabled = true;
+            btn.textContent = 'Запускаем...';
+
+            const winners = parseInt(state.winners);
+            const dur = getDurationMinutes();
+            const starsAmt = parseInt(document.getElementById('stars-amount').value || 0);
+            const giftIds = getGiftIds();
+
+            const body = {
+                username: user.username,
+                user_id: user.id,
+                game_name: state.game,
+                prize_type: state.prize,
+                prize_value: starsAmt,
+                gift_id: giftIds[0] || null,
+                gift_ids: giftIds.length > 0 ? giftIds : null,
+                split_prize: state.split === 'split',
+                winners_count: winners,
+                duration_minutes: dur,
+            };
+
+            try {
+                const res = await fetch(`${API}/api/contests/create`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast('✅ Соревнование запущено!', 'success');
+                    setTimeout(() => history.back(), 1800);
+                } else {
+                    showToast('❌ ' + (data.detail || 'Ошибка'), 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Запустить соревнование';
+                }
+            } catch(e) {
+                showToast('❌ Нет связи с сервером', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Запустить соревнование';
+            }
+        }
+
+        // ── Активные ─────────────────────────────────────────
+        async function loadActive() {
+            try {
+                const res = await fetch(`${API}/api/contests/active`);
+                const { contests } = await res.json();
+                if (!contests || contests.length === 0) return;
+
+                const section = document.getElementById('active-section');
+                const list = document.getElementById('active-list');
+                section.style.display = 'block';
+
+                list.innerHTML = contests.map(c => `
+                    <div class="active-card">
+                        <div class="active-card__info">
+                            <div class="active-card__title" style="display:flex;align-items:center;gap:6px;"><img src="icons/${GAME_ICONS[c.game_name] || c.game_name}.png" style="width:14px;height:14px;object-fit:contain;filter:drop-shadow(0 0 4px rgba(224,0,255,0.5))"> ${GAME_LABELS[c.game_name] || c.game_name} · Топ ${c.winners_count}</div>
+                            <div class="active-card__sub">${c.prize_type === 'stars' ? c.prize_value + ' звёзд' : 'NFT-подарок (вручную)'} · ${formatTimer(c.seconds_left)}</div>
+                        </div>
+                        <div class="cancel-btn" onclick="cancelContest(${c.id})">ОТМЕНА</div>
+                    </div>
+                `).join('');
+            } catch(e) {}
+        }
+
+        async function cancelContest(id) {
+            if (!confirm('Отменить соревнование?')) return;
+            try {
+                const res = await fetch(`${API}/api/contests/${id}/cancel`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user.username }),
+                });
+                if (res.ok) { showToast('Соревнование отменено', 'success'); loadActive(); }
+                else showToast('Ошибка при отмене', 'error');
+            } catch(e) { showToast('Нет связи', 'error'); }
+        }
+
+        function formatTimer(s) {
+            if (s <= 0) return 'завершено';
+            const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+            return h > 0 ? `${h}ч ${m}м` : `${m}м`;
+        }
+
+        // ── Toast ─────────────────────────────────────────────
+        function showToast(msg, type = '') {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast ' + type;
+            void t.offsetWidth;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2800);
+        }
+
+        // ── Скролл ────────────────────────────────────────────
+        function applyTopPadding() {
+            const el = document.getElementById('scroll-area');
+            const tgTop  = tg.contentSafeAreaInsets?.top ?? 0;
+            const sysTop = tg.safeAreaInsets?.top ?? 0;
+            el.style.paddingTop = Math.max(Math.max(tgTop, sysTop), 120) + 'px';
+            el.style.paddingBottom = 'calc(30px + env(safe-area-inset-bottom,0px))';
+        }
+        applyTopPadding();
+        setTimeout(applyTopPadding, 300);
+        tg.onEvent('viewportChanged', applyTopPadding);
+        document.addEventListener('touchmove', e => {
+            if (!e.target.closest('#scroll-area')) e.preventDefault();
+        }, { passive: false });
+
+        loadActive();
+    </script>
+</body>
+</html>

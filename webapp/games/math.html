@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Math Master | Chin Games</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        /* ============================================
+           МАКСИМАЛЬНО ЖЁСТКАЯ ЗАЩИТА TOUCH-ВЗАИМОДЕЙСТВИЯ
+           ============================================ */
+        * {
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            -webkit-tap-highlight-color: transparent !important;
+            -webkit-touch-callout: none !important;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            overscroll-behavior: none !important;
+            touch-action: none !important;
+            overflow: hidden !important;
+            height: 100% !important;
+            position: fixed !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+
+
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-pink: #bc13fe;
+            --neon-purple: #7a04eb;
+            --bg-dark: #1a103d;
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Rajdhani', sans-serif;
+            background: linear-gradient(180deg, #0d081a 0%, #120b2e 35%, #1a103d 100%);
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* Анимированный фон (Сетка + Градиент) */
+        .bg-grid {
+            position: absolute;
+            top: 0; left: 0; width: 200%; height: 200%;
+            background-image: 
+                linear-gradient(rgba(188, 19, 254, 0.2) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.2) 1px, transparent 1px);
+            background-size: 40px 40px;
+            transform: perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);
+            animation: gridMove 20s linear infinite;
+            z-index: -2;
+            opacity: 0.6;
+        }
+
+        .bg-glow {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 150vw; height: 150vw;
+            background: radial-gradient(circle, rgba(122,4,235,0.3) 0%, rgba(42,16,80,0) 70%);
+            transform: translate(-50%, -50%);
+            z-index: -1;
+            animation: pulseGlow 4s ease-in-out infinite alternate;
+        }
+
+        @keyframes gridMove {
+            0% { transform: perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px); }
+            100% { transform: perspective(500px) rotateX(60deg) translateY(40px) translateZ(-200px); }
+        }
+
+        @keyframes pulseGlow {
+            0% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.1); }
+        }
+
+        /* Кнопка Назад */
+        .back-btn {
+            position: absolute;
+            bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+            left: 20px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid var(--neon-blue);
+            color: var(--neon-blue);
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 10px var(--neon-blue);
+            transition: all 0.2s;
+            z-index: 100;
+            text-decoration: none;
+        }
+        .back-btn:active { transform: scale(0.9); background: var(--neon-blue); color: #000; }
+
+        /* Контейнер игры */
+        .game-container {
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+            padding: 20px;
+            background: var(--glass);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 30px rgba(188, 19, 254, 0.2);
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 28px;
+            margin: 0 0 10px 0;
+            color: #fff;
+            text-shadow: 0 0 10px var(--neon-pink);
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+        }
+
+        .stat-box {
+            background: rgba(0,0,0,0.5);
+            padding: 8px 15px;
+            border-radius: 10px;
+            border: 1px solid var(--neon-purple);
+            box-shadow: 0 0 5px var(--neon-purple);
+        }
+
+        .score-val { color: var(--neon-blue); }
+        .time-val { color: var(--neon-pink); }
+
+        .problem-box {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 48px;
+            font-weight: 900;
+            margin: 30px 0;
+            color: #fff;
+            text-shadow: 0 0 20px var(--neon-blue);
+            min-height: 70px;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .option-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid var(--neon-blue);
+            color: #fff;
+            padding: 20px;
+            font-size: 24px;
+            font-family: 'Orbitron', sans-serif;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.1s;
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
+        }
+
+        .option-btn:active {
+            transform: scale(0.95);
+            background: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 20px var(--neon-blue);
+        }
+
+        /* Экраны */
+        .screen { display: none; }
+        .screen.active { display: block; }
+
+        .start-btn, .restart-btn {
+            width: 100%;
+            padding: 18px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 20px;
+            font-weight: bold;
+            color: #fff;
+            background: linear-gradient(45deg, var(--neon-purple), var(--neon-pink));
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(188, 19, 254, 0.5);
+            transition: transform 0.2s;
+            margin-top: 20px;
+        }
+        .start-btn:active, .restart-btn:active { transform: scale(0.95); }
+
+        .level-indicator {
+            font-size: 14px;
+            color: rgba(255,255,255,0.7);
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        /* Мини-лидерборд */
+        .leaderboard-mini {
+            margin-top: 25px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid var(--neon-purple);
+        }
+        .leaderboard-mini h3 {
+            margin: 0 0 12px 0;
+            color: var(--neon-pink);
+            text-align: center;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* ========== BOTTOM NAV ========== */
+        .chin-navbar {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: calc(60px + env(safe-area-inset-bottom, 0px));
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            background: rgba(18, 11, 46, 0.96);
+            border-top: 1px solid rgba(0, 255, 255, 0.2);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-around;
+            z-index: 1000;
+            box-shadow: 0 -4px 24px rgba(0,0,0,0.7);
+        }
+        .chin-navbar__item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding-top: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            color: rgba(255,255,255,0.4);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            transition: color 0.2s;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        .chin-navbar__item:active { transform: scale(0.9); }
+        .chin-navbar__icon { width:24px; height:24px; display:flex; align-items:center; justify-content:center; transition: filter 0.2s, transform 0.2s; }
+        .chin-navbar__item--active { color: #00ffff; }
+        .chin-navbar__item--active .chin-navbar__icon {
+            filter: drop-shadow(0 0 7px #00ffff);
+            transform: translateY(-2px);
+        }
+        .chin-navbar__dot {
+            width: 4px; height: 4px; border-radius: 50%;
+            background: #00ffff; box-shadow: 0 0 6px #00ffff;
+            opacity: 0; transition: opacity 0.2s; margin-top: -2px;
+        }
+        .chin-navbar__item--active .chin-navbar__dot { opacity: 1; }
+        .game-container { margin-bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important; }
+    </style>
+</head>
+<body>
+
+    <!-- Фон -->
+    <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
+
+    <!-- Экран приветствия -->
+    <div id="start-screen" class="screen active game-container">
+        <h1>MATH MASTER</h1>
+        <p style="color: rgba(255,255,255,0.8); margin-bottom: 20px;">Решай примеры, набирай очки и ставь рекорды!</p>
+        <div style="margin-bottom:25px;"><img src="../icons/math.png" alt="Math Master" style="width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 0 14px rgba(188,19,254,0.6));"></div>
+        
+        <button id="math-start-btn" class="start-btn" onclick="tryStartGame()">НАЧАТЬ ИГРУ</button>
+        
+        <!-- ⚡ Energy widget -->
+        <div id="energy-container" style="display:flex; justify-content:center; margin-top:14px;"></div>
+        
+        <!-- ТОП-10 на главном экране игры -->
+        <div class="leaderboard-mini">
+            <h3>🏆 ТОП-10 ИГРОКОВ</h3>
+            <table class="leaderboard-list" style="width:100%; font-size: 0.95rem;">
+                <tbody id="mini-lb-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Экран игры -->
+    <div id="game-screen" class="screen game-container">
+        <div class="stats-row">
+            <div class="stat-box">Очки: <span id="score" class="score-val">0</span></div>
+            <div class="stat-box">Время: <span id="time" class="time-val">30</span></div>
+        </div>
+        
+        <div class="problem-box" id="problem">2 + 2 = ?</div>
+        
+        <div class="options-grid" id="options">
+            <!-- Кнопки генерируются JS -->
+        </div>
+
+        <div class="level-indicator">Уровень сложности: <span id="level">1</span></div>
+    </div>
+
+    <!-- Экран конца игры -->
+    <div id="end-screen" class="screen game-container">
+        <h1 style="color: var(--neon-pink)">ВРЕМЯ ВЫШЛО!</h1>
+        <p style="font-size: 18px;">Твой результат:</p>
+        <div style="font-size: 60px; font-weight: 900; color: var(--neon-blue); text-shadow: 0 0 20px var(--neon-blue); margin: 20px 0;">
+            <span id="final-score">0</span>
+        </div>
+        <button id="math-restart-btn" class="restart-btn" onclick="tryStartGame()">ИГРАТЬ СНОВА</button>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        if (tg.requestFullscreen) tg.requestFullscreen();
+        if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+        tg.enableClosingConfirmation();
+
+        // ====== ГЛОБАЛЬНАЯ ЗАЩИТА ======
+        // Полностью блокируем скролл и свайпы на уровне документа.
+        // Mini App закрывается ТОЛЬКО кнопкой закрыть.
+        document.documentElement.style.overscrollBehavior = 'none';
+        document.body.style.overscrollBehavior = 'none';
+        document.body.style.touchAction = 'none';
+        document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.width = '100%';
+        document.body.style.height = '100%';
+
+        // ─── Отступ сверху под шапку Telegram ───────────────
+        function applyTopPadding() {
+            const tgTop  = tg.contentSafeAreaInsets?.top ?? 0;
+            const sysTop = tg.safeAreaInsets?.top ?? 0;
+            const topPad = Math.max(tgTop, sysTop);
+            document.body.style.paddingTop = topPad + 'px';
+        }
+        applyTopPadding();
+        tg.onEvent('viewportChanged', applyTopPadding);
+        tg.onEvent('safeAreaChanged', applyTopPadding);
+        tg.onEvent('contentSafeAreaChanged', applyTopPadding);
+
+        document.addEventListener('touchmove', e => {
+            e.preventDefault();
+        }, { passive: false });
+
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', e => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) e.preventDefault();
+            lastTouchEnd = now;
+        }, false);
+
+        let score = 0;
+        let timeLeft = 30;
+        let timerInterval;
+        let currentLevel = 1;
+        let correctAnswer;
+        let history = [];
+
+        function updateUI() {
+            document.getElementById('score').innerText = score;
+            document.getElementById('time').innerText = timeLeft;
+            document.getElementById('level').innerText = currentLevel;
+        }
+
+        function generateProblem() {
+            const newLevel = Math.floor(score / 5) + 1;
+            if (newLevel > currentLevel) currentLevel = newLevel;
+            document.getElementById('level').innerText = currentLevel;
+
+            const ops = ['+', '-', '*'];
+            let opWeights = [0.4, 0.4, 0.2]; 
+            if (currentLevel > 3) opWeights = [0.3, 0.3, 0.4];
+            if (currentLevel > 6) opWeights = [0.2, 0.2, 0.6];
+
+            const rand = Math.random();
+            let op = '+';
+            if (rand > opWeights[0] + opWeights[1]) op = '*';
+            else if (rand > opWeights[0]) op = '-';
+
+            let maxNum = 10 + (currentLevel * 2);
+            let a = Math.floor(Math.random() * maxNum) + 1;
+            let b = Math.floor(Math.random() * maxNum) + 1;
+
+            if (op === '*') {
+                a = Math.floor(Math.random() * (5 + currentLevel)) + 1;
+                b = Math.floor(Math.random() * (5 + currentLevel)) + 1;
+                if (currentLevel > 5) { a *= 2; b = Math.floor(Math.random() * 5) + 1; }
+            }
+            if (op === '-') {
+                if (a < b) [a, b] = [b, a];
+            }
+
+            correctAnswer = eval(`${a} ${op} ${b}`);
+            const problemStr = `${a} ${op} ${b}`;
+
+            if (history.includes(problemStr)) {
+                generateProblem();
+                return;
+            }
+            history.push(problemStr);
+            if (history.length > 10) history.shift();
+
+            document.getElementById('problem').innerText = `${problemStr} = ?`;
+
+            let answers = new Set();
+            answers.add(correctAnswer);
+            
+            while (answers.size < 4) {
+                let offset = Math.floor(Math.random() * 10) - 5;
+                if (offset === 0) offset = 5;
+                let fake = correctAnswer + offset;
+                if (fake >= 0 && fake !== correctAnswer) answers.add(fake);
+            }
+
+            const optionsDiv = document.getElementById('options');
+            const shuffled = Array.from(answers).sort(() => Math.random() - 0.5);
+
+            // Обновляем существующие кнопки вместо пересоздания DOM —
+            // так не бывает лага между ответом и появлением новых кнопок
+            const existingBtns = optionsDiv.querySelectorAll('.option-btn');
+            if (existingBtns.length === 4) {
+                existingBtns.forEach((btn, i) => {
+                    btn.innerText = shuffled[i];
+                    btn.onclick = () => checkAnswer(shuffled[i]);
+                    btn.style.opacity = '1';
+                    btn.style.pointerEvents = 'auto';
+                });
+            } else {
+                optionsDiv.innerHTML = '';
+                shuffled.forEach(ans => {
+                    const btn = document.createElement('button');
+                    btn.className = 'option-btn';
+                    btn.innerText = ans;
+                    btn.onclick = () => checkAnswer(ans);
+                    optionsDiv.appendChild(btn);
+                });
+            }
+        }
+
+        // Минимальный cooldown 80ms — защита от двойного клика,
+        // но не мешает быстрым игрокам (реакция человека ~150ms+)
+        let lastAnswerTime = 0;
+
+        function checkAnswer(ans) {
+            const now = Date.now();
+            if (now - lastAnswerTime < 80) return;
+            lastAnswerTime = now;
+
+            if (ans === correctAnswer) {
+                score++;
+                timeLeft += 2;
+                if (navigator.vibrate) navigator.vibrate(50);
+                document.body.style.boxShadow = "inset 0 0 50px #00ff00";
+                setTimeout(() => document.body.style.boxShadow = "none", 150);
+            } else {
+                timeLeft -= 5;
+                if (navigator.vibrate) navigator.vibrate(200);
+                document.body.style.boxShadow = "inset 0 0 50px #ff0000";
+                setTimeout(() => document.body.style.boxShadow = "none", 150);
+            }
+            updateUI();
+            generateProblem();
+        }
+
+        async function loadMiniLeaderboard() {
+            try {
+                const response = await fetch('https://chin-games-bot.onrender.com/api/leaderboard/math');
+                const data = await response.json();
+                const tbody = document.getElementById('mini-lb-body');
+                tbody.innerHTML = '';
+
+                if (data.leaders && data.leaders.length > 0) {
+                    data.leaders.forEach((player, index) => {
+                        const rankClass = index < 3 ? `rank-${index + 1}` : '';
+                        tbody.innerHTML += `
+                            <tr class="${rankClass}">
+                                <td>${index + 1}</td>
+                                <td>${player.first_name}</td>
+                                <td style="text-align:right; font-weight:bold;">${player.score}</td>
+                            </tr>`;
+                    });
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#888;">Пока нет рекордов</td></tr>`;
+                }
+            } catch (e) {
+                console.error("Не удалось загрузить топ", e);
+            }
+        }
+
+        function endGame() {
+            clearInterval(timerInterval);
+            document.getElementById('final-score').innerText = score;
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+            document.getElementById('end-screen').classList.add('active');
+            
+            const user = tg.initDataUnsafe?.user;
+            if (user && score > 0) {
+                fetch('/api/save_score', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: user.id,
+                        first_name: user.first_name || user.username || "Игрок",
+                        game: 'math',
+                        score: score
+                    })
+                }).then(() => loadMiniLeaderboard())
+                  .catch(err => {
+                      console.error('Save error:', err);
+                      loadMiniLeaderboard();
+                  });
+            } else {
+                loadMiniLeaderboard();
+            }
+        }
+
+        function startGame() {
+            score = 0;
+            timeLeft = 30;
+            currentLevel = 1;
+            history = [];
+            updateUI();
+            
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+            document.getElementById('game-screen').classList.add('active');
+            
+            generateProblem();
+            
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('time').innerText = timeLeft;
+                if (timeLeft <= 0) endGame();
+            }, 1000);
+        }
+
+        // Загрузка топа при открытии страницы
+        window.onload = loadMiniLeaderboard;
+    </script>
+    <!-- ========== BOTTOM NAVBAR ========== -->
+    <nav class="chin-navbar">
+        <a class="chin-navbar__item chin-navbar__item--active" href="../index.html">
+            <span class="chin-navbar__icon"><img src="../icons/games.png" alt="Игры" style="width:24px;height:24px;object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,255,255,0.3));"></span>
+            <span>Игры</span>
+            <span class="chin-navbar__dot"></span>
+        </a>
+        <a class="chin-navbar__item" href="../profile.html">
+            <span class="chin-navbar__icon"><img src="../icons/profile.png" alt="Профиль" style="width:24px;height:24px;object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,255,255,0.3));"></span>
+            <span>Профиль</span>
+            <span class="chin-navbar__dot"></span>
+        </a>
+        <a class="chin-navbar__item" href="../shop.html">
+            <span class="chin-navbar__icon"><img src="../icons/shop.png" alt="Магазин" style="width:24px;height:24px;object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,255,255,0.3));"></span>
+            <span>Магазин</span>
+            <span class="chin-navbar__dot"></span>
+        </a>
+    </nav>
+
+    <script src="../energy.js"></script>
+    <script>
+        // ⚡ Math Master стоит 1 энергию за игру
+        const MATH_ENERGY_COST = 1;
+        const trySpend = Energy.init(MATH_ENERGY_COST, 'math-start-btn', 'energy-container');
+
+        function tryStartGame() {
+            if (trySpend()) {
+                startGame();
+            }
+        }
+    </script>
+</body>
+</html>

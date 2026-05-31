@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Настройка кейса | Chin Games</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        * { user-select:none!important;-webkit-user-select:none!important;-webkit-tap-highlight-color:transparent!important;box-sizing:border-box; }
+        html,body { overscroll-behavior:none!important;overflow:hidden!important;height:100%!important;position:fixed!important;width:100%!important;margin:0!important;padding:0!important; }
+        body { font-family:'Rajdhani',sans-serif;background:linear-gradient(180deg,#0d081a 0%,#120b2e 35%,#1a103d 100%);color:#fff;display:flex;flex-direction:column; }
+        .bg-grid { position:fixed;top:0;left:0;width:200%;height:200%;background-image:linear-gradient(rgba(188,19,254,0.15) 1px,transparent 1px),linear-gradient(90deg,rgba(0,243,255,0.15) 1px,transparent 1px);background-size:40px 40px;transform:perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);animation:gridMove 20s linear infinite;z-index:0;opacity:0.5; }
+        @keyframes gridMove { 0%{transform:perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px)}100%{transform:perspective(500px) rotateX(60deg) translateY(40px) translateZ(-200px)} }
+        .scroll-area { position:relative;z-index:1;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y!important;padding:16px 16px 40px; }
+        html { --case-safe-top: 120px; }
+        .back-btn { display:flex;align-items:center;gap:6px;color:rgba(255,255,255,0.45);font-family:'Orbitron',sans-serif;font-size:10px;cursor:pointer;margin-bottom:20px;padding:6px 0; }
+        .page-title { font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;color:#fff;text-align:center;margin-bottom:6px;text-shadow:0 0 10px rgba(188,19,254,0.6); }
+        .page-sub { font-size:12px;color:rgba(255,255,255,0.4);text-align:center;margin-bottom:24px;line-height:1.5; }
+        .section { background:rgba(0,0,0,0.5);border:1px solid rgba(188,19,254,0.25);border-radius:16px;padding:18px;margin-bottom:16px; }
+        .section-label { font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(188,19,254,0.75);margin-bottom:12px; }
+        .field { margin-bottom:12px; }
+        .field label { display:block;font-size:11px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px; }
+        .field input { width:100%;padding:11px 14px;background:rgba(0,0,0,0.5);border:1px solid rgba(188,19,254,0.3);border-radius:10px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:14px;outline:none;-webkit-appearance:none; }
+        .field input:focus { border-color:#bc13fe;box-shadow:0 0 10px rgba(188,19,254,0.2); }
+        .gift-row { display:flex;gap:8px;align-items:flex-start;margin-bottom:10px; }
+        .gift-row .field { flex:1;margin-bottom:0; }
+        .remove-btn { flex-shrink:0;width:40px;height:40px;margin-top:22px;background:rgba(255,68,68,0.15);border:1px solid rgba(255,68,68,0.4);border-radius:10px;color:#ff4466;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center; }
+        .add-btn { width:100%;padding:12px;background:rgba(188,19,254,0.12);border:1px dashed rgba(188,19,254,0.45);border-radius:12px;color:#e060ff;font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:1px;cursor:pointer;margin-top:4px; }
+        .add-btn:active { transform:scale(0.98); }
+        .hint { font-size:12px;color:rgba(255,255,255,0.4);line-height:1.5;margin-top:8px; }
+        .hint.warn { color:#ffaa00; }
+        .info-box { padding:12px;background:rgba(0,255,255,0.06);border:1px solid rgba(0,255,255,0.2);border-radius:10px;font-size:13px;color:rgba(255,255,255,0.65);line-height:1.5;margin-bottom:14px; }
+        .info-box b { color:#00ffff; }
+        .chance-row { display:flex;align-items:center;gap:12px;margin-top:8px; }
+        .chance-row input[type=range] { flex:1;accent-color:#bc13fe; }
+        .chance-val { font-family:'Orbitron',sans-serif;font-size:14px;color:#e060ff;min-width:42px;text-align:right; }
+        .save-btn { width:100%;padding:16px;background:linear-gradient(135deg,#7a04eb,#ff00ff);border:none;border-radius:14px;font-family:'Orbitron',sans-serif;font-size:13px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:1.5px;cursor:pointer;box-shadow:0 4px 20px rgba(188,19,254,0.4); }
+        .save-btn:disabled { opacity:0.45; }
+        .toast { position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(80px);background:rgba(0,0,0,0.9);border:1px solid rgba(188,19,254,0.35);border-radius:12px;padding:12px 20px;font-size:14px;color:#fff;z-index:9999;transition:transform 0.3s ease;white-space:nowrap; }
+        .toast.show { transform:translateX(-50%) translateY(0); }
+        .toast.success { border-color:rgba(0,255,100,0.5);color:#00ff88; }
+        .toast.error { border-color:rgba(255,68,68,0.5);color:#ff4444; }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="toast" id="toast"></div>
+
+    <div class="scroll-area" id="scroll-area">
+        <div class="back-btn" onclick="history.back()">← Назад</div>
+
+        <div class="page-title">📦 Настройка кейса</div>
+        <div class="page-sub">NFT-подарки для случайного кейса (1000 ⭐)<br>Только для администраторов</div>
+
+        <div class="section">
+            <div class="info-box">
+                <b>Лут:</b> энергия 1–20 или Stars 5–200 (джекпот 200).<br>
+                Шанс ценного приза: <b id="chance-hint">40%</b> — NFT из списка, энергия 15–20 или Stars 100–200.<br>
+                После ценного приза <b>любому</b> игроку — глобальный кулдаун (ниже).
+            </div>
+
+            <div class="section-label">Кулдаун ценных призов (мин)</div>
+            <div class="field">
+                <label>Сколько минут блокировать NFT / топ-награды для всех</label>
+                <input type="number" id="valuable-cooldown" min="5" max="1440" value="60" inputmode="numeric">
+            </div>
+            <div class="hint">Если кто-то недавно выиграл ценное — остальные получают только обычный лут</div>
+
+            <div class="section-label" style="margin-top:16px;">Шанс ценного приза</div>
+            <div class="chance-row">
+                <input type="range" id="valuable-chance" min="10" max="70" value="40" step="1">
+                <span class="chance-val" id="chance-val">40%</span>
+            </div>
+            <div class="hint">Рекомендуется около 40%</div>
+        </div>
+
+        <div class="section">
+            <div class="section-label">NFT-подарки в пуле</div>
+            <div class="hint" style="margin-top:0;margin-bottom:12px;">
+                Ссылки <code style="color:#e060ff;">https://t.me/nft/...</code> — без ограничения по количеству.
+                При выпадении NFT игрок видит ссылку; отправка вручную.
+            </div>
+            <div id="gift-fields"></div>
+            <button type="button" class="add-btn" onclick="addGiftField()">+ Добавить NFT-ссылку</button>
+            <div class="hint warn" id="gift-hint"></div>
+        </div>
+
+        <button type="button" class="save-btn" id="save-btn" onclick="saveSettings()">Сохранить настройки</button>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready(); tg.expand();
+        if (tg.requestFullscreen) tg.requestFullscreen();
+        if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+
+        function applyTopPadding() {
+            const el = document.getElementById('scroll-area');
+            const tgTop  = tg.contentSafeAreaInsets?.top ?? 0;
+            const sysTop = tg.safeAreaInsets?.top ?? 0;
+            const topPad = Math.max(Math.max(tgTop, sysTop), 120);
+            document.documentElement.style.setProperty('--case-safe-top', topPad + 'px');
+            el.style.paddingTop = topPad + 'px';
+            el.style.paddingBottom = 'calc(30px + env(safe-area-inset-bottom, 0px))';
+        }
+        applyTopPadding();
+        setTimeout(applyTopPadding, 300);
+        tg.onEvent('viewportChanged', applyTopPadding);
+        tg.onEvent('safeAreaChanged', applyTopPadding);
+        tg.onEvent('contentSafeAreaChanged', applyTopPadding);
+
+        document.addEventListener('touchmove', e => {
+            if (!e.target.closest('#scroll-area')) e.preventDefault();
+        }, { passive: false });
+
+        const API = 'https://chin-games-bot.onrender.com';
+        const ADMIN_USERNAMES = ['rostips', 'am1right'];
+        const user = tg.initDataUnsafe?.user;
+
+        if (!user || !ADMIN_USERNAMES.includes((user.username || '').toLowerCase())) {
+            document.querySelector('.scroll-area').innerHTML =
+                '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,0.4);font-family:Orbitron,sans-serif;font-size:14px;">⛔ Нет доступа</div>';
+        }
+
+        const chanceInput = document.getElementById('valuable-chance');
+        const chanceVal = document.getElementById('chance-val');
+        const chanceHint = document.getElementById('chance-hint');
+
+        chanceInput.addEventListener('input', () => {
+            const v = chanceInput.value;
+            chanceVal.textContent = v + '%';
+            chanceHint.textContent = v + '%';
+        });
+
+        function showToast(msg, type) {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.className = 'toast show ' + (type || '');
+            setTimeout(() => { el.className = 'toast'; }, 2600);
+        }
+
+        function addGiftField(value = '') {
+            const container = document.getElementById('gift-fields');
+            const idx = container.children.length;
+            const row = document.createElement('div');
+            row.className = 'gift-row';
+            row.innerHTML = `
+                <div class="field">
+                    <label>NFT #${idx + 1}</label>
+                    <input type="url" class="gift-url" placeholder="https://t.me/nft/..."
+                        inputmode="url" autocomplete="off" value="${escapeAttr(value)}">
+                </div>
+                <button type="button" class="remove-btn" onclick="removeGiftRow(this)" title="Удалить">×</button>
+            `;
+            container.appendChild(row);
+            row.querySelector('input').addEventListener('input', updateGiftHint);
+            renumberGiftLabels();
+            updateGiftHint();
+        }
+
+        function escapeAttr(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+        }
+
+        function removeGiftRow(btn) {
+            const container = document.getElementById('gift-fields');
+            if (container.children.length <= 1) {
+                btn.closest('.gift-row').querySelector('input').value = '';
+                updateGiftHint();
+                return;
+            }
+            btn.closest('.gift-row').remove();
+            renumberGiftLabels();
+            updateGiftHint();
+        }
+
+        function renumberGiftLabels() {
+            document.querySelectorAll('#gift-fields .gift-row').forEach((row, i) => {
+                const label = row.querySelector('label');
+                if (label) label.textContent = 'NFT #' + (i + 1);
+            });
+        }
+
+        function getGiftUrls() {
+            return [...document.querySelectorAll('.gift-url')]
+                .map(inp => inp.value.trim())
+                .filter(Boolean);
+        }
+
+        function updateGiftHint() {
+            const urls = getGiftUrls();
+            const valid = urls.filter(u => u.startsWith('http'));
+            const hint = document.getElementById('gift-hint');
+            if (!urls.length) {
+                hint.textContent = 'Пул NFT пуст — в ценных выпадениях будут только энергия и Stars.';
+                hint.className = 'hint';
+            } else if (valid.length < urls.length) {
+                hint.textContent = `Заполнено ${valid.length} из ${urls.length} (некорректные ссылки не сохранятся)`;
+                hint.className = 'hint warn';
+            } else {
+                hint.textContent = `В пуле ${valid.length} NFT — каждый с равным шансом при выпадении NFT-приза`;
+                hint.className = 'hint';
+            }
+        }
+
+        async function loadSettings() {
+            try {
+                const res = await fetch(
+                    `${API}/api/admin/case/settings?username=${encodeURIComponent(user.username || '')}`
+                );
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'load failed');
+                const pct = Math.round((data.valuable_chance ?? 0.4) * 100);
+                chanceInput.value = pct;
+                chanceVal.textContent = pct + '%';
+                chanceHint.textContent = pct + '%';
+                document.getElementById('valuable-cooldown').value = data.valuable_cooldown_min ?? 60;
+                document.getElementById('gift-fields').innerHTML = '';
+                const gifts = data.nft_gifts || [];
+                if (gifts.length) {
+                    gifts.forEach(url => addGiftField(url));
+                } else {
+                    addGiftField();
+                }
+            } catch (e) {
+                console.error(e);
+                addGiftField();
+                showToast('Не удалось загрузить настройки', 'error');
+            }
+        }
+
+        async function saveSettings() {
+            const btn = document.getElementById('save-btn');
+            btn.disabled = true;
+            const urls = getGiftUrls().filter(u => u.startsWith('http'));
+            const valuable_chance = parseInt(chanceInput.value, 10) / 100;
+            const valuable_cooldown_min = parseInt(document.getElementById('valuable-cooldown').value, 10) || 60;
+
+            try {
+                const res = await fetch(`${API}/api/admin/case/settings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: user.username,
+                        nft_gifts: urls,
+                        valuable_chance,
+                        valuable_cooldown_min,
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'save failed');
+                showToast(`✅ Сохранено: ${data.nft_gifts.length} NFT`, 'success');
+            } catch (e) {
+                showToast('❌ Ошибка сохранения', 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        if (user && ADMIN_USERNAMES.includes((user.username || '').toLowerCase())) {
+            loadSettings();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Профиль | Chin Games</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        * { user-select:none!important;-webkit-user-select:none!important;-webkit-tap-highlight-color:transparent!important;-webkit-touch-callout:none!important;box-sizing:border-box; }
+        html,body { overscroll-behavior:none!important;touch-action:none!important;overflow:hidden!important;height:100%!important;position:fixed!important;width:100%!important;margin:0!important;padding:0!important; }
+        :root { --neon-cyan:#00ffff;--neon-pink:#ff00ff;--neon-purple:#7a04eb;--bg-dark:#1a103d;--glass:rgba(255,255,255,0.05); }
+        body { font-family:'Rajdhani',sans-serif;background:linear-gradient(180deg,#0d081a 0%,#120b2e 35%,#1a103d 100%);color:#fff;height:100vh;overflow:hidden;display:flex;flex-direction:column; }
+        .bg-grid { position:fixed;top:0;left:0;width:200%;height:200%;background-image:linear-gradient(rgba(188,19,254,0.15) 1px,transparent 1px),linear-gradient(90deg,rgba(0,243,255,0.15) 1px,transparent 1px);background-size:40px 40px;transform:perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);animation:gridMove 20s linear infinite;z-index:0;opacity:0.5; }
+        @keyframes gridMove { 0%{transform:perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px)}100%{transform:perspective(500px) rotateX(60deg) translateY(40px) translateZ(-200px)} }
+        .scroll-area { position:relative;z-index:1;flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-y!important;padding:16px 16px calc(80px + env(safe-area-inset-bottom,0px)); }
+        .profile-header { display:flex;align-items:center;gap:16px;margin-bottom:24px; }
+        .avatar-wrap { position:relative;flex-shrink:0; }
+        .avatar { width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--neon-purple),var(--neon-pink));display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:900;font-family:'Orbitron',sans-serif;color:#fff;text-shadow:0 0 10px rgba(255,255,255,0.5);border:2px solid rgba(0,255,255,0.4);box-shadow:0 0 20px rgba(0,255,255,0.2),0 0 40px rgba(188,19,254,0.15);overflow:hidden; }
+        .avatar img { width:100%;height:100%;object-fit:cover;border-radius:50%; }
+        .avatar-ring { position:absolute;inset:-4px;border-radius:50%;border:2px solid transparent;background:linear-gradient(135deg,#00ffff,#ff00ff) border-box;-webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);-webkit-mask-composite:destination-out;mask-composite:exclude;animation:ringRotate 4s linear infinite; }
+        @keyframes ringRotate { 0%{filter:hue-rotate(0deg)}100%{filter:hue-rotate(360deg)} }
+        .profile-info { flex:1;min-width:0; }
+        .profile-name { font-family:'Orbitron',sans-serif;font-size:18px;font-weight:700;color:#fff;text-shadow:0 0 10px rgba(0,255,255,0.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:rgba(0,0,0,0.4);border:1px solid rgba(0,255,255,0.25);border-radius:8px;padding:8px 14px;margin-bottom:8px; }
+        .profile-tag { font-size:13px;color:rgba(255,255,255,0.45);font-family:'Rajdhani',sans-serif;padding-left:4px; }
+        .section-title { font-family:'Orbitron',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(0,255,255,0.6);margin-bottom:12px; }
+        .stats-card { background:rgba(0,0,0,0.5);border:1px solid rgba(0,255,255,0.15);border-radius:16px;padding:18px;margin-bottom:16px;backdrop-filter:blur(8px); }
+        .stats-card__header { display:flex;align-items:center;gap:10px;margin-bottom:16px; }
+        .stats-card__game-name { font-family:'Orbitron',sans-serif;font-size:14px;font-weight:700;color:#fff; }
+        .stats-grid { display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px; }
+        .stat-item { background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 8px;text-align:center; }
+        .stat-item__value { font-family:'Orbitron',sans-serif;font-size:20px;font-weight:700;color:#00ffff;text-shadow:0 0 10px rgba(0,255,255,0.5);line-height:1.1;margin-bottom:4px; }
+        .stat-item__label { font-size:10px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.5px;line-height:1.2; }
+        .stat-item--best .stat-item__value { color:#ffd700;text-shadow:0 0 10px rgba(255,215,0,0.5); }
+        .stat-item--last .stat-item__value { color:#bc13fe;text-shadow:0 0 10px rgba(188,19,254,0.5); }
+        .no-data { text-align:center;padding:20px;color:rgba(255,255,255,0.3);font-size:13px;font-style:italic; }
+        .total-row { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px; }
+        .total-item { background:rgba(0,0,0,0.45);border:1px solid rgba(255,0,255,0.2);border-radius:12px;padding:14px;text-align:center; }
+        .total-item__value { font-family:'Orbitron',sans-serif;font-size:26px;font-weight:900;color:#ff00ff;text-shadow:0 0 12px rgba(255,0,255,0.5); }
+        .total-item__label { font-size:11px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px; }
+        .level-item { background:rgba(0,0,0,0.45);border:1px solid rgba(0,255,255,0.25);border-radius:12px;padding:14px;text-align:center; }
+        .level-item__badge { font-family:'Orbitron',sans-serif;font-size:26px;font-weight:900;color:#00ffff;text-shadow:0 0 12px rgba(0,255,255,0.6);line-height:1; }
+        .level-item__label { font-size:11px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;margin-bottom:8px; }
+        .level-bar-wrap { height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;margin-top:6px; }
+        .level-bar-fill { height:100%;border-radius:3px;background:linear-gradient(90deg,#00ffff,#bc13fe);box-shadow:0 0 8px rgba(0,255,255,0.5);transition:width 0.6s ease; }
+        .level-bar-text { font-size:10px;color:rgba(255,255,255,0.35);margin-top:4px;letter-spacing:0.3px; }
+
+        /* ── Кошелёк Stars ── */
+        .wallet-card {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,215,0,0.3);
+            border-radius: 16px;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        .wallet-card::before {
+            content:'';
+            position:absolute;
+            top:-50%;right:-10%;
+            width:160px;height:160px;
+            background: radial-gradient(circle, rgba(255,215,0,0.07) 0%, transparent 70%);
+            pointer-events:none;
+        }
+        .wallet-card:active { transform: scale(0.98); }
+        .wallet-card__icon { font-size:2rem; filter:drop-shadow(0 0 8px rgba(255,215,0,0.7)); flex-shrink:0; }
+        .wallet-card__info { flex:1; min-width:0; }
+        .wallet-card__label { font-family:'Orbitron',sans-serif;font-size:0.6rem;color:rgba(255,215,0,0.55);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:3px; }
+        .wallet-card__balance { font-family:'Orbitron',sans-serif;font-size:1.5rem;font-weight:900;color:#ffd700;text-shadow:0 0 10px rgba(255,215,0,0.5);line-height:1; }
+        .wallet-card__sub { font-family:'Rajdhani',sans-serif;font-size:0.78rem;color:rgba(255,255,255,0.3);margin-top:2px; }
+        .wallet-card__arrow { font-size:1rem; color:rgba(255,215,0,0.4); flex-shrink:0; }
+
+        /* ── Реферальная карточка ── */
+        .ref-card {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(0,255,100,0.3);
+            border-radius: 16px;
+            padding: 16px 18px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        .ref-card::before {
+            content:'';position:absolute;top:-40%;right:-8%;
+            width:150px;height:150px;
+            background:radial-gradient(circle,rgba(0,255,100,0.07) 0%,transparent 70%);
+            pointer-events:none;
+        }
+        .ref-card__header { display:flex;align-items:center;gap:10px;margin-bottom:12px; }
+        .ref-card__icon { font-size:1.6rem;filter:drop-shadow(0 0 8px rgba(0,255,100,0.6));flex-shrink:0; }
+        .ref-card__title { font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;color:rgba(0,255,100,0.85);text-transform:uppercase;letter-spacing:1px; }
+        .ref-card__sub { font-family:'Rajdhani',sans-serif;font-size:0.8rem;color:rgba(255,255,255,0.35); }
+        .ref-card__stats { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px; }
+        .ref-stat { background:rgba(0,255,100,0.04);border:1px solid rgba(0,255,100,0.15);border-radius:10px;padding:10px;text-align:center; }
+        .ref-stat__val { font-family:'Orbitron',sans-serif;font-size:1.3rem;font-weight:900;color:#00ff64;text-shadow:0 0 8px rgba(0,255,100,0.5);line-height:1; }
+        .ref-stat__label { font-size:9px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.5px;margin-top:3px; }
+        .ref-reward-hint { font-family:'Rajdhani',sans-serif;font-size:0.8rem;color:rgba(255,255,255,0.3);text-align:center;margin-bottom:14px; }
+        .ref-reward-hint b { color:rgba(255,255,255,0.6); }
+        .ref-invite-btn {
+            width:100%;padding:13px;
+            background:linear-gradient(135deg,rgba(0,255,100,0.15),rgba(0,200,80,0.08));
+            border:1px solid rgba(0,255,100,0.5);
+            border-radius:12px;
+            font-family:'Orbitron',sans-serif;font-size:0.72rem;font-weight:700;
+            color:#00ff64;cursor:pointer;letter-spacing:0.5px;
+            transition:all 0.2s;
+            box-shadow:0 0 12px rgba(0,255,100,0.1);
+        }
+        .ref-invite-btn:active { transform:scale(0.97);box-shadow:0 0 20px rgba(0,255,100,0.25); }
+
+        /* ── Список рефералов ── */
+        .ref-list { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+        .ref-list__title { font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(0,255,100,0.5);margin-bottom:4px; }
+        .ref-item {
+            display: flex; align-items: center; gap: 10px;
+            background: rgba(0,255,100,0.03);
+            border: 1px solid rgba(0,255,100,0.1);
+            border-radius: 10px; padding: 10px 12px;
+        }
+        .ref-item__avatar {
+            width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+            background: linear-gradient(135deg, rgba(0,255,100,0.2), rgba(0,200,80,0.1));
+            border: 1px solid rgba(0,255,100,0.25);
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Orbitron', sans-serif; font-size: 13px; font-weight: 700; color: #00ff64;
+        }
+        .ref-item__info { flex: 1; min-width: 0; }
+        .ref-item__name { font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2; }
+        .ref-item__progress { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+        .ref-item__bar-wrap { flex: 1; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+        .ref-item__bar-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg,#00ff64,#00cc50); transition: width 0.5s ease; }
+        .ref-item__bar-fill--done { background: linear-gradient(90deg,#ffd700,#ffaa00); }
+        .ref-item__games { font-family:'Orbitron',sans-serif;font-size:9px;color:rgba(255,255,255,0.4);white-space:nowrap; }
+        .ref-item__badge {
+            flex-shrink: 0; font-size: 11px; padding: 3px 7px;
+            border-radius: 6px; font-family:'Orbitron',sans-serif; font-size: 8px; font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .ref-item__badge--pending { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.3); border: 1px solid rgba(255,255,255,0.1); }
+        .ref-item__badge--done { background: rgba(255,215,0,0.12); color: #ffd700; border: 1px solid rgba(255,215,0,0.3); }
+        .ref-item__badge--waiting { background: rgba(0,255,100,0.08); color: #00ff64; border: 1px solid rgba(0,255,100,0.25); }
+        .ref-empty { text-align:center;padding:12px;color:rgba(255,255,255,0.25);font-size:12px;font-family:'Rajdhani',sans-serif; }
+
+        /* ── Кнопка админа ── */
+        .admin-btn {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            width: 100%; padding: 14px;
+            background: linear-gradient(135deg, rgba(122,4,235,0.3), rgba(255,0,255,0.2));
+            border: 1px solid rgba(188,19,254,0.5);
+            border-radius: 14px; margin-bottom: 20px;
+            font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 700;
+            color: #e000ff; text-transform: uppercase; letter-spacing: 1.5px;
+            cursor: pointer;
+            box-shadow: 0 0 16px rgba(188,19,254,0.2);
+            transition: all 0.2s;
+        }
+        .admin-btn:active { transform: scale(0.97); box-shadow: 0 0 24px rgba(188,19,254,0.4); }
+        .admin-badge { font-size:18px; }
+
+        /* ── Активные соревнования ── */
+        .contest-card {
+            background: linear-gradient(135deg, rgba(0,0,0,0.6), rgba(122,4,235,0.15));
+            border: 1px solid rgba(188,19,254,0.35);
+            border-radius: 14px; padding: 14px; margin-bottom: 12px;
+        }
+        .contest-card__title { font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;color:#e000ff;margin-bottom:6px; }
+        .contest-card__game { font-size:13px;color:rgba(255,255,255,0.7);margin-bottom:4px; }
+        .contest-card__prize { font-size:13px;color:#ffd700;margin-bottom:4px; }
+        .contest-card__timer { font-family:'Orbitron',sans-serif;font-size:11px;color:#00ffff; }
+
+        /* ── Navbar ── */
+        .chin-navbar { position:fixed;bottom:0;left:0;right:0;height:calc(60px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);background:rgba(18,11,46,0.96);border-top:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;align-items:flex-start;justify-content:space-around;z-index:1000;box-shadow:0 -4px 24px rgba(0,0,0,0.7); }
+        .chin-navbar__item { flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding-top:10px;cursor:pointer;text-decoration:none;color:rgba(255,255,255,0.4);font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:0.5px;text-transform:uppercase;transition:color 0.2s;-webkit-tap-highlight-color:transparent;user-select:none; }
+        .chin-navbar__item:active { transform:scale(0.9); }
+        .chin-navbar__icon { width:24px;height:24px;display:flex;align-items:center;justify-content:center;transition:filter 0.2s,transform 0.2s; }
+        .chin-navbar__item--active { color:#00ffff; }
+        .chin-navbar__item--active .chin-navbar__icon { filter:drop-shadow(0 0 7px #00ffff);transform:translateY(-2px); }
+        .chin-navbar__dot { width:4px;height:4px;border-radius:50%;background:#00ffff;box-shadow:0 0 6px #00ffff;opacity:0;transition:opacity 0.2s;margin-top:-2px; }
+        .chin-navbar__item--active .chin-navbar__dot { opacity:1; }
+        @keyframes spin { to{transform:rotate(360deg)} }
+        .loading-spinner { width:24px;height:24px;border:2px solid rgba(0,255,255,0.2);border-top-color:#00ffff;border-radius:50%;animation:spin 0.8s linear infinite;margin:20px auto; }
+    
+        /* ── NFT Modal ── */
+        .nft-modal-overlay { display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);align-items:center;justify-content:center; }
+        .nft-modal-overlay.open { display:flex; }
+        .nft-modal { position:relative;width:min(320px,88vw);background:linear-gradient(160deg,#0d0024 0%,#1a0040 60%,#0a001a 100%);border:1px solid rgba(188,19,254,0.4);border-radius:24px;padding:22px 18px 18px;box-shadow:0 0 60px rgba(188,19,254,0.3);text-align:center;animation:nftModalIn 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+        @keyframes nftModalIn { from{transform:scale(0.72) translateY(28px);opacity:0} to{transform:scale(1) translateY(0);opacity:1} }
+        .nft-modal__close { position:absolute;top:12px;right:14px;width:28px;height:28px;background:rgba(255,255,255,0.08);border:none;border-radius:50%;color:rgba(255,255,255,0.5);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center; }
+        .nft-modal__anim { width:160px;height:160px;margin:0 auto 12px;position:relative; }
+        .nft-modal__anim-inner { width:100%;height:100%;border-radius:18px;background:radial-gradient(circle at 50% 60%,rgba(188,19,254,0.18) 0%,transparent 70%); }
+        .nft-modal__spinner { position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:Orbitron,sans-serif;font-size:9px;color:rgba(255,255,255,0.3);letter-spacing:1px; }
+        .nft-modal__prize-label { font-family:Orbitron,sans-serif;font-size:8px;letter-spacing:1.5px;color:rgba(188,19,254,0.7);text-transform:uppercase;margin-bottom:4px; }
+        .nft-modal__name { font-family:Orbitron,sans-serif;font-size:15px;font-weight:900;color:#fff;margin-bottom:8px;text-shadow:0 0 16px rgba(188,19,254,0.6); }
+        .nft-modal__attrs { display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-bottom:12px; }
+        .nft-modal__attr { padding:3px 9px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:20px;font-size:9px;color:rgba(255,255,255,0.55);font-family:Rajdhani,sans-serif;font-weight:600; }
+        .nft-modal__attr span { color:#fff; }
+        .nft-modal__open-btn { display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:linear-gradient(135deg,#7a04eb,#ff00ff);border:none;border-radius:11px;font-family:Orbitron,sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;color:#fff;cursor:pointer;text-decoration:none;box-shadow:0 4px 14px rgba(188,19,254,0.4);transition:transform 0.15s; }
+        .nft-modal__open-btn:active { transform:scale(0.95); }
+        .nft-prize-tabs { display:flex;gap:6px;justify-content:center;margin-bottom:10px; }
+        .nft-prize-tab { padding:4px 11px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:20px;font-family:Orbitron,sans-serif;font-size:8px;color:rgba(255,255,255,0.4);cursor:pointer;transition:all 0.2s; }
+        .nft-prize-tab.active { background:rgba(188,19,254,0.2);border-color:#bc13fe;color:#e060ff;box-shadow:0 0 8px rgba(188,19,254,0.2); }
+</style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="scroll-area" id="scroll-area">
+
+        <!-- Шапка -->
+        <div class="profile-header">
+            <div class="avatar-wrap">
+                <div class="avatar" id="avatar-el">?</div>
+                <div class="avatar-ring"></div>
+            </div>
+            <div class="profile-info">
+                <div class="profile-name" id="profile-name">Загрузка...</div>
+                <div class="profile-tag" id="profile-tag">Chin Games</div>
+            </div>
+        </div>
+
+        <!-- Кнопка для админов (скрыта по умолчанию) -->
+        <div id="admin-section" style="display:none;">
+            <button class="admin-btn" onclick="location.href='contest-panel.html'">
+                <span class="admin-badge">🏆</span>
+                Настроить соревнование
+            </button>
+            <button class="admin-btn" onclick="location.href='case-settings.html'" style="margin-top:10px;">
+                <span class="admin-badge">📦</span>
+                Настройка кейса
+            </button>
+            <button class="admin-btn" onclick="location.href='admin-panel.html'" style="margin-top:10px;background:linear-gradient(135deg,rgba(0,180,255,0.2),rgba(0,80,200,0.15));border-color:rgba(0,180,255,0.5);color:#00b4ff;box-shadow:0 0 16px rgba(0,180,255,0.15);">
+                <span class="admin-badge">🛡️</span>
+                Панель администратора
+            </button>
+        </div>
+
+        <!-- Активные соревнования -->
+        <div id="contests-section" style="display:none;">
+            <div class="section-title">🔥 Активные соревнования</div>
+            <div id="contests-list"></div>
+        </div>
+
+        <!-- Кошелёк Stars -->
+        <div class="wallet-card" onclick="location.href='shop.html'" id="wallet-card" title="Перейти в магазин">
+            <div class="wallet-card__icon">⭐</div>
+            <div class="wallet-card__info">
+                <div class="wallet-card__label">Кошелёк Stars</div>
+                <div class="wallet-card__balance" id="wallet-balance">—</div>
+                <div class="wallet-card__sub">Нажми, чтобы пополнить</div>
+            </div>
+            <div class="wallet-card__arrow">›</div>
+        </div>
+
+        <!-- Реферальная программа -->
+        <div class="ref-card" id="ref-card" style="display:none;">
+            <div class="ref-card__header">
+                <div class="ref-card__icon">🤝</div>
+                <div>
+                    <div class="ref-card__title">Пригласи друга</div>
+                    <div class="ref-card__sub">За каждого — +2 ⭐ и +2 <img src="icons/enegry.png" alt="" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;display:inline-block;filter:drop-shadow(0 0 4px rgba(0,255,255,0.7));"></div>
+                </div>
+            </div>
+            <div class="ref-card__stats">
+                <div class="ref-stat">
+                    <div class="ref-stat__val" id="ref-total">—</div>
+                    <div class="ref-stat__label">Приглашено</div>
+                </div>
+                <div class="ref-stat">
+                    <div class="ref-stat__val" id="ref-rewarded">—</div>
+                    <div class="ref-stat__label">Награждено</div>
+                </div>
+            </div>
+            <div class="ref-reward-hint">За каждого нового игрока: <b>+2 ⭐ Stars</b> и <b>+2 <img src="icons/enegry.png" alt="" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;display:inline-block;filter:drop-shadow(0 0 4px rgba(0,255,255,0.7));"> энергии</b></div>
+            <button class="ref-invite-btn" id="ref-invite-btn" onclick="shareRefLink()">
+                🔗 Поделиться ссылкой
+            </button>
+            <!-- Список приглашённых рефералов -->
+            <div class="ref-list" id="ref-list" style="display:none;">
+                <div class="ref-list__title">👥 Приглашённые</div>
+                <div id="ref-list-items"></div>
+            </div>
+        </div>
+
+        <!-- Общая сводка -->
+        <div class="section-title">Общая статистика</div>
+        <div class="total-row">
+            <div class="total-item">
+                <div class="total-item__value" id="total-games">—</div>
+                <div class="total-item__label">Всего игр</div>
+            </div>
+            <div class="level-item">
+                <div class="level-item__badge">LVL <span id="player-level">1</span></div>
+                <div class="level-item__label">Уровень</div>
+                <div class="level-bar-wrap"><div class="level-bar-fill" id="level-bar" style="width:0%"></div></div>
+                <div class="level-bar-text" id="level-bar-text">0 / 5 игр</div>
+            </div>
+        </div>
+
+        <!-- По играм -->
+        <div class="section-title">По играм</div>
+        <div class="stats-card">
+            <div class="stats-card__header">
+                <img src="icons/math.png" alt="Math Master" style="width:26px;height:26px;object-fit:contain;">
+                <span class="stats-card__game-name">Math Master</span>
+            </div>
+            <div id="math-stats"><div class="loading-spinner"></div></div>
+        </div>
+        <div class="stats-card">
+            <div class="stats-card__header">
+                <img src="icons/2048.png" alt="2048" style="width:26px;height:26px;object-fit:contain;">
+                <span class="stats-card__game-name">2048</span>
+            </div>
+            <div id="stats-2048"><div class="loading-spinner"></div></div>
+        </div>
+        <div class="stats-card">
+            <div class="stats-card__header">
+                <img src="icons/snake.png" alt="Snake" style="width:26px;height:26px;object-fit:contain;">
+                <span class="stats-card__game-name">Snake</span>
+            </div>
+            <div id="snake-stats"><div class="loading-spinner"></div></div>
+        </div>
+        <div class="stats-card">
+            <div class="stats-card__header">
+                <img src="icons/bird.png" alt="Flappy Chin" style="width:26px;height:26px;object-fit:contain;">
+                <span class="stats-card__game-name">Flappy Chin</span>
+            </div>
+            <div id="flappy-stats"><div class="loading-spinner"></div></div>
+        </div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="chin-navbar">
+        <a class="chin-navbar__item" href="index.html">
+            <span class="chin-navbar__icon"><img src="icons/games.png" alt="Игры" style="width:24px;height:24px;object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,255,255,0.3));"></span>
+            <span>Игры</span><span class="chin-navbar__dot"></span>
+        </a>
+        <a class="chin-navbar__item chin-navbar__item--active" href="profile.html" onclick="return false;">
+            <span class="chin-navbar__icon"><img src="icons/profile.png" alt="Профиль" style="width:24px;height:24px;object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,255,255,0.3));"></span>
+            <span>Профиль</span><span class="chin-navbar__dot"></span>
+        </a>
+        <a class="chin-navbar__item" href="shop.html">
+            <span class="chin-navbar__icon"><img src="icons/shop.png" alt="Магазин" style="width:24px;height:24px;object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,255,255,0.3));"></span>
+            <span>Магазин</span><span class="chin-navbar__dot"></span>
+        </a>
+    </nav>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready(); tg.expand();
+        if (tg.requestFullscreen) tg.requestFullscreen();
+        if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+        tg.enableClosingConfirmation();
+
+        document.documentElement.style.overscrollBehavior = 'none';
+        document.body.style.overscrollBehavior = 'none';
+        document.body.style.position = 'fixed';
+
+        function applyTopPadding() {
+            const scrollArea = document.getElementById('scroll-area');
+            const tgTop  = tg.contentSafeAreaInsets?.top ?? 0;
+            const sysTop = tg.safeAreaInsets?.top ?? 0;
+            scrollArea.style.paddingTop = Math.max(Math.max(tgTop, sysTop), 120) + 'px';
+        }
+        applyTopPadding();
+        setTimeout(applyTopPadding, 300);
+        tg.onEvent('viewportChanged', applyTopPadding);
+        tg.onEvent('safeAreaChanged', applyTopPadding);
+        tg.onEvent('contentSafeAreaChanged', applyTopPadding);
+
+        document.addEventListener('touchmove', e => {
+            if (!e.target.closest('#scroll-area')) e.preventDefault();
+        }, { passive: false });
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', e => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) e.preventDefault();
+            lastTouchEnd = now;
+        }, false);
+
+        const ADMIN_USERNAMES = ['rostips', 'am1right'];
+        const API = 'https://chin-games-bot.onrender.com';
+        const user = tg.initDataUnsafe?.user;
+
+        // ── Профиль ──────────────────────────────────────────────
+        function initProfile() {
+            if (!user) {
+                document.getElementById('profile-name').textContent = 'Гость';
+                document.getElementById('profile-tag').textContent = 'Войди через Telegram';
+                document.getElementById('avatar-el').textContent = '?';
+                return;
+            }
+            const name = user.first_name || user.username || 'Игрок';
+            document.getElementById('profile-name').textContent = name;
+            document.getElementById('profile-tag').textContent = user.username ? '@' + user.username : 'Chin Games';
+            const avatarEl = document.getElementById('avatar-el');
+            if (user.photo_url) {
+                avatarEl.innerHTML = `<img src="${user.photo_url}" alt="${name[0]}">`;
+            } else {
+                avatarEl.textContent = name[0].toUpperCase();
+            }
+
+            // Показываем кнопку если админ
+            const uname = (user.username || '').toLowerCase();
+            if (ADMIN_USERNAMES.includes(uname)) {
+                document.getElementById('admin-section').style.display = 'block';
+            }
+        }
+
+        // ── Активные соревнования ─────────────────────────────
+        const GAME_LABELS = { math: 'Math Master', '2048': '2048', snake: 'Snake', flappy: 'Flappy Chin' };
+        const GAME_ICONS = { math: 'math', '2048': '2048', snake: 'snake', flappy: 'bird' };
+
+        function formatTimer(seconds) {
+            if (seconds <= 0) return 'Завершено';
+            const d = Math.floor(seconds / 86400);
+            const h = Math.floor((seconds % 86400) / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            if (d > 0) return `${d}д ${h}ч`;
+            if (h > 0) return `${h}ч ${m}м`;
+            return `${m}м ${s}с`;
+        }
+
+        let contestTimers = [];
+        function startContestTimers() {
+            contestTimers.forEach(clearInterval);
+            contestTimers = [];
+            document.querySelectorAll('[data-timer]').forEach(el => {
+                let secs = parseInt(el.dataset.timer);
+                el.textContent = formatTimer(secs);
+                const iv = setInterval(() => {
+                    secs--;
+                    el.textContent = formatTimer(secs);
+                    if (secs <= 0) clearInterval(iv);
+                }, 1000);
+                contestTimers.push(iv);
+            });
+        }
+
+        async function loadContests() {
+            try {
+                const res = await fetch(`${API}/api/contests/active`);
+                if (!res.ok) return;
+                const { contests } = await res.json();
+                if (!contests || contests.length === 0) return;
+
+                const section = document.getElementById('contests-section');
+                const list = document.getElementById('contests-list');
+                section.style.display = 'block';
+
+                list.innerHTML = contests.map(c => {
+                    const winners = c.winners_count === 1 ? 'Топ 1' : `Топ 1–${c.winners_count}`;
+                    const gameIcon = `icons/${GAME_ICONS[c.game_name] || c.game_name}.png`;
+                    const gameName = GAME_LABELS[c.game_name] || c.game_name;
+
+                    let prizeHtml = '';
+                    if (c.prize_type === 'stars') {
+                        prizeHtml = `<div class="contest-card__prize" style="color:#ffd700;">
+                            <img src="icons/shop.png" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 0 4px rgba(255,215,0,0.6))">
+                            ${c.prize_value} звёзд${c.split_prize ? ' (делится)' : ' каждому'}
+                        </div>`;
+                    } else {
+                        // NFT gift — показываем превью-кнопку
+                        const giftUrls = c.gift_ids?.length ? c.gift_ids : (c.gift_id ? [c.gift_id] : []);
+                        const giftUrl = giftUrls[0] || '';
+                        const urlsJson = JSON.stringify(giftUrls).replace(/"/g, '&quot;');
+                        const count = giftUrls.length;
+                        prizeHtml = `<div class="contest-card__nft" onclick="openNftModal(${count > 1 ? urlsJson : `'${giftUrl}'`})" style="
+                            display:flex;align-items:center;gap:10px;margin-top:8px;
+                            padding:10px 12px;
+                            background:linear-gradient(90deg,rgba(188,19,254,0.12),rgba(255,0,170,0.08));
+                            border:1px solid rgba(188,19,254,0.35);border-radius:10px;cursor:pointer;
+                            transition:border-color 0.2s;
+                        ">
+                            <div id="nft-mini-${c.id}" style="width:48px;height:48px;border-radius:10px;background:rgba(0,0,0,0.4);flex-shrink:0;overflow:hidden;position:relative;">
+                                <canvas id="nft-thumb-${c.id}" width="48" height="48" style="width:48px;height:48px;border-radius:10px;display:none;"></canvas>
+                                <div id="nft-thumb-fallback-${c.id}" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+                                    <img src="icons/shop.png" style="width:26px;height:26px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(188,19,254,0.8));">
+                                </div>
+                            </div>
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-family:Orbitron,sans-serif;font-size:10px;font-weight:700;color:#e060ff;margin-bottom:2px;">NFT-приз${count > 1 ? ' · ' + count + ' шт' : ''}</div>
+                                <div style="font-size:11px;color:rgba(255,255,255,0.45);">Нажми, чтобы посмотреть</div>
+                            </div>
+                            <div style="font-size:14px;color:rgba(188,19,254,0.6);">→</div>
+                        </div>`;
+                    }
+
+                    return `
+                        <div class="contest-card">
+                            <div class="contest-card__title" style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+                                <img src="icons/profile.png" style="width:14px;height:14px;object-fit:contain;filter:drop-shadow(0 0 4px rgba(224,0,255,0.6))">
+                                Chin запустил соревнование!
+                            </div>
+                            <div class="contest-card__game" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                                <img src="${gameIcon}" style="width:18px;height:18px;object-fit:contain;filter:drop-shadow(0 0 4px rgba(255,255,255,0.3))">
+                                ${gameName} · ${winners}
+                            </div>
+                            ${prizeHtml}
+                            <div class="contest-card__timer" style="margin-top:8px;" data-timer="${c.seconds_left}"></div>
+                        </div>`;
+                }).join('');
+
+                startContestTimers();
+
+                // Load NFT thumbnails in background
+                contests.forEach(c => {
+                    if (c.prize_type !== 'stars' && (c.gift_id || '')) {
+                        loadNftThumbnail(c.id, c.gift_id);
+                    }
+                });
+            } catch(e) {
+                console.error('contests load error', e);
+            }
+        }
+
+        async function loadNftThumbnail(contestId, giftUrl) {
+            if (!giftUrl) return;
+            const canvas = document.getElementById(`nft-thumb-${contestId}`);
+            const fallback = document.getElementById(`nft-thumb-fallback-${contestId}`);
+            if (!canvas) return;
+            try {
+                const slug = nftSlug(giftUrl);
+                if (!slug) return;
+                const res = await fetch(`${NFT_API}/api/nft_lottie?slug=${encodeURIComponent(slug)}`);
+                if (!res.ok) return;
+                const lottieData = await res.json();
+
+                // Render first frame of lottie onto canvas
+                const tempDiv = document.createElement('div');
+                tempDiv.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:48px;height:48px;';
+                document.body.appendChild(tempDiv);
+
+                const anim = lottie.loadAnimation({
+                    container: tempDiv,
+                    animationData: lottieData,
+                    renderer: 'canvas',
+                    loop: false,
+                    autoplay: false,
+                    rendererSettings: { clearCanvas: true }
+                });
+
+                anim.addEventListener('DOMLoaded', () => {
+                    anim.goToAndStop(0, true);
+                    setTimeout(() => {
+                        try {
+                            const srcCanvas = tempDiv.querySelector('canvas');
+                            if (srcCanvas) {
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(srcCanvas, 0, 0, 48, 48);
+                                canvas.style.display = 'block';
+                                if (fallback) fallback.style.display = 'none';
+                            }
+                        } catch(e) {}
+                        anim.destroy();
+                        document.body.removeChild(tempDiv);
+                    }, 80);
+                });
+            } catch(e) {
+                // fallback icon remains visible
+            }
+        }
+
+        // ── Статистика ────────────────────────────────────────
+        function renderStats(containerId, data) {
+            const el = document.getElementById(containerId);
+            if (!data || data.score === undefined) {
+                el.innerHTML = '<div class="no-data">Нет данных — сыграй первую игру!</div>';
+                return;
+            }
+            el.innerHTML = `
+                <div class="stats-grid">
+                    <div class="stat-item"><div class="stat-item__value">${data.games_played ?? '—'}</div><div class="stat-item__label">Сыграно</div></div>
+                    <div class="stat-item stat-item--best"><div class="stat-item__value">${data.score ?? '—'}</div><div class="stat-item__label">Лучший рекорд</div></div>
+                    <div class="stat-item stat-item--last"><div class="stat-item__value">${data.last_score ?? '—'}</div><div class="stat-item__label">Последний</div></div>
+                </div>`;
+        }
+
+        async function loadStats() {
+            if (!user) {
+                renderStats('math-stats', null);
+                renderStats('stats-2048', null);
+                renderStats('snake-stats', null);
+                renderStats('flappy-stats', null);
+                document.getElementById('total-games').textContent = '0';
+                updateLevel(0);
+                return;
+            }
+            try {
+                const [mathRes, res2048, snakeRes, flappyRes] = await Promise.all([
+                    fetch(`${API}/api/stats/${user.id}/math`).catch(() => null),
+                    fetch(`${API}/api/stats/${user.id}/2048`).catch(() => null),
+                    fetch(`${API}/api/stats/${user.id}/snake`).catch(() => null),
+                    fetch(`${API}/api/stats/${user.id}/flappy`).catch(() => null)
+                ]);
+                const mathData = mathRes  && mathRes.ok  ? await mathRes.json()  : null;
+                const data2048 = res2048  && res2048.ok  ? await res2048.json()  : null;
+                const snakeData = snakeRes && snakeRes.ok ? await snakeRes.json() : null;
+                const flappyData = flappyRes && flappyRes.ok ? await flappyRes.json() : null;
+                renderStats('math-stats', mathData);
+                renderStats('stats-2048', data2048);
+                renderStats('snake-stats', snakeData);
+                renderStats('flappy-stats', flappyData);
+                const totalGames = (mathData?.games_played ?? 0) + (data2048?.games_played ?? 0)
+                    + (snakeData?.games_played ?? 0) + (flappyData?.games_played ?? 0);
+                document.getElementById('total-games').textContent = totalGames || '0';
+                updateLevel(totalGames);
+            } catch(e) {
+                renderStats('math-stats', null);
+                renderStats('stats-2048', null);
+                renderStats('snake-stats', null);
+                renderStats('flappy-stats', null);
+            }
+        }
+
+        function calcLevel(totalGames) {
+            const MAX_LEVEL = 100;
+            let level = 1, used = 0;
+            while (level < MAX_LEVEL) {
+                const needed = level * 5;
+                if (used + needed > totalGames) break;
+                used += needed; level++;
+            }
+            return { level, progress: totalGames - used, neededForNext: level * 5, maxed: level >= MAX_LEVEL };
+        }
+
+        function updateLevel(totalGames) {
+            const { level, progress, neededForNext, maxed } = calcLevel(totalGames);
+            document.getElementById('player-level').textContent = level;
+            if (maxed) {
+                document.getElementById('level-bar').style.width = '100%';
+                document.getElementById('level-bar-text').textContent = 'MAX LEVEL';
+            } else {
+                document.getElementById('level-bar').style.width = Math.round((progress / neededForNext) * 100) + '%';
+                document.getElementById('level-bar-text').textContent = `${progress} / ${neededForNext} игр`;
+            }
+        }
+
+        // ── Кошелёк Stars ─────────────────────────────────────────
+        async function loadWalletBalance() {
+            const userId = user?.id;
+            const el = document.getElementById('wallet-balance');
+            if (!userId) { el.textContent = '0'; return; }
+            try {
+                const res = await fetch(`${API}/api/wallet/balance?user_id=${userId}`);
+                const data = await res.json();
+                el.textContent = data.balance ?? 0;
+            } catch (e) {
+                el.textContent = '—';
+            }
+        }
+
+        // ── Реферальная программа ─────────────────────────────────
+        let _refUrl = '';
+
+        function renderRefList(recent, gamesNeeded) {
+            const listEl   = document.getElementById('ref-list');
+            const itemsEl  = document.getElementById('ref-list-items');
+            if (!recent || recent.length === 0) {
+                listEl.style.display = 'none';
+                return;
+            }
+            listEl.style.display = 'block';
+            itemsEl.innerHTML = recent.map(r => {
+                const name      = r.first_name || ('ID ' + r.invitee_id);
+                const initial   = name[0].toUpperCase();
+                const games     = r.games_played || 0;
+                const needed    = gamesNeeded || 3;
+                const progress  = Math.min(games / needed, 1);
+                const pct       = Math.round(progress * 100);
+                const isDone    = r.reward_sent;
+                const inProgress = !isDone && r.policy_accepted && games < needed;
+                const notStarted = !r.policy_accepted;
+
+                let badgeHtml = '';
+                if (isDone) {
+                    badgeHtml = `<span class="ref-item__badge ref-item__badge--done">✅ +2⭐</span>`;
+                } else if (inProgress) {
+                    badgeHtml = `<span class="ref-item__badge ref-item__badge--waiting">⏳ Играет</span>`;
+                } else {
+                    badgeHtml = `<span class="ref-item__badge ref-item__badge--pending">${notStarted ? '📋 Не принял' : '⏳ Начал'}</span>`;
+                }
+
+                const barFillClass = isDone ? 'ref-item__bar-fill ref-item__bar-fill--done' : 'ref-item__bar-fill';
+                const gamesLabel = isDone
+                    ? `${games}+ игр ✓`
+                    : `${games}/${needed} игр`;
+
+                return `
+                    <div class="ref-item">
+                        <div class="ref-item__avatar">${initial}</div>
+                        <div class="ref-item__info">
+                            <div class="ref-item__name">${name}</div>
+                            <div class="ref-item__progress">
+                                <div class="ref-item__bar-wrap">
+                                    <div class="${barFillClass}" style="width:${pct}%"></div>
+                                </div>
+                                <span class="ref-item__games">${gamesLabel}</span>
+                            </div>
+                        </div>
+                        ${badgeHtml}
+                    </div>`;
+            }).join('');
+        }
+
+        async function loadReferralStats() {
+            if (!user) return;
+            const refCard = document.getElementById('ref-card');
+            try {
+                const flagsRes = await fetch(`${API}/api/user/flags?user_id=${user.id}`);
+                if (flagsRes.ok) {
+                    const flags = await flagsRes.json();
+                    if (flags.ref_disabled) {
+                        refCard.style.display = 'none';
+                        return;
+                    }
+                }
+
+                const res = await fetch(`${API}/api/referral/stats/${user.id}`);
+                if (!res.ok) return;
+                const data = await res.json();
+
+                _refUrl = data.ref_url || '';
+
+                document.getElementById('ref-total').textContent    = data.total ?? 0;
+                document.getElementById('ref-rewarded').textContent = data.rewarded ?? 0;
+                refCard.style.display = 'block';
+
+                renderRefList(data.recent || [], data.games_needed || 3);
+            } catch(e) {
+                console.warn('ref stats error', e);
+            }
+        }
+
+        function shareRefLink() {
+            if (!_refUrl) return;
+            if (tg?.shareUrl) {
+                tg.shareUrl(_refUrl, 'Играй в Chin Games и зарабатывай! 🎮⚡');
+            } else if (navigator.share) {
+                navigator.share({ title: 'Chin Games', url: _refUrl }).catch(() => {});
+            } else {
+                navigator.clipboard?.writeText(_refUrl).then(() => {
+                    const btn = document.getElementById('ref-invite-btn');
+                    const orig = btn.textContent;
+                    btn.textContent = '✅ Ссылка скопирована!';
+                    setTimeout(() => { btn.textContent = orig; }, 2000);
+                });
+            }
+        }
+
+        initProfile();
+        loadWalletBalance();
+        loadReferralStats();
+        loadContests();
+        loadStats();
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                loadWalletBalance();
+                loadReferralStats();
+            }
+        });
+    </script>
+
+    <!-- NFT Modal -->
+    <div class="nft-modal-overlay" id="nft-modal-overlay" onclick="closeNftModal(event)">
+        <div class="nft-modal" id="nft-modal">
+            <button class="nft-modal__close" onclick="closeNftModal()">✕</button>
+            <div class="nft-prize-tabs" id="nft-prize-tabs" style="display:none;margin-bottom:12px;display:none;flex;gap:6px;justify-content:center;"></div>
+            <div class="nft-modal__anim">
+                <div class="nft-modal__anim-inner" id="nft-anim-container"></div>
+                <div class="nft-modal__spinner" id="nft-spinner">Загрузка...</div>
+            </div>
+            <div class="nft-modal__prize-label" id="nft-modal-place-label">Приз соревнования</div>
+            <div class="nft-modal__name" id="nft-modal-name">NFT-подарок</div>
+            <div class="nft-modal__attrs" id="nft-modal-attrs"></div>
+            <a id="nft-modal-link" href="#" target="_blank" rel="noopener" class="nft-modal__open-btn">Смотреть в Telegram</a>
+        </div>
+    </div>
+    <script>
+        // ── NFT Modal ────────────────────────────────────────────
+        const NFT_API = 'https://chin-games-bot.onrender.com';
+        let _nftLottie = null;
+        let _nftUrls = [];
+
+        function nftSlug(url) {
+            try {
+                const p = new URL(url).pathname.replace(/^\//, '').split('/');
+                return p[p.length - 1].toLowerCase();
+            } catch(e) { return null; }
+        }
+
+        const _MEDALS = ['🥇 Топ 1', '🥈 Топ 2', '🥉 Топ 3'];
+
+        async function openNftModal(giftUrls) {
+            if (!giftUrls) return;
+            if (!Array.isArray(giftUrls)) giftUrls = [giftUrls];
+            giftUrls = giftUrls.filter(Boolean);
+            if (!giftUrls.length) return;
+
+            _nftUrls = giftUrls;
+            document.getElementById('nft-modal-overlay').classList.add('open');
+
+            // Табы
+            const tabsEl = document.getElementById('nft-prize-tabs');
+            if (giftUrls.length > 1) {
+                tabsEl.style.display = 'flex';
+                tabsEl.innerHTML = giftUrls.map((_, i) =>
+                    `<div class="nft-prize-tab${i===0?' active':''}" onclick="_profileSwitchTab(${i})">${_MEDALS[i] || 'Топ '+(i+1)}</div>`
+                ).join('');
+            } else {
+                tabsEl.style.display = 'none';
+            }
+
+            await _loadProfileSlide(0);
+        }
+
+        async function _profileSwitchTab(idx) {
+            document.querySelectorAll('.nft-prize-tab').forEach((t, i) =>
+                t.classList.toggle('active', i === idx));
+            await _loadProfileSlide(idx);
+        }
+
+        async function _loadProfileSlide(idx) {
+            const giftUrl = _nftUrls[idx];
+            const overlay = document.getElementById('nft-modal-overlay');
+            const spinner = document.getElementById('nft-spinner');
+            const animBox  = document.getElementById('nft-anim-container');
+            const nameEl   = document.getElementById('nft-modal-name');
+            const attrsEl  = document.getElementById('nft-modal-attrs');
+            const linkEl   = document.getElementById('nft-modal-link');
+            const placeEl  = document.getElementById('nft-modal-place-label');
+
+            if (_nftLottie) { _nftLottie.destroy(); _nftLottie = null; }
+            animBox.innerHTML = '';
+            nameEl.textContent = 'NFT-подарок';
+            attrsEl.innerHTML = '';
+            linkEl.href = giftUrl;
+            spinner.style.display = 'flex';
+            spinner.textContent = 'Загрузка...';
+
+            placeEl.textContent = _nftUrls.length > 1
+                ? (_MEDALS[idx] || `Топ ${idx+1}`) + ' · Приз соревнования'
+                : 'Приз соревнования';
+
+            const slug = nftSlug(giftUrl);
+            if (!slug) { spinner.textContent = '—'; return; }
+
+            try {
+                const [metaRes, lottieRes] = await Promise.all([
+                    fetch(`${NFT_API}/api/nft_meta?slug=${encodeURIComponent(slug)}`),
+                    fetch(`${NFT_API}/api/nft_lottie?slug=${encodeURIComponent(slug)}`)
+                ]);
+                if (metaRes.ok) {
+                    const meta = await metaRes.json();
+                    if (meta.name) nameEl.textContent = meta.name;
+                    if (meta.attributes?.length) {
+                        attrsEl.innerHTML = meta.attributes.slice(0,6).map(a =>
+                            `<div class="nft-modal__attr">${a.trait_type}: <span>${a.value}</span></div>`
+                        ).join('');
+                    }
+                }
+                if (lottieRes.ok) {
+                    const lottieData = await lottieRes.json();
+                    spinner.style.display = 'none';
+                    _nftLottie = lottie.loadAnimation({
+                        container: animBox, animationData: lottieData,
+                        renderer: 'canvas', loop: true, autoplay: true
+                    });
+                } else throw new Error('no lottie');
+            } catch(e) {
+                spinner.style.display = 'none';
+                animBox.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><img src="icons/shop.png" style="width:60px;height:60px;object-fit:contain;filter:drop-shadow(0 0 16px rgba(188,19,254,0.8));"></div>';
+            }
+        }
+
+        function closeNftModal(event) {
+            if (event && event.target !== document.getElementById('nft-modal-overlay')) return;
+            if (_nftLottie) { _nftLottie.destroy(); _nftLottie = null; }
+            document.getElementById('nft-modal-overlay').classList.remove('open');
+        }
+    </script>
+
+</body>
+</html>

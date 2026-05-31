@@ -1,0 +1,374 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap');
+
+:root {
+    --bg-color: #120b2e;
+    --bg-color-mid: #1a103d;
+    --card-bg: #2b1d54;
+    --primary: #d122e3;
+    --secondary: #33e6e6;
+    --text-muted: #a095c4;
+    --grid-color: rgba(51, 34, 102, 0.55);
+    --text-glow: 0 0 10px rgba(191, 64, 255, 0.9), 0 0 25px rgba(209, 34, 227, 0.55), 0 0 45px rgba(209, 34, 227, 0.25);
+    --box-glow: 0 0 20px rgba(43, 29, 84, 0.7);
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Rajdhani', sans-serif;
+    background-color: var(--bg-color);
+    color: #fff;
+    overflow-x: hidden;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: linear-gradient(180deg, #0d081a 0%, #120b2e 35%, #1a103d 100%);
+}
+
+/* --- Анимированный фон (Сетка и Звезды) --- */
+.background-fx {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    perspective: 500px;
+    overflow: hidden;
+}
+
+.grid-floor {
+    position: absolute;
+    bottom: -30%;
+    left: -50%;
+    width: 200%;
+    height: 100%;
+    background-image: 
+        linear-gradient(var(--grid-color) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+    background-size: 40px 40px;
+    transform: rotateX(60deg);
+    animation: gridMove 20s linear infinite;
+    mask-image: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 80%);
+}
+
+.stars {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 60%;
+    background-image: radial-gradient(2px 2px at 20px 30px, #fff, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 40px 70px, #fff, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 50px 160px, #fff, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 90px 40px, #fff, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 130px 80px, #fff, rgba(0,0,0,0));
+    background-repeat: repeat;
+    background-size: 200px 200px;
+    animation: starsMove 100s linear infinite;
+    opacity: 0.45;
+}
+
+/* --- Контейнер --- */
+.container {
+    text-align: center;
+    width: 100%;
+    max-width: 480px;
+    padding: 20px;
+    box-sizing: border-box;
+    z-index: 1;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* --- Глитч-заголовок --- */
+h1.glitch {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 3rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    position: relative;
+    color: #fff;
+    text-shadow: var(--text-glow);
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+}
+
+h1.glitch::before, h1.glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-color);
+}
+
+h1.glitch::before {
+    left: 2px;
+    text-shadow: -2px 0 var(--primary);
+    clip: rect(24px, 550px, 90px, 0);
+    animation: glitch-anim-1 2.5s infinite linear alternate-reverse;
+}
+
+h1.glitch::after {
+    left: -2px;
+    text-shadow: -2px 0 var(--secondary);
+    clip: rect(85px, 550px, 140px, 0);
+    animation: glitch-anim-2 3s infinite linear alternate-reverse;
+}
+
+.subtitle {
+    font-size: 1.2rem;
+    color: var(--secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 30px;
+    text-shadow: 0 0 8px rgba(51, 230, 230, 0.8), 0 0 18px rgba(0, 242, 255, 0.4);
+    font-weight: 700;
+}
+
+/* --- Навигация (Кнопки меню) --- */
+.nav-menu {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-bottom: 30px;
+}
+
+.nav-btn {
+    background: rgba(0, 0, 0, 0.6);
+    border: 2px solid var(--secondary);
+    color: var(--secondary);
+    padding: 10px 20px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+    text-transform: uppercase;
+}
+
+.nav-btn.active, .nav-btn:hover {
+    background: var(--secondary);
+    color: #000;
+    box-shadow: 0 0 20px var(--secondary);
+    transform: translateY(-2px);
+}
+
+/* --- Сетка игр --- */
+.games-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    width: 100%;
+    align-items: start;
+}
+
+.game-card {
+    background: rgba(43, 29, 84, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 20px 10px 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    backdrop-filter: blur(8px);
+    position: relative;
+    overflow: visible;
+    animation: floatCard 3s ease-in-out infinite;
+    box-sizing: border-box;
+    width: 100%;
+    box-shadow: var(--box-glow), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.game-card:nth-child(even) {
+    animation-delay: 1.5s;
+}
+
+.game-card:hover {
+    transform: scale(1.05) translateY(-5px);
+    border-color: rgba(209, 34, 227, 0.35);
+    box-shadow: 0 0 28px rgba(209, 34, 227, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    background: rgba(52, 36, 96, 0.95);
+}
+
+.game-card.disabled {
+    opacity: 0.45;
+    filter: grayscale(0.85) brightness(0.75);
+    cursor: not-allowed;
+    animation: none;
+    background: rgba(30, 22, 58, 0.7);
+}
+
+.game-card.disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.game-icon {
+    font-size: 3rem;
+    margin-bottom: 10px;
+    filter: drop-shadow(0 0 10px rgba(255,255,255,0.5));
+}
+
+.game-card h3 {
+    font-family: 'Orbitron', sans-serif;
+    margin: 5px 0;
+    font-size: 1rem;
+    color: #fff;
+}
+
+.game-card p {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+/* --- Таблица лидеров --- */
+.leaderboard-list {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    background: rgba(0,0,0,0.5);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--primary);
+}
+
+.leaderboard-list th {
+    background: rgba(255, 0, 255, 0.2);
+    color: var(--primary);
+    font-family: 'Orbitron', sans-serif;
+    padding: 10px;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+}
+
+.leaderboard-list td {
+    padding: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    color: #fff;
+    font-size: 1rem;
+}
+
+.leaderboard-list tr:last-child td {
+    border-bottom: none;
+}
+
+.rank-1 { color: #ffd700; text-shadow: 0 0 10px #ffd700; font-weight: bold; }
+.rank-2 { color: #c0c0c0; text-shadow: 0 0 10px #c0c0c0; }
+.rank-3 { color: #cd7f32; text-shadow: 0 0 10px #cd7f32; }
+
+/* --- Кнопки действий --- */
+.action-btn {
+    background: linear-gradient(45deg, var(--primary), #bd00ff);
+    border: none;
+    color: white;
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    font-family: 'Orbitron', sans-serif;
+    border-radius: 50px;
+    cursor: pointer;
+    margin-top: 20px;
+    box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
+    transition: transform 0.2s, box-shadow 0.2s;
+    text-transform: uppercase;
+    width: 100%;
+}
+
+.action-btn:active {
+    transform: scale(0.95);
+    box-shadow: 0 0 10px rgba(255, 0, 255, 0.8);
+}
+
+.back-btn {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: transparent;
+    border: 2px solid var(--secondary);
+    color: var(--secondary);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 10px var(--secondary);
+    z-index: 100;
+}
+
+.back-btn:active {
+    background: var(--secondary);
+    color: #000;
+}
+
+/* --- Экраны --- */
+.screen {
+    display: none;
+    animation: fadeIn 0.5s ease;
+}
+
+.screen.active {
+    display: block;
+}
+
+/* --- Анимации --- */
+@keyframes gradientBG {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes gridMove {
+    0% { transform: rotateX(60deg) translateY(0); }
+    100% { transform: rotateX(60deg) translateY(40px); }
+}
+
+@keyframes starsMove {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 1000px; }
+}
+
+@keyframes floatCard {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes glitch-anim-1 {
+    0% { clip: rect(20px, 9999px, 10px, 0); }
+    20% { clip: rect(60px, 9999px, 70px, 0); }
+    40% { clip: rect(20px, 9999px, 10px, 0); }
+    60% { clip: rect(80px, 9999px, 5px, 0); }
+    80% { clip: rect(10px, 9999px, 90px, 0); }
+    100% { clip: rect(50px, 9999px, 30px, 0); }
+}
+
+@keyframes glitch-anim-2 {
+    0% { clip: rect(10px, 9999px, 80px, 0); }
+    20% { clip: rect(80px, 9999px, 10px, 0); }
+    40% { clip: rect(30px, 9999px, 50px, 0); }
+    60% { clip: rect(90px, 9999px, 20px, 0); }
+    80% { clip: rect(15px, 9999px, 60px, 0); }
+    100% { clip: rect(70px, 9999px, 40px, 0); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Адаптив для маленьких экранов */
+@media (max-width: 350px) {
+    h1.glitch { font-size: 2.2rem; }
+    .games-grid { grid-template-columns: 1fr; }
+}

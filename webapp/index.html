@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Chin Games</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+    <style>
+        /* ============================================
+           МАКСИМАЛЬНО ЖЁСТКАЯ ЗАЩИТА TOUCH-ВЗАИМОДЕЙСТВИЯ
+           ============================================ */
+        * {
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            -webkit-tap-highlight-color: transparent !important;
+            -webkit-touch-callout: none !important;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            overscroll-behavior: none !important;
+            touch-action: none !important;
+            overflow: hidden !important;
+            height: 100% !important;
+            position: fixed !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* ========== BOTTOM NAV ========== */
+        .chin-navbar {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: calc(60px + env(safe-area-inset-bottom, 0px));
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            background: rgba(18, 11, 46, 0.96);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-around;
+            z-index: 1000;
+            box-shadow: 0 -4px 24px rgba(0,0,0,0.7);
+        }
+        .chin-navbar__item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding-top: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            color: rgba(255,255,255,0.4);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            transition: color 0.2s;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        .chin-navbar__item:active { transform: scale(0.9); }
+        .chin-navbar__icon { width:24px; height:24px; display:flex; align-items:center; justify-content:center; transition: filter 0.2s, transform 0.2s; }
+        .chin-navbar__item--active { color: #00ffff; }
+        .chin-navbar__item--active .chin-navbar__icon {
+            filter: drop-shadow(0 0 7px #00ffff);
+            transform: translateY(-2px);
+        }
+        .chin-navbar__dot {
+            width: 4px; height: 4px; border-radius: 50%;
+            background: #00ffff; box-shadow: 0 0 6px #00ffff;
+            opacity: 0; transition: opacity 0.2s; margin-top: -2px;
+        }
+        .chin-navbar__item--active .chin-navbar__dot { opacity: 1; }
+        .container { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important; }
+
+        /* ========== CONTEST BADGE ========== */
+        /* Contest card state — only what style.css doesn't cover */
+        .game-card.has-contest {
+            animation: none;
+            border-color: rgba(188,19,254,0.6);
+            box-shadow: 0 0 18px rgba(188,19,254,0.25);
+        }
+        .contest-banner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            margin-top: 8px;
+            padding: 5px 8px;
+            width: 100%;
+            box-sizing: border-box;
+            background: linear-gradient(90deg, rgba(255,0,170,0.18), rgba(122,4,235,0.25));
+            border: 1px solid rgba(188,19,254,0.45);
+            border-radius: 8px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #e060ff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            animation: bannerPulse 2s ease-in-out infinite;
+        }
+        .contest-banner::before {
+            content: '';
+            display: inline-block;
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: #ff00aa;
+            box-shadow: 0 0 6px #ff00aa;
+            flex-shrink: 0;
+            animation: dotBlink 1s ease-in-out infinite;
+        }
+        @keyframes bannerPulse {
+            0%, 100% { border-color: rgba(188,19,254,0.4); color: #d050ee; }
+            50% { border-color: rgba(255,0,170,0.7); color: #ff60ff; }
+        }
+        @keyframes dotBlink {
+            0%, 100% { opacity: 1; } 50% { opacity: 0.3; }
+        }
+        /* ========== NFT MODAL ========== */
+        .nft-modal-overlay {
+            display: none;
+            position: fixed; inset: 0; z-index: 9999;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            align-items: center; justify-content: center;
+        }
+        .nft-modal-overlay.open { display: flex; }
+        .nft-modal {
+            position: relative;
+            width: min(340px, 90vw);
+            background: linear-gradient(160deg, #0d0024 0%, #1a0040 60%, #0a001a 100%);
+            border: 1px solid rgba(188,19,254,0.35);
+            border-radius: 24px;
+            padding: 24px 20px 20px;
+            box-shadow: 0 0 60px rgba(188,19,254,0.25), 0 0 120px rgba(0,0,0,0.8);
+            text-align: center;
+            animation: modalIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        @keyframes modalIn {
+            from { transform: scale(0.7) translateY(30px); opacity: 0; }
+            to   { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .nft-modal__close {
+            position: absolute; top: 14px; right: 16px;
+            width: 28px; height: 28px;
+            background: rgba(255,255,255,0.08); border: none;
+            border-radius: 50%; color: rgba(255,255,255,0.5);
+            font-size: 16px; cursor: pointer; display: flex;
+            align-items: center; justify-content: center;
+            transition: background 0.2s;
+        }
+        .nft-modal__close:active { background: rgba(255,255,255,0.18); }
+        .nft-modal__anim {
+            width: 180px; height: 180px;
+            margin: 0 auto 14px;
+            position: relative;
+        }
+        .nft-modal__anim-inner {
+            width: 100%; height: 100%;
+            border-radius: 20px;
+            background: radial-gradient(circle at 50% 60%, rgba(188,19,254,0.15) 0%, transparent 70%);
+        }
+        .nft-modal__spinner {
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; color: rgba(255,255,255,0.3);
+            font-family: 'Orbitron', sans-serif; letter-spacing: 1px;
+        }
+        .nft-modal__name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px; font-weight: 900;
+            color: #fff; margin-bottom: 4px;
+            text-shadow: 0 0 20px rgba(188,19,254,0.6);
+        }
+        .nft-modal__attrs {
+            display: flex; flex-wrap: wrap; gap: 6px;
+            justify-content: center; margin: 10px 0 14px;
+        }
+        .nft-modal__attr {
+            padding: 4px 10px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            font-size: 10px; color: rgba(255,255,255,0.55);
+            font-family: 'Rajdhani', sans-serif; font-weight: 600;
+        }
+        .nft-modal__attr span { color: #fff; }
+        .nft-modal__prize-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px; letter-spacing: 1.5px;
+            color: rgba(188,19,254,0.7); text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .nft-modal__open-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #7a04eb, #ff00ff);
+            border: none; border-radius: 12px;
+            font-family: 'Orbitron', sans-serif; font-size: 10px;
+            font-weight: 700; letter-spacing: 1px; color: #fff;
+            cursor: pointer; text-decoration: none;
+            box-shadow: 0 4px 16px rgba(188,19,254,0.4);
+            transition: transform 0.15s;
+        }
+        .nft-modal__open-btn:active { transform: scale(0.95); }
+        /* Листалка призов */
+        .nft-prize-tabs {
+            display: flex; gap: 6px; justify-content: center;
+            margin-bottom: 14px;
+        }
+        .nft-prize-tab {
+            padding: 5px 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 20px;
+            font-family: 'Orbitron', sans-serif; font-size: 9px;
+            color: rgba(255,255,255,0.4); cursor: pointer;
+            transition: all 0.2s;
+        }
+        .nft-prize-tab.active {
+            background: rgba(188,19,254,0.2);
+            border-color: #bc13fe; color: #e060ff;
+            box-shadow: 0 0 10px rgba(188,19,254,0.2);
+        }
+        /* NFT кнопка на карточке */
+        .nft-card-btn {
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+            margin-top: 6px; padding: 5px 8px;
+            width: 100%; box-sizing: border-box;
+            background: linear-gradient(90deg, rgba(188,19,254,0.12), rgba(255,0,170,0.12));
+            border: 1px solid rgba(188,19,254,0.35); border-radius: 8px;
+            font-family: 'Orbitron', sans-serif; font-size: 7px; font-weight: 700;
+            letter-spacing: 0.4px; color: rgba(220,100,255,0.9);
+            cursor: pointer; transition: border-color 0.2s;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .nft-card-btn:active { border-color: rgba(188,19,254,0.7); }
+        .nft-card-btn-dot {
+            width: 5px; height: 5px; border-radius: 50%;
+            background: #ff00aa; box-shadow: 0 0 5px #ff00aa; flex-shrink: 0;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="background-fx">
+        <div class="stars"></div>
+        <div class="grid-floor"></div>
+    </div>
+
+    <div class="container">
+        <div id="main-screen" class="screen active">
+            <h1 class="glitch" data-text="CHIN GAMES">CHIN GAMES</h1>
+            <p class="subtitle">Докажи, что ты лучший! Начни игру!</p>
+
+            <!-- ⚡ Energy widget -->
+            <div id="energy-container" style="display:flex; justify-content:center; margin-bottom:18px;"></div>
+
+            <div class="games-grid">
+                <div class="game-card" data-game="math" onclick="launchGame('games/math.html')">
+                    <div class="game-icon"><img src="icons/math.png" alt="Math Master" style="width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 0 10px rgba(255,255,255,0.4));"></div>
+                    <h3>Math Master</h3>
+                    <p>Взломать мозг</p>
+                </div>
+                <div class="game-card" data-game="2048" onclick="launchGame('games/2048.html')">
+                    <div class="game-icon"><img src="icons/2048.png" alt="2048" style="width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 0 10px rgba(255,255,255,0.4));"></div>
+                    <h3>2048</h3>
+                    <p>Складывай плитки</p>
+                </div>
+                <div class="game-card" data-game="snake" onclick="launchGame('games/snake.html')">
+                    <div class="game-icon"><img src="icons/snake.png" alt="Snake" style="width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 0 10px rgba(255,255,255,0.4));"></div>
+                    <h3>Snake</h3>
+                    <p>Классическая змейка</p>
+                </div>
+                <div class="game-card" data-game="flappy" onclick="launchGame('games/flappy_chin.html')">
+                    <div class="game-icon"><img src="icons/bird.png" alt="Flappy Chin" style="width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 0 10px rgba(255,255,255,0.4));"></div>
+                    <h3>Flappy Chin</h3>
+                    <p>Пролети сквозь трубы</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== BOTTOM NAVBAR ========== -->
+    <nav class="chin-navbar">
+        <a class="chin-navbar__item chin-navbar__item--active" href="index.html" onclick="return false;">
+            <span class="chin-navbar__icon"><img src="icons/games.png" alt="Игры" style="width:24px;height:24px;object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,255,255,0.3));"></span>
+            <span>Игры</span>
+            <span class="chin-navbar__dot"></span>
+        </a>
+        <a class="chin-navbar__item" href="profile.html">
+            <span class="chin-navbar__icon"><img src="icons/profile.png" alt="Профиль" style="width:24px;height:24px;object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,255,255,0.3));"></span>
+            <span>Профиль</span>
+            <span class="chin-navbar__dot"></span>
+        </a>
+        <a class="chin-navbar__item" href="shop.html">
+            <span class="chin-navbar__icon"><img src="icons/shop.png" alt="Магазин" style="width:24px;height:24px;object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,255,255,0.3));"></span>
+            <span>Магазин</span>
+            <span class="chin-navbar__dot"></span>
+        </a>
+    </nav>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        if (tg.requestFullscreen) tg.requestFullscreen();
+        if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+        tg.enableClosingConfirmation();
+
+        // ====== ГЛОБАЛЬНАЯ ЗАЩИТА ======
+        // Полностью блокируем скролл и свайпы на уровне документа.
+        // Mini App закрывается ТОЛЬКО кнопкой закрыть.
+        document.documentElement.style.overscrollBehavior = 'none';
+        document.body.style.overscrollBehavior = 'none';
+        document.body.style.touchAction = 'none';
+        document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.width = '100%';
+        document.body.style.height = '100%';
+
+        document.addEventListener('touchmove', e => {
+            e.preventDefault();
+        }, { passive: false });
+
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', e => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) e.preventDefault();
+            lastTouchEnd = now;
+        }, false);
+
+        function launchGame(url) {
+            window.location.href = url;
+        }
+
+        // ─── Отступ сверху под шапку Telegram ───────────────
+        function applyTopPadding() {
+            const tgTop  = tg.contentSafeAreaInsets?.top ?? 0;
+            const sysTop = tg.safeAreaInsets?.top ?? 0;
+            const topPad = Math.max(tgTop, sysTop) + 20;
+            document.querySelector('.container').style.paddingTop = topPad + 'px';
+        }
+        applyTopPadding();
+        tg.onEvent('viewportChanged', applyTopPadding);
+        tg.onEvent('safeAreaChanged', applyTopPadding);
+        tg.onEvent('contentSafeAreaChanged', applyTopPadding);
+    </script>
+    <script src="energy.js"></script>
+    <script>
+        // Монтируем виджет энергии на главной
+        Energy.showWidget(document.getElementById('energy-container'));
+        Energy.pull();
+    </script>
+    <script>
+        // ── Активные соревнования → баджи + NFT-модал ────────────
+        const API = 'https://chin-games-bot.onrender.com';
+        let currentLottie = null;
+
+        function formatTimer(s) {
+            if (s <= 0) return 'завершено';
+            const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+            return h > 0 ? `${h}ч ${m}м` : `${m}м`;
+        }
+
+        // Парсим slug из ссылки t.me/nft/HexPot-10348 → hexpot-10348
+        function nftSlugFromUrl(url) {
+            try {
+                const u = new URL(url);
+                const parts = u.pathname.replace(/^\//, '').split('/');
+                // t.me/nft/NAME или t.me/NAME
+                const name = parts[parts.length - 1];
+                return name.toLowerCase();
+            } catch(e) { return null; }
+        }
+
+        const PLACE_MEDALS = ['🥇 Топ 1', '🥈 Топ 2', '🥉 Топ 3'];
+        let _modalGiftUrls = [];
+        let _modalCurrentIdx = 0;
+
+        // Открыть NFT-модал. giftUrls — строка или массив
+        async function openNftModal(giftUrls) {
+            if (!Array.isArray(giftUrls)) giftUrls = [giftUrls];
+            giftUrls = giftUrls.filter(Boolean);
+            if (!giftUrls.length) return;
+
+            _modalGiftUrls = giftUrls;
+            _modalCurrentIdx = 0;
+
+            const overlay = document.getElementById('nft-modal-overlay');
+            overlay.classList.add('open');
+            document.body.style.overflow = 'hidden';
+
+            // Рисуем табы если призов > 1
+            const tabsEl = document.getElementById('nft-prize-tabs');
+            if (giftUrls.length > 1) {
+                tabsEl.style.display = 'flex';
+                tabsEl.innerHTML = giftUrls.map((_, i) =>
+                    `<div class="nft-prize-tab${i===0?' active':''}" onclick="switchPrizeTab(${i})">${PLACE_MEDALS[i] || 'Топ '+(i+1)}</div>`
+                ).join('');
+            } else {
+                tabsEl.style.display = 'none';
+            }
+
+            await _loadNftSlide(0);
+        }
+
+        async function switchPrizeTab(idx) {
+            _modalCurrentIdx = idx;
+            document.querySelectorAll('.nft-prize-tab').forEach((t, i) =>
+                t.classList.toggle('active', i === idx));
+            await _loadNftSlide(idx);
+        }
+
+        async function _loadNftSlide(idx) {
+            const giftUrl = _modalGiftUrls[idx];
+            const spinner = document.getElementById('nft-spinner');
+            const animContainer = document.getElementById('nft-anim-container');
+            const nameEl = document.getElementById('nft-modal-name');
+            const attrsEl = document.getElementById('nft-modal-attrs');
+            const linkEl = document.getElementById('nft-modal-link');
+            const placeLabel = document.getElementById('nft-modal-place-label');
+
+            if (currentLottie) { currentLottie.destroy(); currentLottie = null; }
+            animContainer.innerHTML = '';
+            nameEl.textContent = 'NFT-подарок';
+            attrsEl.innerHTML = '';
+            linkEl.href = giftUrl;
+            spinner.style.display = 'flex';
+            spinner.textContent = 'Загрузка...';
+
+            placeLabel.textContent = _modalGiftUrls.length > 1
+                ? (PLACE_MEDALS[idx] || `Топ ${idx+1}`) + ' · Приз соревнования'
+                : 'Приз соревнования';
+
+            const slug = nftSlugFromUrl(giftUrl);
+            if (!slug) { spinner.textContent = '—'; return; }
+
+            try {
+                const [metaRes, lottieRes] = await Promise.all([
+                    fetch(`${API}/api/nft_meta?slug=${encodeURIComponent(slug)}`),
+                    fetch(`${API}/api/nft_lottie?slug=${encodeURIComponent(slug)}`)
+                ]);
+
+                if (metaRes.ok) {
+                    const meta = await metaRes.json();
+                    if (meta.name) nameEl.textContent = meta.name;
+                    if (meta.attributes?.length) {
+                        attrsEl.innerHTML = meta.attributes.slice(0, 6).map(a =>
+                            `<div class="nft-modal__attr">${a.trait_type}: <span>${a.value}</span></div>`
+                        ).join('');
+                    }
+                }
+
+                if (lottieRes.ok) {
+                    const lottieData = await lottieRes.json();
+                    spinner.style.display = 'none';
+                    currentLottie = lottie.loadAnimation({
+                        container: animContainer,
+                        animationData: lottieData,
+                        renderer: 'canvas',
+                        loop: true, autoplay: true,
+                    });
+                } else throw new Error('no lottie');
+
+            } catch(e) {
+                spinner.style.display = 'none';
+                try {
+                    const lottieRes2 = await fetch(`${API}/api/nft_lottie?slug=${encodeURIComponent(slug)}`);
+                    if (!lottieRes2.ok) throw new Error('no lottie');
+                    const lottieData2 = await lottieRes2.json();
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 180; canvas.height = 180;
+                    canvas.style.cssText = 'width:180px;height:180px;border-radius:18px;';
+                    animContainer.appendChild(canvas);
+                    const tempDiv = document.createElement('div');
+                    tempDiv.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:180px;height:180px;';
+                    document.body.appendChild(tempDiv);
+                    const anim = lottie.loadAnimation({
+                        container: tempDiv, animationData: lottieData2,
+                        renderer: 'canvas', loop: false, autoplay: false,
+                        rendererSettings: { clearCanvas: true }
+                    });
+                    anim.addEventListener('DOMLoaded', () => {
+                        anim.goToAndStop(0, true);
+                        setTimeout(() => {
+                            try {
+                                const src = tempDiv.querySelector('canvas');
+                                if (src) canvas.getContext('2d').drawImage(src, 0, 0, 180, 180);
+                            } catch(_) {}
+                            anim.destroy();
+                            document.body.removeChild(tempDiv);
+                        }, 80);
+                    });
+                } catch(_) {
+                    animContainer.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><img src="icons/shop.png" style="width:80px;height:80px;object-fit:contain;filter:drop-shadow(0 0 24px rgba(188,19,254,0.9));"></div>`;
+                }
+            }
+        }
+
+        function closeNftModal(event) {
+            if (event && event.target !== document.getElementById('nft-modal-overlay')) return;
+            if (currentLottie) { currentLottie.destroy(); currentLottie = null; }
+            document.getElementById('nft-modal-overlay').classList.remove('open');
+        }
+        // Закрытие по свайпу вниз на модале не нужно — пусть работает только крестик и клик снаружи
+
+        async function loadContestBadges() {
+            try {
+                const res = await fetch(`${API}/api/contests/active`);
+                const { contests } = await res.json();
+                if (!contests || !contests.length) return;
+
+                const byGame = {};
+                contests.forEach(c => { if (!byGame[c.game_name]) byGame[c.game_name] = c; });
+
+                document.querySelectorAll('.game-card[data-game]').forEach(card => {
+                    const game = card.dataset.game;
+                    const c = byGame[game];
+                    if (!c) return;
+
+                    card.classList.add('has-contest');
+
+                    // Пульсирующий баннер с таймером
+                    const banner = document.createElement('div');
+                    banner.className = 'contest-banner';
+                    banner.textContent = `⚔️ БОЙ · ${formatTimer(c.seconds_left)}`;
+                    card.appendChild(banner);
+
+                    // Кнопка приза
+                    if (c.prize_type === 'gift' && (c.gift_ids?.length || c.gift_id)) {
+                        const urls = c.gift_ids?.length ? c.gift_ids : [c.gift_id];
+                        const btn = document.createElement('div');
+                        btn.className = 'nft-card-btn';
+                        btn.innerHTML = `<span class="nft-card-btn-dot"></span>NFT-приз${urls.length > 1 ? ' ('+urls.length+')' : ''}`;
+                        btn.addEventListener('click', e => {
+                            e.stopPropagation();
+                            openNftModal(urls);
+                        });
+                        card.appendChild(btn);
+                    } else if (c.prize_type === 'stars' && c.prize_value) {
+                        const starsWrap = document.createElement('div');
+                        starsWrap.style.cssText = 'margin-top:6px;font-family:Orbitron,sans-serif;font-size:7px;color:rgba(255,220,50,0.85);letter-spacing:0.5px;text-align:center;';
+                        starsWrap.textContent = `Приз: ${c.prize_value} звёзд`;
+                        card.appendChild(starsWrap);
+                    }
+                });
+            } catch(e) {}
+        }
+
+        loadContestBadges();
+    </script>
+
+    <div class="nft-modal-overlay" id="nft-modal-overlay" onclick="closeNftModal(event)">
+        <div class="nft-modal" id="nft-modal">
+            <button class="nft-modal__close" onclick="closeNftModal()">✕</button>
+            <div class="nft-prize-tabs" id="nft-prize-tabs" style="display:none;"></div>
+            <div class="nft-modal__anim">
+                <div class="nft-modal__anim-inner" id="nft-anim-container"></div>
+                <div class="nft-modal__spinner" id="nft-spinner">Загрузка...</div>
+            </div>
+            <div class="nft-modal__prize-label" id="nft-modal-place-label">Приз соревнования</div>
+            <div class="nft-modal__name" id="nft-modal-name">NFT-подарок</div>
+            <div class="nft-modal__attrs" id="nft-modal-attrs"></div>
+            <a id="nft-modal-link" href="#" target="_blank" rel="noopener" class="nft-modal__open-btn">
+                Смотреть в Telegram
+            </a>
+        </div>
+    </div>
+
+</body>
+</html>
