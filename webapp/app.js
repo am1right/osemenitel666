@@ -80,7 +80,8 @@ async function loadLeaderboard(gameName) {
     tbody.innerHTML = '<tr><td colspan="3" class="loading">Загрузка...</td></tr>';
     
     try {
-        const response = await fetch(`/api/leaderboard/${gameName}`);
+        const api = window.apiFetch || fetch;
+        const response = await api(`/api/leaderboard/${gameName}`);
         const data = await response.json();
         
         tbody.innerHTML = '';

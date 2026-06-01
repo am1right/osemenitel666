@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Профиль | Chin Games</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="js/api.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <style>
@@ -445,7 +446,8 @@
 
         async function loadContests() {
             try {
-                const res = await fetch(`${API}/api/contests/active`);
+                const api = window.apiFetch || fetch;
+                const res = await api(`${API}/api/contests/active`);
                 if (!res.ok) return;
                 const { contests } = await res.json();
                 if (!contests || contests.length === 0) return;
@@ -528,7 +530,8 @@
             try {
                 const slug = nftSlug(giftUrl);
                 if (!slug) return;
-                const res = await fetch(`${NFT_API}/api/nft_lottie?slug=${encodeURIComponent(slug)}`);
+                const api = window.apiFetch || fetch;
+                const res = await api(`${NFT_API}/api/nft_lottie?slug=${encodeURIComponent(slug)}`);
                 if (!res.ok) return;
                 const lottieData = await res.json();
 
@@ -593,11 +596,12 @@
                 return;
             }
             try {
+                const api = window.apiFetch || fetch;
                 const [mathRes, res2048, snakeRes, flappyRes] = await Promise.all([
-                    fetch(`${API}/api/stats/${user.id}/math`).catch(() => null),
-                    fetch(`${API}/api/stats/${user.id}/2048`).catch(() => null),
-                    fetch(`${API}/api/stats/${user.id}/snake`).catch(() => null),
-                    fetch(`${API}/api/stats/${user.id}/flappy`).catch(() => null)
+                    api(`${API}/api/stats/${user.id}/math`).catch(() => null),
+                    api(`${API}/api/stats/${user.id}/2048`).catch(() => null),
+                    api(`${API}/api/stats/${user.id}/snake`).catch(() => null),
+                    api(`${API}/api/stats/${user.id}/flappy`).catch(() => null)
                 ]);
                 const mathData = mathRes  && mathRes.ok  ? await mathRes.json()  : null;
                 const data2048 = res2048  && res2048.ok  ? await res2048.json()  : null;
@@ -648,7 +652,8 @@
             const el = document.getElementById('wallet-balance');
             if (!userId) { el.textContent = '0'; return; }
             try {
-                const res = await fetch(`${API}/api/wallet/balance?user_id=${userId}`);
+                const api = window.apiFetch || fetch;
+                const res = await api(`${API}/api/wallet/balance?user_id=${userId}`);
                 const data = await res.json();
                 el.textContent = data.balance ?? 0;
             } catch (e) {
@@ -713,7 +718,8 @@
             if (!user) return;
             const refCard = document.getElementById('ref-card');
             try {
-                const flagsRes = await fetch(`${API}/api/user/flags?user_id=${user.id}`);
+                const api = window.apiFetch || fetch;
+                const flagsRes = await api(`${API}/api/user/flags?user_id=${user.id}`);
                 if (flagsRes.ok) {
                     const flags = await flagsRes.json();
                     if (flags.ref_disabled) {
@@ -722,7 +728,7 @@
                     }
                 }
 
-                const res = await fetch(`${API}/api/referral/stats/${user.id}`);
+                const res = await api(`${API}/api/referral/stats/${user.id}`);
                 if (!res.ok) return;
                 const data = await res.json();
 
@@ -852,9 +858,10 @@
             if (!slug) { spinner.textContent = '—'; return; }
 
             try {
+                const api = window.apiFetch || fetch;
                 const [metaRes, lottieRes] = await Promise.all([
-                    fetch(`${NFT_API}/api/nft_meta?slug=${encodeURIComponent(slug)}`),
-                    fetch(`${NFT_API}/api/nft_lottie?slug=${encodeURIComponent(slug)}`)
+                    api(`${NFT_API}/api/nft_meta?slug=${encodeURIComponent(slug)}`),
+                    api(`${NFT_API}/api/nft_lottie?slug=${encodeURIComponent(slug)}`)
                 ]);
                 if (metaRes.ok) {
                     const meta = await metaRes.json();

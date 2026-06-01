@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Snake | Chin Games</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="../js/api.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
@@ -248,7 +249,8 @@
 
             const user = tg?.initDataUnsafe?.user;
             if (user && score > 0) {
-                fetch('/api/save_score', {
+                const api = window.apiFetch || fetch;
+                api('/api/save_score', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
@@ -265,7 +267,8 @@
 
         async function loadMiniLeaderboard() {
             try {
-                const res = await fetch('/api/leaderboard/snake');
+                const api = window.apiFetch || fetch;
+                const res = await api('/api/leaderboard/snake');
                 const data = await res.json();
                 const tbody = document.getElementById('mini-lb-body');
                 tbody.innerHTML = '';

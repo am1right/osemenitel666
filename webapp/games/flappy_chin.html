@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Flappy Chin | Chin Games</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="../js/api.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
@@ -242,7 +243,8 @@
             const userId = tg?.initDataUnsafe?.user?.id;
             if (!userId) return;
             try {
-                const res = await fetch(`${API}/api/stats/${userId}/${GAME_ID}`);
+                const api = window.apiFetch || fetch;
+                const res = await api(`${API}/api/stats/${userId}/${GAME_ID}`);
                 if (!res.ok) return;
                 const data = await res.json();
                 bestScore = data.score || 0;
@@ -254,7 +256,8 @@
             const user = tg?.initDataUnsafe?.user;
             if (!user || finalScore <= 0) return;
             try {
-                await fetch('/api/save_score', {
+                const api = window.apiFetch || fetch;
+                await api('/api/save_score', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -269,7 +272,8 @@
 
         async function loadMiniLeaderboard() {
             try {
-                const res = await fetch(`${API}/api/leaderboard/${GAME_ID}`);
+                const api = window.apiFetch || fetch;
+                const res = await api(`${API}/api/leaderboard/${GAME_ID}`);
                 const data = await res.json();
                 const tbody = document.getElementById('mini-lb-body');
                 tbody.innerHTML = '';

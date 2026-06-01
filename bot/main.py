@@ -30,7 +30,15 @@ BASE_STATIC  = f"{API_BASE}/static"
 WEBAPP_URL   = f"{BASE_STATIC}/index.html?v=2205241"
 
 # ID владельца бота для уведомлений о подозрительной активности
-ADMIN_ID     = int(os.getenv("ADMIN_ID", "0"))
+ADMIN_ID          = int(os.getenv("ADMIN_ID", "0"))
+INTERNAL_SECRET   = os.getenv("INTERNAL_SECRET", "")
+
+
+def _internal_headers() -> dict:
+    """Заголовок для bot→API вызовов, защищённых require_internal."""
+    if not INTERNAL_SECRET:
+        logger.warning("[BOT] INTERNAL_SECRET не задан — confirm-эндпоинты вернут 401")
+    return {"X-Internal-Secret": INTERNAL_SECRET}
 
 # ===================== КЛАВИАТУРЫ =====================
 def get_webapp_keyboard():
@@ -260,6 +268,7 @@ async def successful_payment_handler(update: Update, context: ContextTypes.DEFAU
             if ptype == "wallet":
                 resp = await client.post(
                     f"{API_BASE}/api/wallet/confirm_topup",
+                    headers=_internal_headers(),
                     json={
                         "user_id":    user_id,
                         "amount":     amount,
@@ -280,6 +289,7 @@ async def successful_payment_handler(update: Update, context: ContextTypes.DEFAU
             elif ptype == "energy":
                 resp = await client.post(
                     f"{API_BASE}/api/shop/confirm",
+                    headers=_internal_headers(),
                     json={"user_id": user_id, "amount": amount}
                 )
                 await update.message.reply_text(
@@ -291,6 +301,7 @@ async def successful_payment_handler(update: Update, context: ContextTypes.DEFAU
             elif ptype == "case":
                 resp = await client.post(
                     f"{API_BASE}/api/shop/confirm_case",
+                    headers=_internal_headers(),
                     json={
                         "user_id": user_id,
                         "first_name": user.first_name or "",

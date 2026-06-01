@@ -4,7 +4,7 @@ import logging
 import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import Depends, FastAPI, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -23,6 +23,11 @@ from api.database import (
     CASE_PRICE, grant_case_reward, confirm_case_reward,
     get_case_settings, save_case_settings, get_case_valuable_cooldown_status,
 )
+
+try:
+    from api.tg_auth import require_webapp_user, require_internal
+except ImportError:
+    from tg_auth import require_webapp_user, require_internal
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -74,7 +79,7 @@ def get_bot() -> Bot:
 # ── Scores ─────────────────────────────────────────────────────────
 
 @app.post("/api/save_score")
-async def api_save_score(request: Request):
+async def api_save_score(request: Request, tg_user: dict = Depends(require_webapp_user)):
     try:
         data = await request.json()
         user_id    = data.get("user_id")
@@ -83,6 +88,8 @@ async def api_save_score(request: Request):
         score      = data.get("score")
         if not all([user_id, game_name, score is not None]):
             raise HTTPException(status_code=400, detail="Missing fields")
+        if int(user_id) != int(tg_user["id"]):
+            raise HTTPException(status_code=403, detail="user_id mismatch")
         result = save_score(user_id, first_name, game_name, score)
 
         # ── Реферальная проверка: начислить награду если реферал достиг 3 игр ──
@@ -166,6 +173,8 @@ async def api_create_invoice(request: Request):
 
         if not user_id:
             raise HTTPException(status_code=400, detail="Missing user_id")
+        if int(user_id) != int(tg_user["id"]):
+            raise HTTPException(status_code=403, detail="user_id mismatch")
         if amount <= 0:
             raise HTTPException(status_code=400, detail="Invalid amount")
 
@@ -192,7 +201,7 @@ async def api_create_invoice(request: Request):
 
 
 @app.post("/api/shop/confirm")
-async def api_shop_confirm(request: Request):
+async def api_shop_confirm(request: Request, _: None = Depends(require_internal)):
     try:
         data = await request.json()
         user_id = int(data.get("user_id", 0))
@@ -206,7 +215,7 @@ async def api_shop_confirm(request: Request):
 
 
 @app.post("/api/shop/buy_energy")
-async def api_buy_energy(request: Request):
+async def api_buy_energy(request: Request, tg_user: dict = Depends(require_webapp_user)):
     """
     Покупка энергии с приоритетом внутреннего кошелька.
 
@@ -291,7 +300,7 @@ async def api_shop_case_status():
 
 
 @app.post("/api/shop/buy_case")
-async def api_buy_case(request: Request):
+async def api_buy_case(request: Request, tg_user: dict = Depends(require_webapp_user)):
     """Покупка случайного кейса за Stars (кошелёк или invoice)."""
     try:
         data = await request.json()
@@ -301,6 +310,8 @@ async def api_buy_case(request: Request):
 
         if not user_id:
             raise HTTPException(status_code=400, detail="Missing user_id")
+        if int(user_id) != int(tg_user["id"]):
+            raise HTTPException(status_code=403, detail="user_id mismatch")
         if stars != CASE_PRICE:
             raise HTTPException(status_code=400, detail=f"Invalid price. Expected: {CASE_PRICE}")
 
@@ -351,7 +362,7 @@ async def api_buy_case(request: Request):
 
 
 @app.post("/api/shop/confirm_case")
-async def api_confirm_case(request: Request):
+async def api_confirm_case(request: Request, _: None = Depends(require_internal)):
     """Выдача награды после оплаты кейса через Telegram Invoice."""
     try:
         data = await request.json()
@@ -388,23 +399,27 @@ async def api_energy_balance(user_id: int):
 
 
 @app.post("/api/energy/add")
-async def api_energy_add(request: Request):
+async def api_energy_add(request: Request, tg_user: dict = Depends(require_webapp_user)):
     """Добавить энергию после покупки в магазине."""
     data = await request.json()
     user_id = int(data.get("user_id", 0))
     amount = int(data.get("amount", 0))
     if not user_id or amount <= 0 or amount > 100:
         raise HTTPException(status_code=400, detail="Invalid user_id or amount")
+    if user_id != int(tg_user["id"]):
+        raise HTTPException(status_code=403, detail="user_id mismatch")
     return admin_adjust_energy(user_id, amount)
 
 
 @app.post("/api/energy/spend")
-async def api_energy_spend(request: Request):
+async def api_energy_spend(request: Request, tg_user: dict = Depends(require_webapp_user)):
     data = await request.json()
     user_id = int(data.get("user_id", 0))
     cost = int(data.get("cost", 1))
     if not user_id or cost <= 0:
         raise HTTPException(status_code=400, detail="Invalid user_id or cost")
+    if user_id != int(tg_user["id"]):
+        raise HTTPException(status_code=403, detail="user_id mismatch")
     result = spend_energy(user_id, cost)
     if not result["ok"]:
         raise HTTPException(status_code=400, detail="Not enough energy")
@@ -443,7 +458,7 @@ async def api_wallet_create_topup_invoice(request: Request):
 
 
 @app.post("/api/wallet/confirm_topup")
-async def api_wallet_confirm_topup(request: Request):
+async def api_wallet_confirm_topup(request: Request, _: None = Depends(require_internal)):
     try:
         data       = await request.json()
         user_id    = data.get("user_id")
@@ -467,7 +482,7 @@ async def api_wallet_confirm_topup(request: Request):
 
 
 @app.post("/api/wallet/spend")
-async def api_wallet_spend(request: Request):
+async def api_wallet_spend(request: Request, tg_user: dict = Depends(require_webapp_user)):
     try:
         data        = await request.json()
         user_id     = data.get("user_id")
@@ -475,6 +490,8 @@ async def api_wallet_spend(request: Request):
         description = data.get("description") or "Покупка"
         if not user_id or amount < 1:
             raise HTTPException(status_code=400, detail="Некорректные данные")
+        if int(user_id) != int(tg_user["id"]):
+            raise HTTPException(status_code=403, detail="user_id mismatch")
         return spend_wallet(user_id, amount, description)
     except HTTPException:
         raise

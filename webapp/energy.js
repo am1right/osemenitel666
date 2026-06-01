@@ -101,7 +101,8 @@ const Energy = (() => {
         const userId = _getUserId();
         if (!userId) return null;
         try {
-            const res = await fetch(`${API}/api/energy/balance?user_id=${userId}`);
+            const api = window.apiFetch || fetch;
+            const res = await api(`${API}/api/energy/balance?user_id=${userId}`);
             if (!res.ok) return null;
             const d = await res.json();
             _save({ amount: d.amount, lastRegen: d.last_regen });
@@ -114,7 +115,8 @@ const Energy = (() => {
     function spend(cost = 1) {
         const userId = _getUserId();
         if (userId) {
-            fetch(`${API}/api/energy/spend`, {
+            const api = window.apiFetch || fetch;
+            api(`${API}/api/energy/spend`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: userId, cost }),

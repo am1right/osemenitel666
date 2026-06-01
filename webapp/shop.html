@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Магазин — Chin Games</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="js/api.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
@@ -1234,7 +1235,8 @@
             const el = document.getElementById('case-cooldown-hint');
             if (!el) return;
             try {
-                const res = await fetch('/api/shop/case/status');
+                const api = window.apiFetch || fetch;
+                const res = await api('/api/shop/case/status');
                 const d = await res.json();
                 if (d.on_cooldown && d.seconds_left > 0) {
                     el.style.display = 'block';
@@ -1283,9 +1285,10 @@
             if (!slug) { spinner.textContent = '—'; return; }
 
             try {
+                const api = window.apiFetch || fetch;
                 const [metaRes, lottieRes] = await Promise.all([
-                    fetch(`${SHOP_API}/api/nft_meta?slug=${encodeURIComponent(slug)}`),
-                    fetch(`${SHOP_API}/api/nft_lottie?slug=${encodeURIComponent(slug)}`),
+                    api(`${SHOP_API}/api/nft_meta?slug=${encodeURIComponent(slug)}`),
+                    api(`${SHOP_API}/api/nft_lottie?slug=${encodeURIComponent(slug)}`),
                 ]);
                 if (metaRes.ok) {
                     const meta = await metaRes.json();
@@ -1353,7 +1356,8 @@
 
             let resp;
             try {
-                const res = await fetch('/api/shop/buy_case', {
+                const api = window.apiFetch || fetch;
+                const res = await api('/api/shop/buy_case', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1388,7 +1392,8 @@
                 tg.openInvoice(resp.invoice_url, async (status) => {
                     if (status === 'paid') {
                         try {
-                            const res = await fetch('/api/shop/confirm_case', {
+                            const api = window.apiFetch || fetch;
+                            const res = await api('/api/shop/confirm_case', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
@@ -1449,7 +1454,8 @@
             // Запрашиваем у бэкенда — кошелёк или invoice?
             let resp;
             try {
-                const res = await fetch('/api/shop/buy_energy', {
+                const api = window.apiFetch || fetch;
+                const res = await api('/api/shop/buy_energy', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1495,7 +1501,8 @@
                         showToast(`✅ +${realAmount} энергии добавлено!`, 'success');
 
                         // Уведомляем бэкенд (логирование)
-                        fetch('/api/shop/confirm', {
+                        const api = window.apiFetch || fetch;
+                        api('/api/shop/confirm', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ user_id: userId, amount: realAmount })
@@ -1528,7 +1535,8 @@
 
             const userId = tg.initDataUnsafe?.user?.id;
             if (userId) {
-                fetch('/api/energy/add', {
+                const api = window.apiFetch || fetch;
+                api('/api/energy/add', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ user_id: userId, amount })
@@ -1546,7 +1554,8 @@
                 return;
             }
             try {
-                const res = await fetch(`/api/wallet/balance?user_id=${userId}`);
+                const api = window.apiFetch || fetch;
+                const res = await api(`/api/wallet/balance?user_id=${userId}`);
                 const data = await res.json();
                 _walletBalance = data.balance ?? 0;
                 document.getElementById('walletBalance').textContent = _walletBalance;
@@ -1597,7 +1606,8 @@
             // Создаём инвойс для пополнения кошелька
             let invoiceUrl;
             try {
-                const res = await fetch('/api/wallet/create_topup_invoice', {
+                const api = window.apiFetch || fetch;
+                const res = await api('/api/wallet/create_topup_invoice', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1624,7 +1634,8 @@
                 if (status === 'paid') {
                     // Подтверждаем пополнение на бэкенде
                     try {
-                        const confirmRes = await fetch('/api/wallet/confirm_topup', {
+                        const api = window.apiFetch || fetch;
+                        const confirmRes = await api('/api/wallet/confirm_topup', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ user_id: userId, amount: amount })
