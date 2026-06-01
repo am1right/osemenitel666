@@ -23,6 +23,7 @@
             padding: 16px;
             padding-top: 90px; /* базовый отступ, JS подкрутит под safe area */
             padding-bottom: 100px;
+            overflow-x: hidden;
         }
 
         .header {
@@ -846,6 +847,38 @@
             }
         }
 
+        /* Мобильные улучшения для комнаты ожидания */
+        @media (max-width: 400px) {
+            #waiting-room-view .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            
+            #waiting-room-view .header h1 {
+                font-size: 1.4rem;
+            }
+            
+            #waiting-room-view .lobby-card {
+                padding: 10px 12px;
+                font-size: 0.9rem;
+            }
+            
+            #invite-section button {
+                font-size: 0.9rem !important;
+                padding: 8px 14px !important;
+            }
+            
+            #waiting-room-view {
+                padding-bottom: 20px;
+                overflow-x: hidden;
+            }
+            
+            .durak-container {
+                overflow-x: hidden;
+            }
+        }
+
         /* Пипсы (масти) для 2-10 */
         .real-durak-card .pips-container {
             position: absolute;
@@ -900,18 +933,18 @@
         <div id="waiting-room-view" style="display: none;">
             <div class="header">
                 <h1>🃏 Комната ожидания</h1>
-                <div style="display: flex; gap: 8px;">
+                <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
                     <button id="edit-settings-btn" onclick="openEditSettingsModal()" 
-                            style="background:#3a2a6e; color:#ccc; border:1px solid #6655aa; padding:8px 14px; border-radius:8px; display:none;">
+                            style="background:#3a2a6e; color:#ccc; border:1px solid #6655aa; padding:6px 10px; border-radius:8px; display:none; font-size:0.85rem;">
                         ⚙ Настройки
                     </button>
 
                     <button onclick="inviteToCurrentLobby()" 
-                            style="background:#a31bb8; color:#000; border:none; padding:8px 16px; border-radius:8px; font-weight:600;">
+                            style="background:#a31bb8; color:#000; border:none; padding:6px 10px; border-radius:8px; font-weight:600; font-size:0.85rem;">
                         ➕ Пригласить
                     </button>
 
-                    <button onclick="leaveCurrentLobby()" style="background:#ff4466; color:white; border:none; padding:8px 16px; border-radius:8px;">
+                    <button onclick="leaveCurrentLobby()" style="background:#ff4466; color:white; border:none; padding:6px 10px; border-radius:8px; font-size:0.85rem;">
                         Выйти
                     </button>
                 </div>
@@ -927,14 +960,17 @@
                         style="background: linear-gradient(90deg, #a31bb8, #d122e3); 
                                color: #000; 
                                border: none; 
-                               padding: 12px 28px; 
+                               padding: 10px 16px; 
                                border-radius: 999px; 
                                font-weight: 700;
-                               font-size: 1rem;
-                               box-shadow: 0 4px 12px rgba(209, 34, 227, 0.3);">
+                               font-size: 0.95rem;
+                               box-shadow: 0 4px 12px rgba(209, 34, 227, 0.3);
+                               max-width: 100%;
+                               white-space: normal;
+                               line-height: 1.2;">
                     ➕ Пригласить друзей в это лобби
                 </button>
-                <div style="font-size: 0.75rem; color: #888; margin-top: 6px;">
+                <div style="font-size: 0.72rem; color: #888; margin-top: 6px;">
                     Ссылка приведёт друга прямо в это лобби
                 </div>
             </div>
