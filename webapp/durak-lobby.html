@@ -901,7 +901,6 @@
 
                 // Показываем кнопку "Начать" только создателю
                 const startBtn = document.getElementById('start-btn');
-                const creatorId = currentLobbyData?.creator_id;
                 const allReady = players.length >= 2 && players.every(p => p.is_ready);
                 const isCreator = currentUserId === creatorId;
 
