@@ -118,175 +118,295 @@
             color: #00ff88;
         }
 
-        /* ========== DURAK IN-GAME STYLES (Этап 3 → 4) ========== */
+        /* ========== DURAK GAME UI - ЗОНЫ ИНТЕРФЕЙСА ========== */
         .durak-game-board {
-            background: rgba(20, 16, 40, 0.85);
-            border: 1px solid rgba(0, 255, 136, 0.25);
-            border-radius: 14px;
-            padding: 12px;
-            margin-bottom: 12px;
+            background: #0f0c24;
+            border: 2px solid #2a2550;
+            border-radius: 16px;
+            padding: 8px;
+            margin-bottom: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
         }
 
-        .durak-info-bar {
+        /* 1. Верхняя панель (Header) */
+        .durak-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #0a0818;
-            border-radius: 8px;
-            padding: 6px 10px;
-            margin-bottom: 10px;
-            font-size: 0.85rem;
+            background: #1a1633;
+            border-radius: 12px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border: 1px solid #3a3560;
         }
 
-        .durak-role {
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .player-balance {
+            background: #2a2550;
+            color: #ffdd55;
             font-weight: 700;
-            padding: 2px 10px;
+            padding: 4px 12px;
             border-radius: 999px;
-            font-size: 0.8rem;
-        }
-        .durak-role.attacker { background: #ff4466; color: white; }
-        .durak-role.defender { background: #3a9cff; color: white; }
-        .durak-role.participant { background: #6644aa; color: #ddd; }
-
-        .durak-trump {
-            display: inline-flex;
+            font-size: 0.95rem;
+            display: flex;
             align-items: center;
             gap: 4px;
-            background: #1a1433;
-            padding: 2px 8px;
-            border-radius: 6px;
-            font-size: 0.9rem;
         }
 
-        .durak-table {
-            min-height: 110px;
-            background: #11102a;
-            border: 2px dashed rgba(0,255,136,0.3);
-            border-radius: 10px;
-            padding: 10px;
-            margin-bottom: 12px;
+        .opponent-avatars {
+            display: flex;
+            gap: 6px;
+        }
+
+        .opponent-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #3a3560;
+            border: 2px solid #00ff88;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+            overflow: hidden;
+        }
+
+        .opponent-avatar.defending {
+            border-color: #3a9cff;
+            box-shadow: 0 0 0 3px rgba(58, 156, 255, 0.3);
+        }
+
+        .opponent-avatar.attacking {
+            border-color: #ff4466;
+            box-shadow: 0 0 0 3px rgba(255, 68, 102, 0.3);
+        }
+
+        .turn-indicator {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: #2a2550;
+            color: #aaa;
+            white-space: nowrap;
+        }
+
+        /* 2. Игровое поле (Table) */
+        .durak-table-area {
+            background: #16133a;
+            border: 3px solid #3a3560;
+            border-radius: 14px;
+            min-height: 160px;
+            padding: 12px;
+            margin-bottom: 8px;
             position: relative;
         }
 
-        .durak-table-label {
+        .table-label {
             position: absolute;
-            top: -8px;
-            left: 12px;
-            background: #0d0b22;
-            padding: 0 6px;
+            top: -9px;
+            left: 16px;
+            background: #0f0c24;
+            padding: 0 8px;
             font-size: 0.7rem;
             color: #00cc88;
+            font-weight: 600;
         }
 
-        .durak-table-row {
+        /* Противник - карты рубашкой */
+        .opponent-cards {
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            margin-bottom: 10px;
+            min-height: 42px;
+        }
+
+        .card-back {
+            width: 32px;
+            height: 44px;
+            background: linear-gradient(145deg, #2a2550, #1a1633);
+            border: 2px solid #4a4570;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #665f9e;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        /* Центральная зона стола - 2 ряда */
+        .play-zone {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-height: 90px;
+        }
+
+        .play-row {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 6px;
+            gap: 6px;
+            justify-content: center;
+            min-height: 42px;
         }
-        .durak-table-row:last-child { margin-bottom: 0; }
 
+        .play-row-label {
+            font-size: 0.65rem;
+            color: #665f9e;
+            width: 100%;
+            text-align: center;
+            margin-bottom: 2px;
+        }
+
+        /* Улучшенные карты */
         .durak-card {
-            width: 48px;
-            height: 68px;
-            background: linear-gradient(145deg, #f8f1e3 0%, #e8d9b8 100%);
+            width: 42px;
+            height: 58px;
+            background: linear-gradient(145deg, #f4e9d8 0%, #e8d9b8 100%);
             border: 2px solid #3a2a1a;
-            border-radius: 6px;
+            border-radius: 5px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-family: 'Orbitron', monospace;
-            font-size: 15px;
+            font-family: system-ui, -apple-system, sans-serif;
+            font-size: 13px;
             font-weight: 700;
             color: #1a1208;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.6);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.7);
             cursor: pointer;
             user-select: none;
             transition: transform 0.1s ease, box-shadow 0.1s;
             position: relative;
         }
         .durak-card:hover {
-            transform: translateY(-3px) scale(1.03);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            transform: translateY(-4px);
+            box-shadow: 0 5px 10px rgba(0,0,0,0.5);
         }
         .durak-card.selected {
             border-color: #00ff88;
-            box-shadow: 0 0 0 3px rgba(0,255,136,0.5);
-            transform: translateY(-4px);
+            box-shadow: 0 0 0 3px rgba(0,255,136,0.6);
+            transform: translateY(-5px);
         }
         .durak-card.attack {
             border-color: #ff4466;
-            box-shadow: 0 0 0 2px rgba(255,68,102,0.4);
+            box-shadow: 0 0 0 3px rgba(255,68,102,0.35);
         }
         .durak-card.beat {
             border-color: #3a9cff;
-            box-shadow: 0 0 0 2px rgba(58,156,255,0.4);
+            box-shadow: 0 0 0 3px rgba(58,156,255,0.35);
         }
-        .durak-card.disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-            filter: grayscale(0.3);
+        .durak-card .rank {
+            font-size: 15px;
+            line-height: 1;
+            font-weight: 800;
         }
         .durak-card .suit {
-            font-size: 18px;
+            font-size: 16px;
             line-height: 1;
+            margin-top: -2px;
         }
         .durak-card.red { color: #c62828; }
-        .durak-card.black { color: #1a1a1a; }
+        .durak-card.black { color: #1f1f1f; }
 
-        .durak-hand {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            min-height: 76px;
+        /* 4. Карты игрока */
+        .player-hand-zone {
+            background: #1a1633;
+            border-radius: 12px;
             padding: 8px;
-            background: rgba(0,0,0,0.25);
-            border-radius: 10px;
-            justify-content: center;
+            margin-bottom: 8px;
         }
 
-        .durak-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 8px;
-        }
-
-        .durak-action-btn {
-            flex: 1;
-            min-width: 110px;
-            padding: 10px 14px;
-            border: none;
-            border-radius: 999px;
-            font-weight: 700;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: all 0.1s;
-        }
-        .durak-action-btn.primary {
-            background: linear-gradient(90deg, #00ff88, #00cc6a);
-            color: #000;
-        }
-        .durak-action-btn.danger {
-            background: #ff4466;
-            color: white;
-        }
-        .durak-action-btn.secondary {
-            background: rgba(255,255,255,0.1);
-            color: #ddd;
-            border: 1px solid rgba(255,255,255,0.3);
-        }
-        .durak-action-btn:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-
-        .durak-status {
-            font-size: 0.8rem;
-            color: #888;
+        .player-hand-label {
+            font-size: 0.7rem;
+            color: #665f9e;
+            margin-bottom: 4px;
             text-align: center;
-            margin: 4px 0;
+        }
+
+        .player-hand {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            justify-content: center;
+            min-height: 64px;
+        }
+
+        /* 5. Нижняя панель действий */
+        .durak-bottom-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #1a1633;
+            border-radius: 12px;
+            padding: 6px 10px;
+            gap: 8px;
+        }
+
+        .btn-take {
+            flex: 1;
+            background: #c62828;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 999px;
+            font-weight: 800;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 3px 8px rgba(198, 40, 40, 0.4);
+        }
+
+        .btn-take:active {
+            transform: scale(0.96);
+        }
+
+        .action-right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .action-icon {
+            width: 32px;
+            height: 32px;
+            background: #2a2550;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            cursor: pointer;
+            border: 1px solid #3a3560;
+        }
+
+        .dynamic-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-dynamic {
+            background: #2a2550;
+            color: #ddd;
+            border: 1px solid #4a4570;
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-dynamic.primary {
+            background: #00cc6a;
+            color: #000;
+            border-color: #00ff88;
         }
     </style>
 </head>
@@ -355,44 +475,62 @@
                     <div id="game-room-content">
                         <!-- Real Durak game board (populated by JS) -->
                         <div id="durak-game-board" class="durak-game-board" style="display:none;">
-                            <div class="durak-info-bar">
+
+                            <!-- 1. Верхняя панель -->
+                            <div class="durak-header">
+                                <div class="header-left">
+                                    <div class="player-balance">
+                                        ⭐ <span id="durak-balance">0</span>
+                                    </div>
+                                    <div class="opponent-avatars" id="durak-opponent-avatars"></div>
+                                </div>
                                 <div>
                                     <span id="durak-role-badge" class="durak-role">—</span>
-                                    <span id="durak-phase" style="margin-left:8px; color:#aaa; font-size:0.8rem;"></span>
-                                </div>
-                                <div>
-                                    <span class="durak-trump">
-                                        Козырь: <span id="durak-trump-suit">—</span>
-                                    </span>
-                                    <span style="margin-left:8px; font-size:0.75rem; color:#888;">
-                                        Колодa: <span id="durak-deck">—</span>
-                                    </span>
+                                    <div id="durak-turn-indicator" class="turn-indicator">Ожидание...</div>
                                 </div>
                             </div>
 
-                            <!-- Table -->
-                            <div class="durak-table">
-                                <div class="durak-table-label">СТОЛ</div>
-                                <div id="durak-table-attacks" class="durak-table-row" style="min-height:32px;"></div>
-                                <div id="durak-table-beats" class="durak-table-row" style="min-height:32px; opacity:0.9;"></div>
+                            <!-- 2. Игровое поле + 3. Карты противника -->
+                            <div class="durak-table-area">
+                                <div class="table-label">ИГРОВОЕ ПОЛЕ</div>
+
+                                <!-- Карты противника рубашкой -->
+                                <div class="opponent-cards" id="durak-opponent-cards"></div>
+
+                                <div class="play-zone">
+                                    <div>
+                                        <div class="play-row-label">АТАКА</div>
+                                        <div id="durak-table-attacks" class="play-row"></div>
+                                    </div>
+                                    <div>
+                                        <div class="play-row-label">ОТБОЙ</div>
+                                        <div id="durak-table-beats" class="play-row"></div>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div id="durak-status-line" class="durak-status"></div>
+                            <div id="durak-status-line" style="font-size:0.72rem; color:#888; text-align:center; margin:4px 0;"></div>
 
-                            <!-- Player's hand -->
-                            <div style="font-size:0.75rem; color:#888; margin-bottom:4px;">Ваша рука</div>
-                            <div id="durak-hand" class="durak-hand"></div>
-
-                            <!-- Action buttons (dynamic from allowed_actions) -->
-                            <div id="durak-actions" class="durak-actions"></div>
-
-                            <!-- Testing helper -->
-                            <div style="margin-top: 10px; text-align: right;">
-                                <button onclick="if (typeof fetchAndRenderDurakState === 'function') fetchAndRenderDurakState()"
-                                        style="font-size: 0.75rem; padding: 4px 10px; background: #222; color: #0f0; border: 1px solid #0a0; border-radius: 6px; cursor: pointer;">
-                                    ⟳ Обновить состояние (тест)
-                                </button>
+                            <!-- 4. Карты игрока -->
+                            <div class="player-hand-zone">
+                                <div class="player-hand-label">ВАШИ КАРТЫ</div>
+                                <div id="durak-hand" class="player-hand"></div>
                             </div>
+
+                            <!-- 5. Нижняя панель действий -->
+                            <div class="durak-bottom-bar">
+                                <button id="btn-take" class="btn-take" style="display:none;">БЕРУ</button>
+
+                                <div class="action-right">
+                                    <div id="durak-actions" class="dynamic-actions"></div>
+
+                                    <div class="action-icon" title="Чат">💬</div>
+                                    <div class="action-icon" title="Эмоции">😊</div>
+                                    <div class="action-icon" title="Настройки">⚙️</div>
+                                    <div class="action-icon" title="Выйти" onclick="if(confirm('Выйти из игры?')) exitWaitingRoom();">🚪</div>
+                                </div>
+                            </div>
+
                         </div>
 
                         <!-- Fallback / loading state -->
@@ -1866,7 +2004,8 @@
         // ============================================================
         let currentGameState = null;
         let durakGamePollingInterval = null;
-        let selectedBeatAttackCard = null;   // для двухшагового отбива
+        let selectedBeatAttackCard = null;   // для двухшагового отбива (fallback)
+        let currentLegalBeats = [];          // от сервера: [{attack: "...", beat: "..."}, ...] для текущего viewer'а
 
         function stopDurakGamePolling() {
             if (durakGamePollingInterval) {
@@ -1892,7 +2031,20 @@
             const suit = cardStr.slice(-1);
             const isRed = (suit === '♥' || suit === '♦');
             const colorClass = isRed ? 'red' : 'black';
-            return `<div class="durak-card ${colorClass}"><div>${rank}</div><div class="suit">${suit}</div></div>`;
+
+            // Красивый вывод ранга
+            let displayRank = rank;
+            if (rank === 'J') displayRank = 'В';
+            if (rank === 'Q') displayRank = 'Д';
+            if (rank === 'K') displayRank = 'К';
+            if (rank === 'A') displayRank = 'Т';
+
+            return `
+                <div class="durak-card ${colorClass}">
+                    <div class="rank">${displayRank}</div>
+                    <div class="suit">${suit}</div>
+                </div>
+            `;
         }
 
         async function fetchAndRenderDurakState() {
@@ -1947,11 +2099,14 @@
             // Table
             renderTable(state.table || []);
 
-            // Status line
+            // Status line — даём понятные подсказки
             const statusLine = document.getElementById('durak-status-line');
             if (statusLine) {
                 if (state.game_over) {
                     statusLine.innerHTML = `<strong style="color:#ffaa00">ИГРА ЗАВЕРШЕНА</strong> — Победитель: ${state.winner || '?'}`;
+                } else if (state.role === 'defender' && state.attack_in_progress) {
+                    const unbeaten = (state.table || []).filter(p => !p.beat).length;
+                    statusLine.innerHTML = `Ваш ход защищаться. ${unbeaten > 0 ? 'Кликните карту на столе → карту из руки.' : ''}`;
                 } else if (state.attack_finished) {
                     statusLine.textContent = 'Раунд завершён. Ожидание следующего хода...';
                 } else {
@@ -1965,10 +2120,19 @@
                 handContainer.innerHTML = '';
                 const myHand = Array.isArray(state.hands?.[currentUserId]) ? state.hands[currentUserId] : [];
                 const allowed = state.allowed_actions || [];
+                const isDefender = state.role === 'defender';
 
                 myHand.forEach(cardStr => {
                     const cardDiv = document.createElement('div');
                     cardDiv.className = 'durak-card';
+
+                    // Для защитника — подсвечиваем карты, которыми можно отбить (по данным сервера)
+                    if (isDefender && currentLegalBeats.some(lb => lb.beat === cardStr)) {
+                        cardDiv.classList.add('beat');           // синяя рамка как у отбитых
+                        cardDiv.style.cursor = 'pointer';
+                        cardDiv.title = 'Можно использовать для отбива';
+                    }
+
                     cardDiv.innerHTML = cardToHtml(cardStr).replace('durak-card', '');
                     cardDiv.onclick = () => onDurakCardClick(cardStr, allowed);
                     handContainer.appendChild(cardDiv);
@@ -1978,6 +2142,9 @@
                     handContainer.innerHTML = '<div style="color:#666; padding:12px;">Карт нет</div>';
                 }
             }
+
+            // Сохраняем legal_beats от сервера (очень полезно для отбива)
+            currentLegalBeats = state.legal_beats || [];
 
             // Action buttons
             renderDurakActionButtons(state.allowed_actions || [], state);
@@ -2001,10 +2168,20 @@
             attacksEl.innerHTML = '';
             beatsEl.innerHTML = '';
 
+            const isDefender = currentGameState && currentGameState.role === 'defender';
+
             table.forEach(pair => {
                 // Attack card
                 const atkDiv = document.createElement('div');
                 atkDiv.className = 'durak-card attack';
+
+                // Если мы защищаемся — делаем неприбитые карты более заметными
+                if (isDefender && !pair.beat) {
+                    atkDiv.style.border = '3px solid #3a9cff';
+                    atkDiv.style.boxShadow = '0 0 0 4px rgba(58, 156, 255, 0.25)';
+                    atkDiv.title = 'Кликните, чтобы выбрать для отбива';
+                }
+
                 atkDiv.innerHTML = cardToHtml(pair.attack).replace('durak-card', '');
                 atkDiv.onclick = () => onTableAttackClick(pair.attack);
                 attacksEl.appendChild(atkDiv);
@@ -2016,7 +2193,7 @@
                     btDiv.innerHTML = cardToHtml(pair.beat).replace('durak-card', '');
                 } else {
                     btDiv.className = 'durak-card';
-                    btDiv.style.opacity = '0.3';
+                    btDiv.style.opacity = '0.25';
                     btDiv.innerHTML = '<div style="font-size:10px;color:#666">—</div>';
                 }
                 beatsEl.appendChild(btDiv);
@@ -2025,39 +2202,38 @@
 
         function renderDurakActionButtons(allowed, state) {
             const container = document.getElementById('durak-actions');
-            if (!container) return;
+            const takeBtn = document.getElementById('btn-take');
+            if (!container || !takeBtn) return;
+
             container.innerHTML = '';
+            takeBtn.style.display = 'none';
 
             const canTake = allowed.includes('take_table');
             const canFinish = allowed.includes('finish_attack');
-            const canAttackOrThrow = allowed.includes('attack') || allowed.includes('throw_in');
+            const canAttack = allowed.includes('attack') || allowed.includes('throw_in');
 
             if (canTake) {
-                const btn = document.createElement('button');
-                btn.className = 'durak-action-btn danger';
-                btn.textContent = 'ВЗЯТЬ';
-                btn.onclick = () => performDurakAction('take_table');
-                container.appendChild(btn);
+                takeBtn.style.display = 'block';
+                takeBtn.onclick = () => performDurakAction('take_table');
             }
 
             if (canFinish) {
-                const btn = document.createElement('button');
-                btn.className = 'durak-action-btn primary';
-                btn.textContent = 'БИТО';
-                btn.onclick = () => performDurakAction('finish_attack');
-                container.appendChild(btn);
+                const b = document.createElement('button');
+                b.className = 'btn-dynamic primary';
+                b.textContent = 'БИТО';
+                b.onclick = () => performDurakAction('finish_attack');
+                container.appendChild(b);
             }
 
-            if (!canTake && !canFinish && !canAttackOrThrow && !state.game_over) {
-                const hint = document.createElement('div');
-                hint.style.cssText = 'width:100%; text-align:center; font-size:0.8rem; color:#666; padding:6px;';
-                hint.textContent = 'Ожидание хода других игроков...';
-                container.appendChild(hint);
-            }
-
-            // Reset beat selection helper
-            if (!canTake && selectedBeatAttackCard) {
-                selectedBeatAttackCard = null;
+            if (canAttack && !canTake) {
+                const b = document.createElement('button');
+                b.className = 'btn-dynamic';
+                b.textContent = 'Подкинуть';
+                b.onclick = () => {
+                    // Можно улучшить: открыть выбор карты
+                    showLobbyNotification('Кликните карту в руке, чтобы подкинуть', 'info');
+                };
+                container.appendChild(b);
             }
         }
 
@@ -2122,18 +2298,42 @@
                 return;
             }
 
-            // Если мы защитник и выбрали карту для отбива
-            if (selectedBeatAttackCard) {
-                performDurakAction('beat', {
-                    attack_card: selectedBeatAttackCard,
-                    beat_card: cardStr
-                });
-                selectedBeatAttackCard = null;
-                // визуально сбрасываем выделение на столе (простой способ)
-                document.querySelectorAll('#durak-table-attacks .durak-card').forEach(el => el.classList.remove('selected'));
-            } else {
-                showLobbyNotification('Сначала выберите карту на столе для отбива', 'info');
+            // === ЗАЩИТНИК: умный отбой с использованием legal_beats от сервера ===
+            if (allowedActions.includes('beat') || allowedActions.includes('take_table')) {
+                // Ищем, этой картой можно отбить какие-то атаки по данным сервера
+                const possibleBeats = currentLegalBeats.filter(lb => lb.beat === cardStr);
+
+                if (possibleBeats.length > 0) {
+                    // Берём первую возможную (обычно достаточно)
+                    const targetAttack = possibleBeats[0].attack;
+
+                    performDurakAction('beat', {
+                        attack_card: targetAttack,
+                        beat_card: cardStr
+                    });
+                    selectedBeatAttackCard = null;
+                    document.querySelectorAll('#durak-table-attacks .durak-card').forEach(el => el.classList.remove('selected'));
+                    return;
+                }
+
+                // Fallback на старый двухшаговый выбор (если вдруг legal_beats пустой)
+                if (selectedBeatAttackCard) {
+                    performDurakAction('beat', {
+                        attack_card: selectedBeatAttackCard,
+                        beat_card: cardStr
+                    });
+                    selectedBeatAttackCard = null;
+                    document.querySelectorAll('#durak-table-attacks .durak-card').forEach(el => el.classList.remove('selected'));
+                    return;
+                }
+
+                // Нет легальных битов этой картой и не выбран attack
+                showLobbyNotification('Эта карта не подходит для отбива текущих карт на столе', 'info');
+                return;
             }
+
+            // Если дошли сюда — карта вообще не для текущего хода
+            showLobbyNotification('Сейчас нельзя использовать эту карту', 'info');
         }
 
         function onTableAttackClick(attackCardStr) {
@@ -2144,7 +2344,7 @@
                 return;
             }
 
-            // Выбираем карту для отбива
+            // Выбираем карту для отбива (fallback)
             selectedBeatAttackCard = attackCardStr;
 
             // Визуальное выделение
@@ -2155,7 +2355,7 @@
                 }
             });
 
-            showLobbyNotification(`Выбрана карта для отбива: ${attackCardStr}. Теперь кликните карту из руки.`, 'info');
+            showLobbyNotification(`Выбрана карта для отбива. Теперь кликните подходящую карту из руки.`, 'info');
         }
 
         function showDurakGameBoard() {
