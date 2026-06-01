@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Дурак Онлайн — Chin Games</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            background: linear-gradient(180deg, #0d081a 0%, #120b2e 100%);
+            color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .durak-container {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 16px;
+            padding-bottom: 100px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8rem;
+            margin: 0;
+            background: linear-gradient(90deg, #00ff88, #00cc6a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .create-btn {
+            background: linear-gradient(90deg, #00ff88, #00cc6a);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 999px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+
+        .lobby-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .lobby-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(0, 255, 136, 0.25);
+            border-radius: 14px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .lobby-info h3 {
+            margin: 0 0 4px;
+            font-size: 1.1rem;
+        }
+
+        .lobby-meta {
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.6);
+        }
+
+        .join-btn {
+            background: rgba(0, 255, 136, 0.15);
+            color: #00ff88;
+            border: 1px solid #00ff88;
+            padding: 8px 18px;
+            border-radius: 999px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255,255,255,0.5);
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 6px 14px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 999px;
+            font-size: 0.85rem;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        .filter-btn.active {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: #00ff88;
+            color: #00ff88;
+        }
+    </style>
+</head>
+<body>
+    <div class="durak-container">
+
+        <!-- ================== СПИСОК ЛОББИ ================== -->
+        <div id="lobby-list-view">
+            <div class="header">
+                <h1>🃏 Дурак Онлайн</h1>
+                <button class="create-btn" onclick="openCreateLobbyModal()">+ Создать лобби</button>
+            </div>
+
+            <div class="filter-bar">
+                <div class="filter-btn active" onclick="applyFilter('all')">Все</div>
+                <div class="filter-btn" onclick="applyFilter('small')">2-3 игрока</div>
+                <div class="filter-btn" onclick="applyFilter('large')">4-6 игроков</div>
+                <div class="filter-btn" onclick="applyFilter('bet')">Со ставкой</div>
+            </div>
+
+            <div id="lobby-list" class="lobby-list">
+                <!-- Лобби подгружаются сюда -->
+            </div>
+
+            <div id="empty-state" class="empty-state" style="display:none;">
+                <p>Пока нет открытых лобби.<br>Создай своё!</p>
+            </div>
+        </div>
+
+        <!-- ================== КОМНАТА ОЖИДАНИЯ ================== -->
+        <div id="waiting-room-view" style="display: none;">
+            <div class="header">
+                <h1>🃏 Комната ожидания</h1>
+                <div style="display: flex; gap: 8px;">
+                    <button id="edit-settings-btn" onclick="openEditSettingsModal()" 
+                            style="background:#3a2a6e; color:#ccc; border:1px solid #6655aa; padding:8px 14px; border-radius:8px; display:none;">
+                        ⚙ Настройки
+                    </button>
+                    <button onclick="leaveCurrentLobby()" style="background:#ff4466; color:white; border:none; padding:8px 16px; border-radius:8px;">
+                        Выйти
+                    </button>
+                </div>
+            </div>
+
+            <div id="lobby-info" style="margin-bottom: 16px; background: rgba(255,255,255,0.05); padding:12px; border-radius:10px;">
+                <!-- Информация о лобби будет сюда -->
+            </div>
+
+            <!-- Уведомления лобби (живые события) -->
+            <div id="lobby-notifications" style="margin-bottom: 12px; min-height: 0;"></div>
+
+            <div id="ready-status" style="margin-bottom: 12px; font-size: 0.95rem; color: #ccc;">
+                <!-- Сюда будет подставляться "Готовы: X / Y" -->
+            </div>
+
+            <!-- ================== ИГРОВАЯ КОМНАТА (появляется после старта) ================== -->
+            <div id="game-room-section" style="display: none; margin-top: 20px;">
+                <div class="lobby-card" style="background: rgba(0, 255, 136, 0.06); border-color: #00ff88;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <h3 style="margin:0; color:#00ff88;">🎮 Игровая комната</h3>
+                        <span style="background:#003322; color:#00ff88; font-size:0.75rem; padding:2px 8px; border-radius:999px; border:1px solid #00aa66;">ИГРА ИДЁТ</span>
+                    </div>
+                    <div id="game-room-content">
+                        <div style="margin-bottom: 12px;">
+                            <p style="color: #aaa; margin: 0 0 6px;">
+                                🎮 Игра запущена. Сокет активен (приём + отправка).
+                            </p>
+                            <p style="font-size:0.85rem; color:#888; margin:0;">
+                                Полноценный игровой интерфейс будет добавлен после завершения фазы лобби.
+                            </p>
+                        </div>
+                        <div id="game-room-lobby-info" style="font-size:0.8rem; color:#666; background:#0a0a0a; padding:6px 8px; border-radius:6px;">
+                            <!-- сюда можно подставить инфо о лобби -->
+                        </div>
+
+                        <!-- Dev-панель перенесена вниз для постоянной видимости (см. ниже) -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 ПОСТОЯННАЯ DEV-ПАНЕЛЬ (всегда видна в лобби)
+                 ============================================================ -->
+            <div id="durak-dev-panel" style="
+                margin: 20px 0 12px;
+                padding: 12px;
+                background: #0f0f1f;
+                border: 1px solid #333;
+                border-radius: 10px;
+                font-size: 0.8rem;
+                position: sticky;
+                bottom: 8px;
+                z-index: 50;
+                box-shadow: 0 -4px 12px rgba(0,0,0,0.4);
+            ">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:#888;">
+                    <strong style="color:#00cc88;">🛠 Инструменты разработки</strong>
+                    <span id="socket-status" style="color:#00cc88; font-size:0.7rem;">Подключение...</span>
+                </div>
+
+                <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px;">
+                    <button onclick="simulateSocketEvent('player_ready_changed')" style="padding:3px 8px; font-size:0.75rem; background:#2a2a4a; border:1px solid #555; color:#ccc; border-radius:5px; cursor:pointer;">Смена готовности</button>
+                    <button onclick="simulateSocketEvent('lobby_updated')" style="padding:3px 8px; font-size:0.75rem; background:#2a2a4a; border:1px solid #555; color:#ccc; border-radius:5px; cursor:pointer;">Обновление лобби</button>
+                    <button onclick="simulateSocketEvent('player_joined')" style="padding:3px 8px; font-size:0.75rem; background:#2a2a4a; border:1px solid #555; color:#ccc; border-radius:5px; cursor:pointer;">Игрок зашёл</button>
+                    <button onclick="simulateSocketEvent('player_left')" style="padding:3px 8px; font-size:0.75rem; background:#2a2a4a; border:1px solid #555; color:#ccc; border-radius:5px; cursor:pointer;">Игрок вышел</button>
+                    <button onclick="simulateSocketEvent('game_started')" style="padding:3px 8px; font-size:0.75rem; background:#2a2a4a; border:1px solid #555; color:#ccc; border-radius:5px; cursor:pointer;">Игра началась</button>
+                    <button onclick="simulateSocketEvent('game_action')" style="padding:3px 8px; font-size:0.75rem; background:#3a2a1a; border:1px solid #aa8800; color:#ffcc66; border-radius:5px; cursor:pointer;">game_action</button>
+                    <button onclick="if(durakSocket) durakSocket.simulateSend('game_action', {test:true})" style="padding:3px 8px; font-size:0.7rem; background:#2a3a2a; border:1px solid #446655; color:#99ccaa; border-radius:5px; cursor:pointer; margin-left:6px;">test send()</button>
+                </div>
+
+                <div style="margin-top:6px;">
+                    <div style="font-size:0.7rem; color:#666; margin-bottom:3px;">Лог событий:</div>
+                    <div id="event-log" style="font-size:0.65rem; color:#666; background:#0a0a0a; padding:5px; border-radius:4px; max-height:70px; overflow-y:auto; line-height:1.2;">
+                        <!-- события -->
+                    </div>
+                </div>
+            </div>
+            <!-- ============================================================ -->
+
+            <h3 style="margin: 0 0 10px;">Игроки в лобби</h3>
+            <div id="players-list" class="lobby-list">
+                <!-- Список игроков -->
+            </div>
+
+            <div style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
+                <button id="ready-btn" onclick="toggleReady()" 
+                        style="flex:1; padding:14px; font-size:1.05rem; border-radius:12px; font-weight:600;">
+                    Готов
+                </button>
+
+                <button id="start-btn" onclick="startGame()" 
+                        style="flex:1; padding:14px; font-size:1.05rem; border-radius:12px; background:#00cc6a; color:#000; font-weight:700; display:none;">
+                    Начать игру
+                </button>
+            </div>
+
+            <div style="margin-top: 20px; font-size: 0.85rem; color: #888;">
+                Когда все игроки будут готовы и наберётся нужное количество — создатель сможет начать игру.
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Модал создания лобби -->
+    <div id="create-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); align-items:center; justify-content:center; z-index:1000;">
+        <div style="background:#1a103d; border:1px solid #00ff88; border-radius:16px; padding:24px; width:90%; max-width:380px;">
+            <h3 style="margin-top:0;">Создать лобби</h3>
+
+            <div style="margin-bottom:12px;">
+                <label>Количество игроков</label><br>
+                <select id="max-players" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #00ff88;">
+                    <option value="2">2 игрока</option>
+                    <option value="3">3 игрока</option>
+                    <option value="4" selected>4 игрока</option>
+                    <option value="5">5 игроков</option>
+                    <option value="6">6 игроков</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom:12px;">
+                <label>Колода</label><br>
+                <select id="deck-size" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #00ff88;">
+                    <option value="36" selected>36 карт (классика)</option>
+                    <option value="24">24 карты (быстрая)</option>
+                    <option value="52">52 карты (полная)</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom:12px;">
+                <label>Тип игры</label><br>
+                <select id="game-type" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #00ff88;">
+                    <option value="podkidnoy" selected>Подкидной</option>
+                    <option value="perevodnoy">Переводной</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom:12px;">
+                <label>Шулерство</label><br>
+                <select id="cheating" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #00ff88;">
+                    <option value="false" selected>Без шулерства (честная игра)</option>
+                    <option value="true">Разрешить шулерство</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom:20px;">
+                <label>Ставка (Stars)</label><br>
+                <input type="number" id="bet-amount" value="0" min="0" max="10000" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #00ff88;">
+                <small style="color:#888;">0 = игра без ставок. 5% комиссии боту.</small>
+            </div>
+
+            <div style="display:flex; gap:10px;">
+                <button onclick="closeCreateModal()" style="flex:1; padding:12px; background:rgba(255,255,255,0.1); border:1px solid #fff; color:#fff; border-radius:12px;">Отмена</button>
+                <button onclick="createLobby()" style="flex:1; padding:12px; background:#00ff88; color:#000; border:none; border-radius:12px; font-weight:700;">Создать</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модал редактирования настроек лобби -->
+    <div id="edit-settings-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); align-items:center; justify-content:center; z-index:1000;">
+        <div style="background:#1a103d; border:1px solid #6655aa; border-radius:16px; padding:24px; width:90%; max-width:380px;">
+            <h3 style="margin-top:0;">Настройки лобби</h3>
+
+            <div style="margin-bottom:12px;">
+                <label>Количество игроков</label><br>
+                <select id="edit-max-players" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #6655aa;">
+                    <option value="2">2 игрока</option>
+                    <option value="3">3 игрока</option>
+                    <option value="4">4 игрока</option>
+                    <option value="5">5 игроков</option>
+                    <option value="6">6 игроков</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom:12px;">
+                <label>Колода</label><br>
+                <select id="edit-deck-size" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #6655aa;">
+                    <option value="36">36 карт</option>
+                    <option value="24">24 карты</option>
+                    <option value="52">52 карты</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom:12px;">
+                <label>Тип игры</label><br>
+                <select id="edit-game-type" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #6655aa;">
+                    <option value="podkidnoy">Подкидной</option>
+                    <option value="perevodnoy">Переводной</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom:12px;">
+                <label>Шулерство</label><br>
+                <select id="edit-cheating" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #6655aa;">
+                    <option value="false">Без шулерства</option>
+                    <option value="true">Разрешить шулерство</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom:20px;">
+                <label>Ставка (Stars)</label><br>
+                <input type="number" id="edit-bet-amount" min="0" max="10000" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #6655aa;">
+            </div>
+
+            <div style="display:flex; gap:10px;">
+                <button onclick="closeEditSettingsModal()" style="flex:1; padding:12px; background:rgba(255,255,255,0.1); border:1px solid #fff; color:#fff; border-radius:12px;">Отмена</button>
+                <button onclick="saveLobbySettings()" style="flex:1; padding:12px; background:#6655aa; color:white; border:none; border-radius:12px; font-weight:700;">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        let currentLobbyId = null;
+        let currentUserId = null;
+        let playersRefreshInterval = null;
+
+        // ================== СПИСОК ЛОББИ ==================
+
+        let currentFilter = 'all';
+        let allLobbies = [];
+
+        async function loadLobbies() {
+            const container = document.getElementById('lobby-list');
+            container.innerHTML = '';
+            document.getElementById('empty-state').style.display = 'none';
+
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api('/api/durak/lobbies');
+                const data = await res.json();
+                allLobbies = data.lobbies || [];
+
+                renderFilteredLobbies();
+            } catch (e) {
+                console.error("Failed to load lobbies", e);
+                document.getElementById('empty-state').style.display = 'block';
+            }
+        }
+
+        function applyFilter(filter) {
+            currentFilter = filter;
+
+            // Обновляем активный класс
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            renderFilteredLobbies();
+        }
+
+        function renderFilteredLobbies() {
+            const container = document.getElementById('lobby-list');
+            container.innerHTML = '';
+
+            let filtered = allLobbies;
+
+            if (currentFilter === 'small') {
+                filtered = filtered.filter(l => l.max_players <= 3);
+            } else if (currentFilter === 'large') {
+                filtered = filtered.filter(l => l.max_players >= 4);
+            } else if (currentFilter === 'bet') {
+                filtered = filtered.filter(l => l.bet_amount > 0);
+            }
+
+            if (filtered.length === 0) {
+                document.getElementById('empty-state').style.display = 'block';
+                return;
+            } else {
+                document.getElementById('empty-state').style.display = 'none';
+            }
+
+            filtered.forEach(lobby => {
+                const el = document.createElement('div');
+                el.className = 'lobby-card';
+                const betText = lobby.bet_amount > 0 ? ` • ${lobby.bet_amount}⭐` : '';
+                const potText = (lobby.pot && lobby.pot > 0) ? ` (банк ${lobby.pot}⭐)` : '';
+
+                el.onclick = (e) => {
+                    if (e.target.tagName === 'BUTTON') return;
+                    showLobbyPreview(lobby);
+                };
+
+                el.innerHTML = `
+                    <div>
+                        <div><strong>${lobby.creator_name || 'Игрок'}</strong></div>
+                        <div class="lobby-meta">
+                            ${lobby.current_players}/${lobby.max_players} игроков • 
+                            ${lobby.deck_size} карт • 
+                            ${lobby.game_type === 'podkidnoy' ? 'Подкидной' : 'Переводной'}
+                            ${betText}${potText}
+                        </div>
+                    </div>
+                    <button class="join-btn" onclick="event.stopImmediatePropagation(); joinFromList(${lobby.id})" data-lobby='${JSON.stringify(lobby)}'>Войти</button>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function openCreateLobbyModal() {
+            if (currentLobbyId) {
+                alert("Сначала выйдите из текущего лобби");
+                return;
+            }
+            document.getElementById('create-modal').style.display = 'flex';
+        }
+
+        function closeCreateModal() {
+            document.getElementById('create-modal').style.display = 'none';
+        }
+
+        async function createLobby() {
+            const user = tg.initDataUnsafe?.user;
+            if (!user) {
+                alert("Не удалось получить данные пользователя Telegram");
+                return;
+            }
+            currentUserId = user.id;
+
+            const settings = {
+                user_id: user.id,
+                first_name: user.first_name || "",
+                max_players: parseInt(document.getElementById('max-players').value),
+                deck_size: parseInt(document.getElementById('deck-size').value),
+                game_type: document.getElementById('game-type').value,
+                cheating_enabled: document.getElementById('cheating').value === 'true',
+                bet_amount: parseInt(document.getElementById('bet-amount').value) || 0
+            };
+
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api('/api/durak/lobbies', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Ошибка создания лобби');
+
+                closeCreateModal();
+
+                // Сразу заходим в созданное лобби
+                enterWaitingRoom(data.lobby_id);
+
+            } catch (e) {
+                console.error(e);
+                alert("Не удалось создать лобби: " + e.message);
+            }
+        }
+
+        async function joinLobby(lobbyId, lobbyData = null) {
+            const user = tg.initDataUnsafe?.user;
+            if (!user) {
+                alert("Не удалось получить данные пользователя");
+                return;
+            }
+            currentUserId = user.id;
+
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api(`/api/durak/lobbies/${lobbyId}/join`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: user.id,
+                        first_name: user.first_name || ""
+                    })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Не удалось войти в лобби');
+                }
+
+                enterWaitingRoom(lobbyId, lobbyData);
+
+            } catch (e) {
+                alert("Ошибка входа: " + e.message);
+            }
+        }
+
+        // Используется при клике на кнопку "Войти" из списка (чтобы передать данные лобби)
+        function joinFromList(lobbyId) {
+            const btn = event.currentTarget;
+            let lobbyData = null;
+
+            try {
+                // Пытаемся взять данные из data-атрибута
+                const parent = btn.parentElement;
+                if (parent && parent.dataset.lobby) {
+                    lobbyData = JSON.parse(parent.dataset.lobby);
+                }
+            } catch (e) {}
+
+            joinLobby(lobbyId, lobbyData);
+        }
+
+        // Показывает превью лобби перед входом (при клике на карточку)
+        function showLobbyPreview(lobby) {
+            const betText = lobby.bet_amount > 0 ? `${lobby.bet_amount} ⭐` : 'Без ставки';
+            const potText = (lobby.pot && lobby.pot > 0) ? `\nБанк лобби: ${lobby.pot} ⭐` : '';
+
+            const message = `Лобби #${lobby.id}
+Создатель: ${lobby.creator_name || 'Игрок'}
+
+Игроки: ${lobby.current_players}/${lobby.max_players}
+Колода: ${lobby.deck_size} карт
+Тип: ${lobby.game_type === 'podkidnoy' ? 'Подкидной' : 'Переводной'}
+Шулерство: ${lobby.cheating_enabled ? 'Разрешено' : 'Запрещено'}
+Ставка: ${betText}${potText}
+
+⚠️ Если выйдешь после входа со ставкой — деньги уйдут в банк лобби.
+
+Зайти в это лобби?`;
+
+            if (confirm(message)) {
+                joinLobby(lobby.id);
+            }
+        }
+
+        // ================== КОМНАТА ОЖИДАНИЯ ==================
+
+        let currentLobbyData = null;
+
+        function enterWaitingRoom(lobbyId, lobbyData = null) {
+            currentLobbyId = lobbyId;
+            currentLobbyData = lobbyData;
+
+            // Переключаем вид
+            document.getElementById('lobby-list-view').style.display = 'none';
+            document.getElementById('waiting-room-view').style.display = 'block';
+
+            // Сначала загружаем информацию о лобби (чтобы сразу понять статус)
+            loadLobbyInfo().then(() => {
+                // Если уже playing — сразу показываем игровую комнату и инициализируем сокет
+                if (currentLobbyData && currentLobbyData.status === 'playing') {
+                    const gameRoom = document.getElementById('game-room-section');
+                    if (gameRoom) gameRoom.style.display = 'block';
+
+                    // Показываем индикатор playing в dev-панели
+                    const devPanel = document.getElementById('durak-dev-panel');
+                    if (devPanel) {
+                        const header = devPanel.querySelector('strong');
+                        if (header) header.innerHTML = '🛠 Инструменты разработки <span style="color:#ffaa00; font-size:0.7rem;">[PLAYING]</span>';
+                    }
+
+                    if (!durakSocket && currentUserId) {
+                        durakSocket = new DurakSocket(currentLobbyId, currentUserId);
+                        durakSocket.connect();
+                        setupDurakSocketListeners();
+                    }
+
+                    // Заполняем инфо в игровой комнате (для случая прямого входа в playing)
+                    const gInfo = document.getElementById('game-room-lobby-info');
+                    if (gInfo && currentLobbyData) {
+                        const b = currentLobbyData.bet_amount > 0 ? `${currentLobbyData.bet_amount} ⭐` : 'Без ставки';
+                        gInfo.innerHTML = `Дека: ${currentLobbyData.deck_size || 36} • Тип: ${currentLobbyData.game_type || 'podkidnoy'} • Ставка: ${b}`;
+                    }
+
+                    return;
+                }
+
+                loadPlayers();
+
+                // Показываем кнопку настроек только создателю (если ещё можно редактировать)
+                const editBtn = document.getElementById('edit-settings-btn');
+                if (editBtn) {
+                    const isCreator = currentUserId && currentLobbyData && currentUserId === currentLobbyData.creator_id;
+                    const canEdit = isCreator && (currentLobbyData.current_players || 1) <= 1;
+                    editBtn.style.display = canEdit ? 'inline-block' : 'none';
+                }
+
+                // Запускаем polling только если игра ещё не началась
+                if (playersRefreshInterval) clearInterval(playersRefreshInterval);
+                playersRefreshInterval = setInterval(async () => {
+                    await loadLobbyInfo();
+
+                    // Если во время опроса статус стал 'playing' — останавливаем polling
+                    if (currentLobbyData && currentLobbyData.status === 'playing') {
+                        if (playersRefreshInterval) {
+                            clearInterval(playersRefreshInterval);
+                            playersRefreshInterval = null;
+                        }
+                        return;
+                    }
+
+                    loadPlayers();
+                }, 3000);
+            });
+        }
+
+        async function loadLobbyInfo() {
+            const infoEl = document.getElementById('lobby-info');
+
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api(`/api/durak/lobbies/${currentLobbyId}`);
+                if (res.ok) {
+                    const lobby = await res.json();
+                    currentLobbyData = lobby;
+
+                    // Обновляем видимость кнопки настроек
+                    const editBtn = document.getElementById('edit-settings-btn');
+                    if (editBtn) {
+                        const isCreator = currentUserId && currentLobbyData && currentUserId === currentLobbyData.creator_id;
+                        const canEdit = isCreator && (currentLobbyData.current_players || 1) <= 1;
+                        editBtn.style.display = canEdit ? 'inline-block' : 'none';
+                    }
+
+                    const bet = lobby.bet_amount > 0 ? `${lobby.bet_amount} ⭐` : 'Без ставки';
+                    const typeText = lobby.game_type === 'podkidnoy' ? 'Подкидной' : 'Переводной';
+                    const cheatText = lobby.cheating_enabled ? 'Разрешено' : 'Запрещено';
+
+                    // Если лобби перешло в статус playing
+                    if (lobby.status === 'playing') {
+                        infoEl.innerHTML = `
+                            <strong>Лобби #${lobby.id}</strong><br>
+                            <span style="color:#00ff88; font-weight:600; font-size:1.05rem;">🎮 Игра запущена!</span>
+                        `;
+
+                        // Полностью отключаем все элементы комнаты ожидания
+                        const editBtn = document.getElementById('edit-settings-btn');
+                        const readyBtn = document.getElementById('ready-btn');
+                        const startBtn = document.getElementById('start-btn');
+                        const playersHeading = document.querySelector('#waiting-room-view h3');
+                        if (editBtn) editBtn.style.display = 'none';
+                        if (readyBtn) readyBtn.style.display = 'none';
+                        if (startBtn) startBtn.style.display = 'none';
+                        if (playersHeading) playersHeading.style.display = 'none';
+
+                        // Очищаем список игроков
+                        const playersContainer = document.getElementById('players-list');
+                        if (playersContainer) {
+                            playersContainer.innerHTML = '<div style="color:#666; font-size:0.9rem; padding:8px 0;">Игроки в игре (см. будущий игровой стол)</div>';
+                        }
+
+                        // Скрываем блок счётчика готовых и уведомления (в игре они не нужны)
+                        const readyStatus = document.getElementById('ready-status');
+                        if (readyStatus) readyStatus.style.display = 'none';
+
+                        const notifs = document.getElementById('lobby-notifications');
+                        if (notifs) notifs.style.display = 'none';
+
+                        // Показываем игровую комнату
+                        const gameRoom = document.getElementById('game-room-section');
+                        if (gameRoom) {
+                            gameRoom.style.display = 'block';
+                        }
+
+                        // Обновляем dev-панель (показываем, что мы в режиме игры)
+                        const devPanel = document.getElementById('durak-dev-panel');
+                        if (devPanel) {
+                            const header = devPanel.querySelector('strong');
+                            if (header) header.innerHTML = '🛠 Инструменты разработки <span style="color:#ffaa00; font-size:0.7rem;">[PLAYING]</span>';
+                        }
+
+                        // Заполняем краткую информацию в игровой комнате
+                        const gameInfo = document.getElementById('game-room-lobby-info');
+                        if (gameInfo && lobby) {
+                            const bet = lobby.bet_amount > 0 ? `${lobby.bet_amount} ⭐` : 'Без ставки';
+                            const pot = (lobby.pot && lobby.pot > 0) ? ` • Банк: ${lobby.pot}⭐` : '';
+                            gameInfo.innerHTML = `Дека: ${lobby.deck_size || 36} • Тип: ${lobby.game_type || 'podkidnoy'} • Ставка: ${bet}${pot}`;
+                        }
+                    }
+
+                        // Инициализируем WebSocket
+                        if (!durakSocket && currentUserId) {
+                            durakSocket = new DurakSocket(currentLobbyId, currentUserId);
+                            durakSocket.connect();
+
+                            // Настраиваем подписки на события
+                            setupDurakSocketListeners();
+
+                            durakSocket.on('connected', () => {
+                                console.log('[Durak] WebSocket подключён');
+                                const statusEl = document.getElementById('socket-status');
+                                if (statusEl) statusEl.textContent = 'Подключено (заглушка)';
+                            });
+
+                            durakSocket.on('disconnected', () => {
+                                const statusEl = document.getElementById('socket-status');
+                                if (statusEl) statusEl.textContent = 'Отключено';
+                            });
+                        }
+
+                        // Останавливаем агрессивный polling, так как игра уже идёт
+                        if (playersRefreshInterval) {
+                            clearInterval(playersRefreshInterval);
+                            playersRefreshInterval = null;
+                        }
+
+                        return;
+                    }
+
+                    // Обновляем видимость кнопки настроек
+                    const editBtn = document.getElementById('edit-settings-btn');
+                    if (editBtn) {
+                        const isCreator = currentUserId && lobby.creator_id && currentUserId === lobby.creator_id;
+                        const canEdit = isCreator && (lobby.current_players || 1) <= 1;
+                        editBtn.style.display = canEdit ? 'inline-block' : 'none';
+                    }
+
+                    const ownerName = lobby.creator_name || 'Игрок';
+                    const bet = lobby.bet_amount > 0 ? `${lobby.bet_amount} ⭐` : 'Без ставки';
+                    const potText = (lobby.pot && lobby.pot > 0) ? ` • Банк: ${lobby.pot}⭐` : '';
+                    const typeText = lobby.game_type === 'podkidnoy' ? 'Подкидной' : 'Переводной';
+                    const cheatText = lobby.cheating_enabled ? 'Разрешено' : 'Запрещено';
+
+                    let stakeWarning = '';
+                    if (lobby.bet_amount > 0) {
+                        stakeWarning = `<br><span style="color:#ffaa66; font-size:0.8rem;">⚠️ При выходе ставка уходит в банк лобби</span>`;
+                    }
+
+                    infoEl.innerHTML = `
+                        <strong>Лобби #${lobby.id}</strong> 
+                        <span style="font-size:0.8rem; color:#888;">(владелец: ${ownerName})</span><br>
+                        <span style="font-size:0.85rem; color:#ccc;">
+                            ${lobby.max_players} игроков • 
+                            ${lobby.deck_size} карт • 
+                            ${typeText} • 
+                            Шулерство: ${cheatText} • 
+                            Ставка: ${bet}${potText}
+                        </span>
+                        ${stakeWarning}
+                    `;
+                    return;
+                }
+            } catch (e) {}
+
+            // Fallback
+            infoEl.innerHTML = `
+                <strong>Лобби #${currentLobbyId}</strong><br>
+                <span style="font-size:0.9rem; color:#aaa;">Ожидание игроков...</span>
+            `;
+        }
+
+        async function loadPlayers() {
+            if (!currentLobbyId) return;
+
+            // Если игра уже началась — не обновляем список игроков и не показываем старые кнопки
+            if (currentLobbyData && currentLobbyData.status === 'playing') {
+                return;
+            }
+
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api(`/api/durak/lobbies/${currentLobbyId}/players`);
+                const data = await res.json();
+                const players = data.players || [];
+
+                const container = document.getElementById('players-list');
+                container.innerHTML = '';
+
+                const currentUserReady = players.find(p => p.user_id === currentUserId)?.is_ready || false;
+
+                const creatorId = currentLobbyData?.creator_id;
+
+                players.forEach(player => {
+                    const div = document.createElement('div');
+                    div.className = 'lobby-card';
+                    const readyText = player.is_ready ? '✅ Готов' : '⏳ Не готов';
+
+                    let extra = '';
+                    if (player.user_id === creatorId) {
+                        extra += ' <span style="color:#ffcc00; font-weight:600;">(Владелец)</span>';
+                    }
+                    if (player.user_id === currentUserId) {
+                        extra += ' <span style="color:#00ff88;">(Вы)</span>';
+                    }
+
+                    div.innerHTML = `
+                        <div>
+                            <strong>${player.first_name || 'Игрок'}</strong>${extra}
+                        </div>
+                        <div style="font-size:0.85rem; color: ${player.is_ready ? '#00ff88' : '#ffaa00'};">
+                            ${readyText}
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+
+                // Обновляем кнопку Ready
+                const readyBtn = document.getElementById('ready-btn');
+                readyBtn.textContent = currentUserReady ? 'Отменить готовность' : 'Я готов!';
+                readyBtn.style.background = currentUserReady ? '#ff4466' : '#00ff88';
+                readyBtn.style.color = currentUserReady ? '#fff' : '#000';
+
+                // Показываем кнопку "Начать" только создателю
+                const startBtn = document.getElementById('start-btn');
+                const creatorId = currentLobbyData?.creator_id;
+                const allReady = players.length >= 2 && players.every(p => p.is_ready);
+                const isCreator = currentUserId === creatorId;
+
+                startBtn.style.display = (isCreator && allReady) ? 'block' : 'none';
+
+                // Обновляем видимость кнопки настроек
+                const editBtn = document.getElementById('edit-settings-btn');
+                if (editBtn) {
+                    const canEdit = isCreator && players.length <= 1;
+                    editBtn.style.display = canEdit ? 'inline-block' : 'none';
+                }
+
+                // Обновляем счётчик готовых
+                const readyCount = players.filter(p => p.is_ready).length;
+                const readyStatusEl = document.getElementById('ready-status');
+                if (readyStatusEl) {
+                    readyStatusEl.innerHTML = `<strong>Готовы:</strong> ${readyCount} / ${players.length}`;
+                }
+
+                // Обновляем заголовок комнаты с информацией о готовности
+                const header = document.querySelector('#waiting-room-view .header h1');
+                if (header) {
+                    if (!header.dataset.original) {
+                        header.dataset.original = header.textContent;
+                    }
+                    if (currentLobbyData && currentLobbyData.status === 'playing') {
+                        header.textContent = '🎮 Игра запущена';
+                    } else {
+                        header.textContent = `${header.dataset.original} (${readyCount}/${players.length} готовы)`;
+                    }
+                }
+
+                // Проверка: если текущего пользователя больше нет в лобби — выходим
+                const stillInLobby = players.some(p => p.user_id === currentUserId);
+                if (!stillInLobby) {
+                    alert("Вы больше не находитесь в этом лобби.");
+                    exitWaitingRoom();
+                    return;
+                }
+
+            } catch (e) {
+                console.error("Failed to load players", e);
+
+                // Если лобби пропало — выходим из комнаты
+                const msg = (e?.message || '').toLowerCase();
+                if (msg.includes('404') || msg.includes('not found') || msg.includes('not available')) {
+                    alert("Лобби больше не доступно.");
+                    exitWaitingRoom();
+                }
+            }
+        }
+
+        let isTogglingReady = false;
+
+        async function toggleReady() {
+            if (!currentLobbyId || !currentUserId || isTogglingReady) return;
+
+            isTogglingReady = true;
+            const readyBtn = document.getElementById('ready-btn');
+            const originalText = readyBtn.textContent;
+            readyBtn.textContent = '...';
+            readyBtn.disabled = true;
+
+            try {
+                // Получаем актуальное состояние
+                const playersRes = await (window.apiFetch || fetch)(`/api/durak/lobbies/${currentLobbyId}/players`);
+                const data = await playersRes.json();
+                const me = data.players.find(p => p.user_id === currentUserId);
+                const newReadyState = !me?.is_ready;
+
+                const api = window.apiFetch || fetch;
+                await api(`/api/durak/lobbies/${currentLobbyId}/ready`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: currentUserId,
+                        is_ready: newReadyState
+                    })
+                });
+
+                await loadPlayers();
+
+                const statusText = newReadyState ? 'Вы готовы' : 'Вы сняли готовность';
+                showLobbyNotification(statusText, newReadyState ? 'success' : 'info');
+            } catch (e) {
+                alert("Не удалось изменить статус готовности");
+            } finally {
+                isTogglingReady = false;
+                if (readyBtn) {
+                    readyBtn.disabled = false;
+                }
+            }
+        }
+
+        async function leaveCurrentLobby() {
+            if (!currentLobbyId || !currentUserId) return;
+
+            const bet = currentLobbyData?.bet_amount || 0;
+            const pot = currentLobbyData?.pot || 0;
+
+            if (bet > 0) {
+                const confirmLeave = confirm(
+                    `⚠️ В этом лобби стоит ставка ${bet} ⭐.\n\n` +
+                    `Если ты выйдешь сейчас, твоя ставка уйдёт в общий банк лобби.\n` +
+                    `Ты не получишь её обратно.\n\n` +
+                    `Продолжить выход?`
+                );
+                if (!confirmLeave) return;
+            } else {
+                // Обычное подтверждение для без-ставочных лобби
+                if (!confirm("Ты уверены, что хочешь выйти из лобби?")) {
+                    return;
+                }
+            }
+
+            try {
+                const api = window.apiFetch || fetch;
+                await api(`/api/durak/lobbies/${currentLobbyId}/leave`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: currentUserId })
+                });
+            } catch (e) {
+                console.error("Leave error", e);
+            }
+
+            // Показываем уведомление, если была ставка
+            if (bet > 0) {
+                alert(`Твоя ставка ${bet} ⭐ ушла в банк лобби.`);
+            }
+
+            exitWaitingRoom();
+        }
+
+        function exitWaitingRoom() {
+            if (playersRefreshInterval) {
+                clearInterval(playersRefreshInterval);
+                playersRefreshInterval = null;
+            }
+
+            // Отключаем WebSocket, если он был
+            if (durakSocket) {
+                durakSocket.disconnect();
+                durakSocket = null;
+            }
+
+            currentLobbyId = null;
+            currentLobbyData = null;
+
+            // Скрываем игровую комнату при выходе
+            const gameRoom = document.getElementById('game-room-section');
+            if (gameRoom) gameRoom.style.display = 'none';
+
+            const readyStatus = document.getElementById('ready-status');
+            if (readyStatus) readyStatus.style.display = 'block';
+
+            const notifs = document.getElementById('lobby-notifications');
+            if (notifs) notifs.style.display = 'block';
+
+            document.getElementById('waiting-room-view').style.display = 'none';
+            document.getElementById('lobby-list-view').style.display = 'block';
+
+            loadLobbies();
+        }
+
+        async function startGame() {
+            if (!currentLobbyId || !currentUserId) return;
+
+            if (!confirm("Запустить игру?")) {
+                return;
+            }
+
+            const startBtn = document.getElementById('start-btn');
+            const originalText = startBtn.textContent;
+            startBtn.textContent = '...';
+            startBtn.disabled = true;
+
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api(`/api/durak/lobbies/${currentLobbyId}/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: currentUserId })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Не удалось запустить игру');
+                }
+
+                // После успешного старта сразу обновляем состояние и останавливаем polling
+                if (playersRefreshInterval) {
+                    clearInterval(playersRefreshInterval);
+                    playersRefreshInterval = null;
+                }
+
+                await loadLobbyInfo();
+                await loadPlayers();
+                showLobbyNotification('Игра успешно запущена!', 'success');
+
+            } catch (e) {
+                alert("Ошибка запуска: " + e.message);
+            } finally {
+                if (startBtn) {
+                    startBtn.textContent = originalText;
+                    startBtn.disabled = false;
+                }
+            }
+        }
+
+        // ============================================================
+        // DurakSocket — базовый клиент для WebSocket (постепенно развиваем)
+        // ============================================================
+        class DurakSocket {
+            constructor(lobbyId, userId) {
+                this.lobbyId = lobbyId;
+                this.userId = userId;
+                this.socket = null;
+                this.handlers = {};
+                this.connected = false;
+            }
+
+            connect() {
+                console.log(`[DurakSocket] Подключение к лобби #${this.lobbyId} (пока заглушка)`);
+
+                // TODO: Заменить на реальное подключение, когда backend будет готов
+                // const wsUrl = `wss://твой-домен/ws/durak/${this.lobbyId}?user_id=${this.userId}`;
+                // this.socket = new WebSocket(wsUrl);
+                // this.socket.onmessage = (event) => { ... }
+
+                this.connected = true;
+
+                // Эмулируем успешное подключение
+                setTimeout(() => {
+                    this._trigger('connected', { lobbyId: this.lobbyId });
+                }, 200);
+            }
+
+            disconnect() {
+                if (this.socket) {
+                    this.socket.close();
+                }
+                this.connected = false;
+                this._trigger('disconnected');
+            }
+
+            send(action, data = {}) {
+                if (!this.connected) {
+                    console.warn('[DurakSocket] Попытка отправить без подключения');
+                    return;
+                }
+
+                const payload = {
+                    action,
+                    lobby_id: this.lobbyId,
+                    user_id: this.userId,
+                    data
+                };
+
+                console.log('[DurakSocket] → send:', payload);
+
+                // Показываем в видимом dev-логе (полезно для разработки)
+                if (typeof logSocketEvent === 'function') {
+                    logSocketEvent(`→ send ${action}`, data);
+                }
+
+                // В будущем:
+                // this.socket.send(JSON.stringify(payload));
+            }
+
+            /**
+             * Вспомогательный метод для разработки.
+             * Позволяет симулировать отправку действия (будет видно в логе).
+             */
+            simulateSend(action, data = {}) {
+                console.log(`[DurakSocket] Симуляция отправки: ${action}`, data);
+                if (typeof logSocketEvent === 'function') {
+                    logSocketEvent(`→ simulate-send ${action}`, data);
+                }
+                // В будущем здесь можно будет также триггерить серверную обработку
+            }
+
+            on(event, callback) {
+                if (!this.handlers[event]) {
+                    this.handlers[event] = [];
+                }
+                this.handlers[event].push(callback);
+            }
+
+            off(event, callback) {
+                if (!this.handlers[event]) return;
+                this.handlers[event] = this.handlers[event].filter(cb => cb !== callback);
+            }
+
+            _trigger(event, data = {}) {
+                if (this.handlers[event]) {
+                    this.handlers[event].forEach(cb => {
+                        try {
+                            cb(data);
+                        } catch (err) {
+                            console.error(`[DurakSocket] Ошибка в обработчике события "${event}"`, err);
+                        }
+                    });
+                }
+            }
+
+            /**
+             * Вспомогательный метод для разработки.
+             * Позволяет эмулировать получение сообщения от сервера.
+             * В реальной версии это будет приходить через onmessage.
+             */
+            simulateIncomingMessage(event, data = {}) {
+                console.log(`[DurakSocket] Симуляция входящего события: ${event}`, data);
+                logSocketEvent(`← ${event}`, data);
+                this._trigger(event, data);
+            }
+        }
+
+        // Список событий, которые мы планируем использовать (для документации)
+        // ============================================================
+        // КОНТРАКТ СОБЫТИЙ (Event Contract) — актуально на этапе лобби
+        // ============================================================
+        // Клиент → Сервер (будет отправляться через durakSocket.send):
+        //   - 'ready'                 { user_id, is_ready }
+        //   - 'game_action'           { user_id, action, payload }
+        //   - 'leave'                 { user_id }
+        //
+        // Сервер → Клиент (приходит через onmessage / simulateIncomingMessage):
+        //   - 'connected'             {}
+        //   - 'disconnected'          {}
+        //   - 'lobby_updated'         { ...fields of lobby }
+        //   - 'player_joined'         { user_id, first_name, is_ready, ... }
+        //   - 'player_left'           { user_id, first_name }
+        //   - 'player_ready_changed'  { user_id, is_ready }
+        //   - 'game_started'          { started_by, timestamp, initial_state? }
+        //   - 'game_action'           { user_id, action, payload, ... }
+        //   - 'game_ended'            { winner_id, final_state, payouts? }
+        //
+        // На текущий момент все события работают через simulateIncomingMessage
+        // для разработки и демо. Реальный WebSocket-бэкенд будет добавлен
+        // после завершения фазы лобби.
+        // ============================================================
+
+        const DURAK_EVENTS = {
+            CONNECTED: 'connected',
+            DISCONNECTED: 'disconnected',
+            LOBBY_UPDATED: 'lobby_updated',
+            PLAYER_JOINED: 'player_joined',
+            PLAYER_LEFT: 'player_left',
+            PLAYER_READY_CHANGED: 'player_ready_changed',
+            GAME_STARTED: 'game_started',
+            GAME_ACTION: 'game_action',
+            GAME_ENDED: 'game_ended',
+        };
+
+        // Глобальная переменная для сокета текущего лобби
+        let durakSocket = null;
+
+        /**
+         * Настраивает подписки на события сокета для текущего лобби.
+         * Вызывается один раз при создании сокета.
+         */
+        function setupDurakSocketListeners() {
+            if (!durakSocket) return;
+
+            // События теперь реально драйвят UI (для симуляции и будущих WS)
+            durakSocket.on('player_ready_changed', (data) => {
+                console.log('[Durak] Получено событие player_ready_changed', data);
+                if (data && typeof data.is_ready === 'boolean') {
+                    // Лёгкое обновление из данных события (симуляция без лишнего запроса)
+                    applySimulatedReadyChange(data);
+                } else {
+                    loadPlayers();
+                }
+            });
+
+            durakSocket.on('lobby_updated', (data) => {
+                console.log('[Durak] Получено событие lobby_updated', data);
+
+                // Пытаемся определить смену владельца
+                if (data?.new_owner_name || data?.creator_id) {
+                    const newOwner = data.new_owner_name || 'Новый владелец';
+                    showLobbyNotification(`Владелец лобби изменился: ${newOwner}`, 'info');
+                }
+
+                loadLobbyInfo();
+            });
+
+            durakSocket.on('player_joined', (data) => {
+                console.log('[Durak] Игрок зашёл в лобби', data);
+                const name = data?.first_name || 'Игрок';
+                showLobbyNotification(`${name} зашёл в лобби`, 'success');
+                loadPlayers();
+            });
+
+            durakSocket.on('player_left', (data) => {
+                console.log('[Durak] Игрок вышел из лобби', data);
+                const name = data?.first_name || 'Игрок';
+                showLobbyNotification(`${name} вышел из лобби`, 'warning');
+                loadPlayers();
+            });
+
+            // Новое: игра стартовала (переход в игровую фазу)
+            durakSocket.on('game_started', (data) => {
+                console.log('[Durak] Игра запущена!', data);
+                const gameRoom = document.getElementById('game-room-content');
+                if (gameRoom) {
+                    gameRoom.innerHTML = `
+                        <p style="color:#00ff88; font-weight:600;">🎮 Игра официально началась!</p>
+                        <p style="color:#888; font-size:0.9rem;">Сокет активен. Готов к приёму и отправке игровых событий.</p>
+                    `;
+                }
+            });
+
+            // Пример обработки игрового действия (пока просто логируем)
+            durakSocket.on('game_action', (data) => {
+                console.log('[Durak] Получено игровое действие', data);
+                logSocketEvent('← game_action', data);
+            });
+        }
+
+        // Вспомогательная функция для разработки (будет удалена позже)
+        function simulateSocketEvent(eventType) {
+            if (!durakSocket) {
+                alert('Сокет ещё не инициализирован');
+                return;
+            }
+
+            let payload = {};
+
+            if (eventType === 'player_ready_changed') {
+                const currentReady = document.getElementById('ready-btn')?.textContent.includes('Отменить');
+                payload = {
+                    user_id: currentUserId,
+                    is_ready: !currentReady
+                };
+                durakSocket.simulateIncomingMessage('player_ready_changed', payload);
+            }
+
+            if (eventType === 'lobby_updated') {
+                payload = { message: 'Настройки лобби были изменены' };
+                durakSocket.simulateIncomingMessage('lobby_updated', payload);
+            }
+
+            if (eventType === 'player_joined') {
+                payload = {
+                    user_id: 999999,
+                    first_name: 'ТестовыйИгрок',
+                    is_ready: false
+                };
+                durakSocket.simulateIncomingMessage('player_joined', payload);
+                // Для демонстрации сразу обновляем список (в реальности сервер пришлёт)
+                setTimeout(() => loadPlayers(), 50);
+            }
+
+            if (eventType === 'player_left') {
+                payload = { user_id: 999999, first_name: 'ТестовыйИгрок' };
+                durakSocket.simulateIncomingMessage('player_left', payload);
+                setTimeout(() => loadPlayers(), 50);
+            }
+
+            if (eventType === 'game_started') {
+                payload = { started_by: currentUserId, timestamp: Date.now() };
+                durakSocket.simulateIncomingMessage('game_started', payload);
+                showLobbyNotification('Игра запущена!', 'success');
+            }
+
+            if (eventType === 'game_action') {
+                payload = {
+                    user_id: currentUserId,
+                    action: 'play_card',
+                    payload: { card: 'example' }
+                };
+                durakSocket.simulateIncomingMessage('game_action', payload);
+                // Также демонстрируем, как выглядел бы send
+                durakSocket.send('game_action', payload);
+            }
+
+            logSocketEvent(`→ simulate ${eventType}`, payload);
+        }
+
+        function logSocketEvent(event, data) {
+            const logEl = document.getElementById('event-log');
+            if (!logEl) return;
+
+            const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const entry = document.createElement('div');
+            entry.style.marginBottom = '2px';
+            entry.innerHTML = `<span style="color:#555;">[${time}]</span> <strong>${event}</strong> ${JSON.stringify(data)}`;
+
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+
+            // Ограничиваем количество записей
+            while (logEl.children.length > 8) {
+                logEl.removeChild(logEl.firstChild);
+            }
+        }
+
+        /**
+         * Показывает красивое уведомление внутри лобби (замена многим alert'ам).
+         * Используется для player_joined, player_left, owner change и т.д.
+         */
+        function showLobbyNotification(message, type = 'info') {
+            const container = document.getElementById('lobby-notifications');
+            if (!container) return;
+
+            const colors = {
+                info: '#3a7ca5',
+                success: '#2e7d32',
+                warning: '#c17d00',
+                error: '#c62828'
+            };
+
+            const div = document.createElement('div');
+            div.style.cssText = `
+                background: ${colors[type] || colors.info}22;
+                border: 1px solid ${colors[type] || colors.info};
+                color: #ddd;
+                padding: 8px 12px;
+                border-radius: 8px;
+                font-size: 0.9rem;
+                margin-bottom: 6px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                animation: fadeIn 0.2s ease;
+            `;
+            div.innerHTML = `
+                <span>${message}</span>
+                <span onclick="this.parentElement.remove()" style="cursor:pointer; opacity:0.6; font-size:1.1rem; line-height:1;">×</span>
+            `;
+
+            container.appendChild(div);
+
+            // Авто-удаление через 6 секунд
+            setTimeout(() => {
+                if (div.parentNode) div.parentNode.removeChild(div);
+            }, 6000);
+        }
+
+        /**
+         * Лёгкое обновление UI напрямую из данных simulated события.
+         * Используется в dev-режиме, чтобы клик по кнопке симуляции реально менял список/счётчики/заголовок
+         * без лишнего запроса к серверу (демо "реального времени").
+         */
+        function applySimulatedReadyChange(data) {
+            const container = document.getElementById('players-list');
+            if (!container || !data) return;
+
+            const cards = container.querySelectorAll('.lobby-card');
+            let updated = false;
+
+            cards.forEach(card => {
+                // Ищем карточку текущего пользователя (в разметке есть "(Вы)")
+                if (card.innerHTML.includes('(Вы)')) {
+                    const readyDiv = card.querySelector('div[style*="font-size:0.85rem"]');
+                    if (readyDiv) {
+                        const isReady = !!data.is_ready;
+                        readyDiv.style.color = isReady ? '#00ff88' : '#ffaa00';
+                        readyDiv.textContent = isReady ? '✅ Готов' : '⏳ Не готов';
+                        updated = true;
+                    }
+                }
+            });
+
+            // Пересчитываем счётчик готовых по текущему DOM (как в loadPlayers)
+            let readyCount = 0;
+            cards.forEach(card => {
+                if (card.innerHTML.includes('✅ Готов')) readyCount++;
+            });
+
+            const readyStatusEl = document.getElementById('ready-status');
+            if (readyStatusEl) {
+                readyStatusEl.innerHTML = `<strong>Готовы:</strong> ${readyCount} / ${cards.length}`;
+            }
+
+            // Обновляем кнопку "Готов" локально
+            const readyBtn = document.getElementById('ready-btn');
+            if (readyBtn && data.user_id === currentUserId) {
+                readyBtn.textContent = data.is_ready ? 'Отменить готовность' : 'Я готов!';
+                readyBtn.style.background = data.is_ready ? '#ff4466' : '#00ff88';
+                readyBtn.style.color = data.is_ready ? '#fff' : '#000';
+            }
+
+            // Пробуем обновить заголовок комнаты (готовы X/Y) — упрощённо
+            const header = document.querySelector('#waiting-room-view .header h1');
+            if (header && header.dataset.original) {
+                // Если заголовок уже был модифицирован loadPlayers — оставляем как есть или можно доработать
+            }
+
+            if (!updated) {
+                // На всякий случай — если не нашли (Вы), делаем полный ресинхрон
+                loadPlayers();
+            }
+        }
+
+        // === Редактирование настроек лобби (только для создателя) ===
+
+        function openEditSettingsModal() {
+            if (!currentLobbyData || !currentLobbyId) return;
+
+            // Заполняем текущими значениями
+            document.getElementById('edit-max-players').value = currentLobbyData.max_players || 4;
+            document.getElementById('edit-deck-size').value = currentLobbyData.deck_size || 36;
+            document.getElementById('edit-game-type').value = currentLobbyData.game_type || 'podkidnoy';
+            document.getElementById('edit-cheating').value = currentLobbyData.cheating_enabled ? 'true' : 'false';
+            document.getElementById('edit-bet-amount').value = currentLobbyData.bet_amount || 0;
+
+            document.getElementById('edit-settings-modal').style.display = 'flex';
+        }
+
+        function closeEditSettingsModal() {
+            document.getElementById('edit-settings-modal').style.display = 'none';
+        }
+
+        async function saveLobbySettings() {
+            if (!currentLobbyId || !currentUserId) return;
+
+            const updatedSettings = {
+                user_id: currentUserId,
+                max_players: parseInt(document.getElementById('edit-max-players').value),
+                deck_size: parseInt(document.getElementById('edit-deck-size').value),
+                game_type: document.getElementById('edit-game-type').value,
+                cheating_enabled: document.getElementById('edit-cheating').value === 'true',
+                bet_amount: parseInt(document.getElementById('edit-bet-amount').value) || 0
+            };
+
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api(`/api/durak/lobbies/${currentLobbyId}/settings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedSettings)
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Не удалось сохранить настройки');
+                }
+
+                closeEditSettingsModal();
+                alert('Настройки обновлены');
+
+                // Обновляем данные лобби и игроков
+                await loadLobbyInfo();
+                await loadPlayers();
+
+            } catch (e) {
+                alert('Ошибка: ' + e.message);
+            }
+        }
+
+        // ================== ИНИЦИАЛИЗАЦИЯ ==================
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = tg.initDataUnsafe?.user;
+            if (user) currentUserId = user.id;
+
+            loadLobbies();
+
+            // Фильтры (пока декоративные)
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                });
+            });
+        });
+    </script>
+</body>
+</html>

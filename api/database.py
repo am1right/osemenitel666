@@ -160,6 +160,47 @@ def init_db():
         )
     ''')
 
+    -- ============================================
+    -- ДУРАК ОНЛАЙН — ЛОББИ (Этап 2)
+    -- ============================================
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS durak_lobbies (
+            id                SERIAL PRIMARY KEY,
+            creator_id        BIGINT NOT NULL,
+            creator_name      TEXT,
+            max_players       INTEGER NOT NULL CHECK (max_players BETWEEN 2 AND 6),
+            deck_size         INTEGER NOT NULL CHECK (deck_size IN (24, 36, 52)),
+            game_type         TEXT NOT NULL DEFAULT 'podkidnoy' CHECK (game_type IN ('podkidnoy', 'perevodnoy')),
+            cheating_enabled  BOOLEAN DEFAULT FALSE,
+            bet_amount        INTEGER DEFAULT 0,
+            pot               INTEGER DEFAULT 0,   -- банк лобби (ставки ушедших игроков)
+            status            TEXT DEFAULT 'waiting' CHECK (status IN ('waiting', 'playing', 'finished', 'cancelled')),
+            created_at        TIMESTAMP DEFAULT NOW(),
+            updated_at        TIMESTAMP DEFAULT NOW()
+        )
+    ''')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_durak_lobbies_status ON durak_lobbies(status)')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_durak_lobbies_created ON durak_lobbies(created_at)')
+
+    # Миграция: добавляем pot, если колонки ещё нет (для существующих БД)
+    try:
+        cur.execute("ALTER TABLE durak_lobbies ADD COLUMN IF NOT EXISTS pot INTEGER DEFAULT 0")
+    except Exception:
+        pass
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS durak_lobby_players (
+            id         SERIAL PRIMARY KEY,
+            lobby_id   INTEGER NOT NULL REFERENCES durak_lobbies(id) ON DELETE CASCADE,
+            user_id    BIGINT NOT NULL,
+            first_name TEXT,
+            joined_at  TIMESTAMP DEFAULT NOW(),
+            is_ready   BOOLEAN DEFAULT FALSE,
+            UNIQUE(lobby_id, user_id)
+        )
+    ''')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_durak_players_lobby ON durak_lobby_players(lobby_id)')
+
     _purge_test_players(cur)
 
     conn.commit()
@@ -1349,3 +1390,361 @@ def check_fraud_inactive_ratio(inviter_id: int) -> Optional[Dict[str, Any]]:
     if ratio > FRAUD_INACTIVE_RATIO:
         return {"total": len(invitees), "inactive": inactive, "ratio": ratio}
     return None
+
+
+# ============================================================
+# ДУРАК ОНЛАЙН — ФУНКЦИИ ДЛЯ ЛОББИ (Этап 2)
+# ============================================================
+
+def create_durak_lobby(
+    creator_id: int,
+    creator_name: str,
+    max_players: int,
+    deck_size: int,
+    game_type: str,
+    cheating_enabled: bool,
+    bet_amount: int = 0
+) -> int:
+    """Создаёт новое лобби Дурака и добавляет создателя как первого игрока."""
+    conn = get_connection()
+    cur = _cursor(conn)
+
+    # Если есть ставка — сразу списываем с кошелька создателя
+    if bet_amount > 0:
+        wallet = spend_wallet(creator_id, bet_amount, f"Ставка за создание лобби Дурак")
+        if not wallet.get("ok"):
+            cur.close()
+            conn.close()
+            raise Exception("Недостаточно Stars для создания лобби со ставкой")
+
+    cur.execute('''
+        INSERT INTO durak_lobbies 
+            (creator_id, creator_name, max_players, deck_size, game_type, cheating_enabled, bet_amount)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        RETURNING id
+    ''', (creator_id, creator_name, max_players, deck_size, game_type, cheating_enabled, bet_amount))
+
+    lobby_id = cur.fetchone()["id"]
+
+    # Добавляем создателя в лобби
+    cur.execute('''
+        INSERT INTO durak_lobby_players (lobby_id, user_id, first_name, is_ready)
+        VALUES (%s, %s, %s, TRUE)
+    ''', (lobby_id, creator_id, creator_name))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    return lobby_id
+
+
+def get_active_durak_lobbies(limit: int = 50) -> list[Dict[str, Any]]:
+    """Возвращает список активных (waiting) лобби."""
+    conn = get_connection()
+    cur = _cursor(conn)
+
+    cur.execute('''
+        SELECT 
+            l.*,
+            COUNT(p.id) as current_players
+        FROM durak_lobbies l
+        LEFT JOIN durak_lobby_players p ON p.lobby_id = l.id
+        WHERE l.status = 'waiting'
+        GROUP BY l.id
+        ORDER BY l.created_at DESC
+        LIMIT %s
+    ''', (limit,))
+
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    result = []
+    for r in rows:
+        result.append({
+            "id": r["id"],
+            "creator_id": r["creator_id"],
+            "creator_name": r["creator_name"],
+            "max_players": r["max_players"],
+            "current_players": r["current_players"],
+            "deck_size": r["deck_size"],
+            "game_type": r["game_type"],
+            "cheating_enabled": r["cheating_enabled"],
+            "bet_amount": r["bet_amount"],
+            "pot": r.get("pot", 0) or 0,
+            "created_at": r["created_at"].isoformat() if r["created_at"] else None
+        })
+    return result
+
+
+def join_durak_lobby(lobby_id: int, user_id: int, first_name: str) -> bool:
+    """Присоединяет игрока к лобби. Возвращает True если успешно."""
+    conn = get_connection()
+    cur = _cursor(conn)
+
+    # Проверка: пользователь уже не должен быть в другом активном лобби
+    cur.execute('''
+        SELECT 1 FROM durak_lobby_players pl
+        JOIN durak_lobbies l ON l.id = pl.lobby_id
+        WHERE pl.user_id = %s AND l.status = 'waiting'
+        LIMIT 1
+    ''', (user_id,))
+    already_in_lobby = cur.fetchone() is not None
+
+    if already_in_lobby:
+        cur.close()
+        conn.close()
+        return False
+
+    # Проверяем, есть ли место и статус waiting + забираем bet_amount
+    cur.execute('''
+        SELECT l.max_players, l.status, l.bet_amount, COUNT(p.id) as current
+        FROM durak_lobbies l
+        LEFT JOIN durak_lobby_players p ON p.lobby_id = l.id
+        WHERE l.id = %s
+        GROUP BY l.id, l.max_players, l.status, l.bet_amount
+    ''', (lobby_id,))
+
+    row = cur.fetchone()
+    if not row or row["status"] != "waiting":
+        cur.close()
+        conn.close()
+        return False
+
+    if row["current"] >= row["max_players"]:
+        cur.close()
+        conn.close()
+        return False
+
+    bet = row["bet_amount"] or 0
+
+    # Если есть ставка — пытаемся списать с кошелька
+    if bet > 0:
+        wallet_result = spend_wallet(user_id, bet, f"Ставка в лобби Дурак #{lobby_id}")
+        if not wallet_result.get("ok"):
+            cur.close()
+            conn.close()
+            return False   # не хватает Stars
+
+    # Пробуем добавить игрока
+    try:
+        cur.execute('''
+            INSERT INTO durak_lobby_players (lobby_id, user_id, first_name)
+            VALUES (%s, %s, %s)
+        ''', (lobby_id, user_id, first_name))
+        conn.commit()
+        success = True
+    except Exception:
+        # На всякий случай возвращаем деньги, если не получилось добавить
+        if bet > 0:
+            topup_wallet(user_id, "", bet, f"Возврат ставки (ошибка входа в лобби #{lobby_id})")
+        success = False
+
+    cur.close()
+    conn.close()
+    return success
+
+
+def get_lobby_players(lobby_id: int) -> list[Dict[str, Any]]:
+    conn = get_connection()
+    cur = _cursor(conn)
+    cur.execute('''
+        SELECT user_id, first_name, is_ready, joined_at
+        FROM durak_lobby_players
+        WHERE lobby_id = %s
+        ORDER BY joined_at
+    ''', (lobby_id,))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def leave_durak_lobby(lobby_id: int, user_id: int) -> bool:
+    """Выходит из лобби.
+    Если уходит создатель — передаём владение следующему игроку (если есть),
+    иначе закрываем лобби.
+
+    Важно: если в лобби была ставка (bet_amount > 0), то при выходе ставка игрока
+    уходит в pot лобби (не возвращается). Это предотвращает rage-quit.
+    """
+    conn = get_connection()
+    cur = _cursor(conn)
+
+    cur.execute('SELECT creator_id, bet_amount FROM durak_lobbies WHERE id = %s', (lobby_id,))
+    row = cur.fetchone()
+    if not row:
+        cur.close()
+        conn.close()
+        return False
+
+    is_creator = row["creator_id"] == user_id
+    bet = row["bet_amount"] or 0
+
+    # Если была ставка — добавляем её в pot лобби (деньги "сгорают" для ушедшего)
+    if bet > 0:
+        cur.execute('UPDATE durak_lobbies SET pot = pot + %s WHERE id = %s', (bet, lobby_id))
+
+    cur.execute('DELETE FROM durak_lobby_players WHERE lobby_id = %s AND user_id = %s', (lobby_id, user_id))
+
+    if is_creator:
+        # Пытаемся передать владение следующему игроку по времени входа
+        cur.execute('''
+            SELECT user_id FROM durak_lobby_players 
+            WHERE lobby_id = %s 
+            ORDER BY joined_at 
+            LIMIT 1
+        ''', (lobby_id,))
+        next_owner = cur.fetchone()
+
+        if next_owner:
+            cur.execute('''
+                UPDATE durak_lobbies 
+                SET creator_id = %s, creator_name = (
+                    SELECT first_name FROM durak_lobby_players WHERE lobby_id = %s AND user_id = %s
+                )
+                WHERE id = %s
+            ''', (next_owner["user_id"], lobby_id, next_owner["user_id"], lobby_id))
+        else:
+            # Никого не осталось — закрываем
+            cur.execute("UPDATE durak_lobbies SET status = 'cancelled' WHERE id = %s", (lobby_id,))
+
+    # Если лобби пустое — удаляем
+    cur.execute('SELECT COUNT(*) as cnt FROM durak_lobby_players WHERE lobby_id = %s', (lobby_id,))
+    remaining = cur.fetchone()["cnt"]
+    if remaining == 0:
+        cur.execute('DELETE FROM durak_lobbies WHERE id = %s', (lobby_id,))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    return True
+
+
+def update_lobby_settings(lobby_id: int, creator_id: int, **kwargs) -> bool:
+    """Обновляет настройки лобби (только создатель).
+    Запрещено менять настройки, если кто-то уже готов или в лобби больше 1 игрока.
+    """
+    allowed = {"max_players", "deck_size", "game_type", "cheating_enabled", "bet_amount"}
+    updates = {k: v for k, v in kwargs.items() if k in allowed}
+
+    if not updates:
+        return False
+
+    conn = get_connection()
+    cur = _cursor(conn)
+
+    # Проверяем, что пользователь — создатель
+    cur.execute('SELECT creator_id FROM durak_lobbies WHERE id = %s', (lobby_id,))
+    row = cur.fetchone()
+    if not row or row["creator_id"] != creator_id:
+        cur.close()
+        conn.close()
+        return False
+
+    # Проверяем, можно ли менять настройки
+    cur.execute('''
+        SELECT COUNT(*) as total_players,
+               SUM(CASE WHEN is_ready = TRUE THEN 1 ELSE 0 END) as ready_players
+        FROM durak_lobby_players
+        WHERE lobby_id = %s
+    ''', (lobby_id,))
+
+    stats = cur.fetchone()
+    total = stats["total_players"] or 0
+    ready = stats["ready_players"] or 0
+
+    # Запрещаем изменения, если:
+    # - кто-то уже готов (кроме возможно самого создателя, но для простоты — если ready > 0)
+    # - в лобби больше 1 игрока
+    if ready > 0 or total > 1:
+        cur.close()
+        conn.close()
+        return False
+
+    set_clause = ", ".join([f"{k} = %s" for k in updates.keys()])
+    values = list(updates.values()) + [lobby_id]
+
+    cur.execute(f'''
+        UPDATE durak_lobbies 
+        SET {set_clause}, updated_at = NOW()
+        WHERE id = %s
+    ''', values)
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    return True
+
+
+def set_player_ready(lobby_id: int, user_id: int, is_ready: bool) -> bool:
+    """Устанавливает статус готовности игрока."""
+    conn = get_connection()
+    cur = _cursor(conn)
+
+    cur.execute('''
+        UPDATE durak_lobby_players 
+        SET is_ready = %s 
+        WHERE lobby_id = %s AND user_id = %s
+    ''', (is_ready, lobby_id, user_id))
+
+    success = cur.rowcount > 0
+    conn.commit()
+    cur.close()
+    conn.close()
+    return success
+
+
+def is_user_in_active_lobby(user_id: int) -> Optional[int]:
+    """Возвращает ID активного лобби, в котором находится пользователь, или None."""
+    conn = get_connection()
+    cur = _cursor(conn)
+
+    cur.execute('''
+        SELECT pl.lobby_id 
+        FROM durak_lobby_players pl
+        JOIN durak_lobbies l ON l.id = pl.lobby_id
+        WHERE pl.user_id = %s AND l.status = 'waiting'
+        LIMIT 1
+    ''', (user_id,))
+
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    return row["lobby_id"] if row else None
+
+
+def get_durak_lobby_by_id(lobby_id: int) -> Optional[Dict[str, Any]]:
+    """Получает лобби по id (включая playing)."""
+    conn = get_connection()
+    cur = _cursor(conn)
+    cur.execute('''
+        SELECT l.*,
+               COUNT(p.id) as current_players
+        FROM durak_lobbies l
+        LEFT JOIN durak_lobby_players p ON p.lobby_id = l.id
+        WHERE l.id = %s
+        GROUP BY l.id
+    ''', (lobby_id,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not row:
+        return None
+
+    return {
+        "id": row["id"],
+        "creator_id": row["creator_id"],
+        "creator_name": row["creator_name"],
+        "max_players": row["max_players"],
+        "current_players": row["current_players"],
+        "deck_size": row["deck_size"],
+        "game_type": row["game_type"],
+        "cheating_enabled": row["cheating_enabled"],
+        "bet_amount": row["bet_amount"] or 0,
+        "pot": row.get("pot", 0) or 0,
+        "status": row["status"],
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None
+    }

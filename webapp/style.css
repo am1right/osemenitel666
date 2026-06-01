@@ -231,6 +231,31 @@ h1.glitch::after {
     margin: 0;
 }
 
+/* Специальные стили для многопользовательских игр (Дурак) */
+.game-card--online {
+    position: relative;
+    border-color: rgba(0, 255, 136, 0.4);
+}
+
+.game-card--online:hover {
+    border-color: rgba(0, 255, 136, 0.6);
+    box-shadow: 0 0 28px rgba(0, 255, 136, 0.25);
+}
+
+.online-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: linear-gradient(90deg, #00ff88, #00cc6a);
+    color: #000;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 999px;
+    letter-spacing: 0.5px;
+    box-shadow: 0 0 8px rgba(0, 255, 136, 0.6);
+}
+
 /* --- Таблица лидеров --- */
 .leaderboard-list {
     width: 100%;

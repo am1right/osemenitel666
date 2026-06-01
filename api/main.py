@@ -52,6 +52,17 @@ if admin_router is not None:
 else:
     logger.error("❌ admin_router не инициализирован — проверь логи admin_routes.py")
 
+# ── Durak Online Routes (Этап 2) ────────────────────────────────
+try:
+    from api.durak_routes import router as durak_router
+    if durak_router is not None:
+        app.include_router(durak_router)
+        logger.info("✅ Durak routes mounted at /api/durak")
+    else:
+        logger.warning("⚠️ durak_routes router is None")
+except Exception as e:
+    logger.error(f"❌ Не удалось подключить Durak routes: {e}")
+
 WEBAPP_URL    = os.getenv("WEBAPP_URL", "http://localhost:8000")
 BOT_TOKEN     = os.getenv("BOT_TOKEN", "")
 BOT_USERNAME  = os.getenv("BOT_USERNAME", "chingamebot")  # юзернейм бота без @
