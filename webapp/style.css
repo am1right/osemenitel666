@@ -233,6 +233,11 @@ h1.glitch::after {
     border-color: rgba(0, 255, 136, 0.4);
 }
 
+/* Делаем иконку Дурака крупнее и визуально сопоставимой с остальными */
+.game-card--online .game-icon {
+    margin-bottom: 4px; /* чуть меньше отступ, чтобы крупная иконка не сильно раздвигала карточку */
+}
+
 .game-card--online:hover {
     border-color: rgba(0, 255, 136, 0.6);
     box-shadow: 0 0 28px rgba(0, 255, 136, 0.25);
