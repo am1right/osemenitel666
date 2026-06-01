@@ -165,6 +165,31 @@ h1.glitch::after {
     align-items: start;
 }
 
+/* Разделители и заголовки секций игр */
+.games-section-title {
+    grid-column: 1 / -1;
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-family: 'Orbitron', sans-serif;
+    margin: 8px 0 2px;
+    padding-bottom: 4px;
+}
+
+.games-separator {
+    grid-column: 1 / -1;
+    height: 1px;
+    background: linear-gradient(
+        to right, 
+        transparent, 
+        rgba(0, 255, 136, 0.25), 
+        rgba(188, 19, 254, 0.2), 
+        transparent
+    );
+    margin: 6px 0 10px;
+}
+
 .game-card {
     background: rgba(43, 29, 84, 0.88);
     border: 1px solid rgba(255, 255, 255, 0.1);

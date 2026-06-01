@@ -278,6 +278,9 @@
             <div id="energy-container" style="display:flex; justify-content:center; margin-bottom:18px;"></div>
 
             <div class="games-grid">
+                <!-- Оффлайн игры -->
+                <div class="games-section-title">Оффлайн</div>
+
                 <div class="game-card" data-game="math" onclick="launchGame('games/math.html')">
                     <div class="game-icon"><img src="icons/math.png" alt="Math Master" style="width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 0 10px rgba(255,255,255,0.4));"></div>
                     <h3>Math Master</h3>
@@ -298,6 +301,12 @@
                     <h3>Flappy Chin</h3>
                     <p>Пролети сквозь трубы</p>
                 </div>
+
+                <!-- Разделитель между оффлайн и онлайн -->
+                <div class="games-separator"></div>
+
+                <!-- Онлайн игры -->
+                <div class="games-section-title">Онлайн</div>
 
                 <!-- Дурак Онлайн - первая многопользовательская игра -->
                 <div class="game-card game-card--online" data-game="durak" onclick="launchDurak()">
