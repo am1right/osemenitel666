@@ -15,14 +15,14 @@ TEST_ID_RANGE = (888_000, 1_010_000)
 def get_connection():
     db_url = DATABASE_URL
     if not db_url:
-        raise RuntimeError("DATABASE_URL is not set — добавьте PostgreSQL URL из Render Dashboard")
+        raise RuntimeError("DATABASE_URL is not set - добавьте PostgreSQL URL из Render Dashboard")
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
     return psycopg2.connect(db_url)
 
 
 def _cursor(conn):
-    """DictCursor — аналог sqlite3.Row: доступ по имени колонки."""
+    """DictCursor - аналог sqlite3.Row: доступ по имени колонки."""
     return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
 
@@ -160,9 +160,6 @@ def init_db():
         )
     ''')
 
-    -- ============================================
-    -- ДУРАК ОНЛАЙН — ЛОББИ (Этап 2)
-    -- ============================================
     cur.execute('''
         CREATE TABLE IF NOT EXISTS durak_lobbies (
             id                SERIAL PRIMARY KEY,
@@ -1393,7 +1390,7 @@ def check_fraud_inactive_ratio(inviter_id: int) -> Optional[Dict[str, Any]]:
 
 
 # ============================================================
-# ДУРАК ОНЛАЙН — ФУНКЦИИ ДЛЯ ЛОББИ (Этап 2)
+# ДУРАК ОНЛАЙН - ФУНКЦИИ ДЛЯ ЛОББИ (Этап 2)
 # ============================================================
 
 def create_durak_lobby(
@@ -1562,7 +1559,7 @@ def get_lobby_players(lobby_id: int) -> list[Dict[str, Any]]:
 
 def leave_durak_lobby(lobby_id: int, user_id: int) -> bool:
     """Выходит из лобби.
-    Если уходит создатель — передаём владение следующему игроку (если есть),
+    Если уходит создатель - передаём владение следующему игроку (если есть),
     иначе закрываем лобби.
 
     Важно: если в лобби была ставка (bet_amount > 0), то при выходе ставка игрока
@@ -1581,7 +1578,7 @@ def leave_durak_lobby(lobby_id: int, user_id: int) -> bool:
     is_creator = row["creator_id"] == user_id
     bet = row["bet_amount"] or 0
 
-    # Если была ставка — добавляем её в pot лобби (деньги "сгорают" для ушедшего)
+    # Если была ставка - добавляем её в pot лобби (деньги "сгорают" для ушедшего)
     if bet > 0:
         cur.execute('UPDATE durak_lobbies SET pot = pot + %s WHERE id = %s', (bet, lobby_id))
 
