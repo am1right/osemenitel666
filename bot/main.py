@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 from telegram import (
     Update, InlineKeyboardButton, InlineKeyboardMarkup,
-    WebAppInfo, InlineQueryResultsButton
+    WebAppInfo, InlineQueryResultsButton, InlineQueryResultPhoto
 )
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler,
@@ -25,9 +25,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / "config" / ".env")
 
 BOT_TOKEN    = os.getenv("BOT_TOKEN")
-API_BASE     = os.getenv("API_BASE", "https://chin-games-bot.onrender.com")
-BASE_STATIC  = f"{API_BASE}/static"
-WEBAPP_URL   = f"{BASE_STATIC}/index.html?v=2205241"
+API_BASE         = os.getenv("API_BASE", "https://chin-games-bot.onrender.com")
+BASE_STATIC      = f"{API_BASE}/static"
+WEBAPP_URL       = f"{BASE_STATIC}/index.html?v=2205241"
+INLINE_IMAGE_URL = f"{BASE_STATIC}/icons/inline.png"
 
 # ID владельца бота для уведомлений о подозрительной активности
 ADMIN_ID          = int(os.getenv("ADMIN_ID", "0"))
@@ -196,12 +197,40 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик inline-запросов (@botname в любом чате).
+
+    Показываем красивое превью с картинкой inline.png + кнопку запуска.
+    """
     try:
+        results = []
+
+        # Показываем изображение inline.png как результат
+        if INLINE_IMAGE_URL:
+            results.append(
+                InlineQueryResultPhoto(
+                    id="chin_games_inline",
+                    photo_url=INLINE_IMAGE_URL,
+                    thumbnail_url=INLINE_IMAGE_URL,
+                    caption="🎮 <b>Chin Games</b> — мини-игры и призы в Stars",
+                    parse_mode="HTML",
+                    # При тапе на картинку тоже открываем бота
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton(
+                            "🚀 Играть",
+                            url=f"https://t.me/{BOT_USERNAME}?start=play"
+                        )
+                    ]])
+                )
+            )
+
         await update.inline_query.answer(
-            results=[],
-            cache_time=1,
+            results=results,
+            cache_time=5,
             is_personal=True,
-            button=InlineQueryResultsButton(text="🎮 Играть", start_parameter="play")
+            button=InlineQueryResultsButton(
+                text="🚀 Играть в Chin Games",
+                start_parameter="play"
+            )
         )
     except Exception as e:
         logger.error(f"Inline error: {e}")
