@@ -21,6 +21,7 @@
             max-width: 720px;
             margin: 0 auto;
             padding: 16px;
+            padding-top: 90px; /* базовый отступ, JS подкрутит под safe area */
             padding-bottom: 100px;
         }
 
@@ -370,6 +371,23 @@
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
+
+        // ── Top padding под шапку Telegram (как в shop.html) ──
+        function applyDurakTopPadding() {
+            const container = document.querySelector('.durak-container');
+            if (!container) return;
+
+            const tgTop  = tg.contentSafeAreaInsets?.top ?? 0;
+            const sysTop = tg.safeAreaInsets?.top ?? 0;
+            // Минимум ~90-100px как в других страницах
+            const topPad = Math.max(Math.max(tgTop, sysTop), 90);
+            container.style.paddingTop = topPad + 'px';
+        }
+        applyDurakTopPadding();
+        setTimeout(applyDurakTopPadding, 350);
+        tg.onEvent('viewportChanged', applyDurakTopPadding);
+        tg.onEvent('safeAreaChanged', applyDurakTopPadding);
+        tg.onEvent('contentSafeAreaChanged', applyDurakTopPadding);
 
         let currentLobbyId = null;
         let currentUserId = null;

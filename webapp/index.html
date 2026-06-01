@@ -81,6 +81,16 @@
         .chin-navbar__item--active .chin-navbar__dot { opacity: 1; }
         .container { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important; }
 
+        /* Scroll wrapper — разрешаем прокрутку, когда контент (особенно Дурак) не влезает */
+        .main-scroll {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            min-height: 0;
+            padding-bottom: 10px;
+        }
+
         /* ========== CONTEST BADGE ========== */
         /* Contest card state — only what style.css doesn't cover */
         .game-card.has-contest {
@@ -263,13 +273,15 @@
 
     <div class="container">
         <div id="main-screen" class="screen active">
-            <h1 class="glitch" data-text="CHIN GAMES">CHIN GAMES</h1>
-            <p class="subtitle">Докажи, что ты лучший! Начни игру!</p>
+            <!-- Обёртка для прокрутки (Дурак не влезал) -->
+            <div class="main-scroll">
+                <h1 class="glitch" data-text="CHIN GAMES">CHIN GAMES</h1>
+                <p class="subtitle">Докажи, что ты лучший! Начни игру!</p>
 
-            <!-- ⚡ Energy widget -->
-            <div id="energy-container" style="display:flex; justify-content:center; margin-bottom:18px;"></div>
+                <!-- ⚡ Energy widget -->
+                <div id="energy-container" style="display:flex; justify-content:center; margin-bottom:18px;"></div>
 
-            <div class="games-grid">
+                <div class="games-grid">
                 <div class="game-card" data-game="math" onclick="launchGame('games/math.html')">
                     <div class="game-icon"><img src="icons/math.png" alt="Math Master" style="width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 0 10px rgba(255,255,255,0.4));"></div>
                     <h3>Math Master</h3>
@@ -298,7 +310,7 @@
                     <p>Классика с друзьями</p>
                     <span class="online-badge">ONLINE</span>
                 </div>
-            </div>
+            </div> <!-- /main-scroll -->
         </div>
     </div>
 
@@ -341,6 +353,11 @@
         document.body.style.height = '100%';
 
         document.addEventListener('touchmove', e => {
+            // Разрешаем вертикальный скролл внутри основного контента (чтобы Дурак влезал)
+            const scrollContainer = document.querySelector('.main-scroll');
+            if (scrollContainer && scrollContainer.contains(e.target)) {
+                return; // даём скроллить
+            }
             e.preventDefault();
         }, { passive: false });
 
