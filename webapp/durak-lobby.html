@@ -433,33 +433,34 @@
         /* Flying Reaction Animation */
         .flying-reaction {
             position: absolute;
-            font-size: 42px;
             z-index: 300;
             pointer-events: none;
-            animation: flyUp 1.8s forwards;
+            animation: flyUp 1.9s forwards;
             display: flex;
             align-items: center;
             justify-content: center;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
         }
         .flying-reaction img {
-            width: 48px;
-            height: 48px;
+            width: 52px;
+            height: 52px;
+            transition: transform 0.2s ease;
         }
 
         @keyframes flyUp {
             0% {
-                transform: translateY(0) scale(0.6);
+                transform: scale(0.5);
                 opacity: 0;
             }
-            15% {
+            12% {
                 opacity: 1;
-                transform: translateY(-20px) scale(1.1);
+                transform: scale(1.15);
             }
-            70% {
+            65% {
                 opacity: 1;
             }
             100% {
-                transform: translateY(-120px) scale(0.7);
+                transform: translateY(-95px) scale(0.65);
                 opacity: 0;
             }
         }
@@ -575,6 +576,7 @@
             border-radius: 16px;
             padding: 12px;
             position: relative;
+            box-shadow: inset 0 0 25px rgba(0,0,0,0.5);
         }
 
         .play-label {
@@ -587,10 +589,14 @@
         .play-cards {
             display: flex;
             flex-wrap: wrap;
-            gap: 6px;
-            min-height: 62px;
+            gap: 0;
+            min-height: 68px;
             justify-content: center;
+            align-items: flex-start;
+            padding: 0 8px; /* чтобы крайние карты не обрезались */
         }
+
+        /* Перекрытие теперь управляется через JavaScript (динамическое) */
 
         /* Колода + Козырь */
         .deck-area {
@@ -675,9 +681,9 @@
         .player-hand {
             display: flex;
             flex-wrap: wrap;
-            gap: 5px;
+            gap: 4px;
             justify-content: center;
-            min-height: 64px;
+            min-height: 86px;
         }
 
         /* Минимальная нижняя панель */
@@ -697,11 +703,17 @@
         }
 
         /* Улучшенные карты на столе */
-        .attack-cards .durak-card,
-        .beat-cards .durak-card {
-            width: 46px;
-            height: 62px;
-            font-size: 14px;
+        .attack-cards .real-durak-card,
+        .beat-cards .real-durak-card {
+            width: 54px;
+            height: 76px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.55);
+            transition: margin-left 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        /* Дополнительный объём при перекрытии */
+        .play-cards .real-durak-card:not(:first-child) {
+            box-shadow: 0 6px 14px rgba(0,0,0,0.65);
         }
 
         /* === Анимация броска карт === */
@@ -722,6 +734,119 @@
             margin: 0;
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
         }
+
+        /* ========== Реалистичные карты из ассетов ========== */
+        .real-durak-card {
+            position: relative;
+            width: 62px;
+            height: 88px;
+            user-select: none;
+            cursor: pointer;
+        }
+
+        .real-durak-card .card-base {
+            width: 100%;
+            height: 100%;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+            display: block;
+        }
+
+        .real-durak-card .card-corner {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1;
+            font-family: 'Orbitron', system-ui, sans-serif;
+            font-weight: 700;
+            color: inherit;
+        }
+
+        .real-durak-card .card-corner.top-left {
+            top: 3px;
+            left: 4px;
+            font-size: 12px;
+        }
+
+        .real-durak-card .card-corner.bottom-right {
+            bottom: 3px;
+            right: 4px;
+            font-size: 12px;
+            transform: rotate(180deg);
+        }
+
+        .real-durak-card .rank-text {
+            font-size: 13px;
+            line-height: 0.9;
+            font-weight: 800;
+        }
+
+        .real-durak-card .suit-small {
+            width: 11px;
+            height: 11px;
+            margin-top: -2px;
+        }
+
+        .real-durak-card .card-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 70%;
+            height: 55%;
+        }
+
+        .real-durak-card .suit-big {
+            width: 26px;
+            height: 26px;
+        }
+
+        .real-durak-card .ace-image,
+        .real-durak-card .court-image {
+            max-width: 85%;
+            max-height: 85%;
+            object-fit: contain;
+            filter: drop-shadow(1px 2px 3px rgba(0,0,0,0.45));
+        }
+
+        .real-durak-card .number-image {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.4));
+        }
+
+        .real-durak-card .suit-medium {
+            width: 18px;
+            height: 18px;
+            margin-top: 2px;
+            object-fit: contain;
+            filter: drop-shadow(0.5px 0.5px 1px rgba(0,0,0,0.35));
+        }
+
+        /* Пипсы (масти) для 2-10 */
+        .real-durak-card .pips-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .real-durak-card .pip {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            object-fit: contain;
+            transform: translate(-50%, -50%);
+        }
+
+        .real-durak-card.red { color: #c62828; }
+        .real-durak-card.black { color: #1a1a1a; }
     </style>
 </head>
 <body>
@@ -939,6 +1064,17 @@
                             style="padding:3px 8px; font-size:0.7rem; background:#1a3a2a; border:1px solid #d122e3; color:#66ddaa; border-radius:5px; cursor:pointer;">Fetch real /state</button>
                     <button onclick="if (typeof window.__durakShowRealGameBoard === 'function') window.__durakShowRealGameBoard()" 
                             style="padding:3px 8px; font-size:0.7rem; background:#1a3a2a; border:1px solid #d122e3; color:#66ddaa; border-radius:5px; cursor:pointer;">Show game board</button>
+                </div>
+
+                <!-- Симуляция реакций от разных позиций -->
+                <div style="margin-top:8px;">
+                    <div style="font-size:0.65rem; color:#888; margin-bottom:4px;">Симуляция эмоций от игроков:</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                        <button onclick="showFlyingReaction('like', 'self')" style="padding:2px 6px; font-size:0.65rem; background:#2a3a2a; border:1px solid #446655; color:#99ccaa; border-radius:4px; cursor:pointer;">Self</button>
+                        <button onclick="showFlyingReaction('wow', 'top')" style="padding:2px 6px; font-size:0.65rem; background:#2a3a2a; border:1px solid #446655; color:#99ccaa; border-radius:4px; cursor:pointer;">Top</button>
+                        <button onclick="showFlyingReaction('angry', 'left')" style="padding:2px 6px; font-size:0.65rem; background:#2a3a2a; border:1px solid #446655; color:#99ccaa; border-radius:4px; cursor:pointer;">Left</button>
+                        <button onclick="showFlyingReaction('troll', 'right')" style="padding:2px 6px; font-size:0.65rem; background:#2a3a2a; border:1px solid #446655; color:#99ccaa; border-radius:4px; cursor:pointer;">Right</button>
+                    </div>
                 </div>
 
                 <div style="margin-top:6px;">
@@ -2666,24 +2802,201 @@
 
         function cardToHtml(cardStr) {
             if (!cardStr) return '';
+            return createRealCardElement(cardStr).outerHTML;
+        }
+
+        /**
+         * Создаёт настоящую визуальную карту из ассетов icons/durak/
+         */
+        function createPips(rank, suitInfo) {
+            const pips = [];
+            const suitSrc = `icons/durak/${suitInfo.name}.png`;
+            const colorClass = suitInfo.color;
+
+            const createPip = (top, left) => {
+                const img = document.createElement('img');
+                img.src = suitSrc;
+                img.className = `pip ${colorClass}`;
+                img.style.top = top;
+                img.style.left = left;
+                return img;
+            };
+
+            const num = parseInt(rank);
+
+            switch (num) {
+                case 2:
+                    pips.push(createPip('18%', '50%'));
+                    pips.push(createPip('76%', '50%'));
+                    break;
+                case 3:
+                    pips.push(createPip('15%', '50%'));
+                    pips.push(createPip('48%', '50%'));
+                    pips.push(createPip('81%', '50%'));
+                    break;
+                case 4:
+                    pips.push(createPip('16%', '28%'));
+                    pips.push(createPip('16%', '72%'));
+                    pips.push(createPip('78%', '28%'));
+                    pips.push(createPip('78%', '72%'));
+                    break;
+                case 5:
+                    pips.push(createPip('14%', '25%'));
+                    pips.push(createPip('14%', '75%'));
+                    pips.push(createPip('48%', '50%'));
+                    pips.push(createPip('82%', '25%'));
+                    pips.push(createPip('82%', '75%'));
+                    break;
+                case 6:
+                    pips.push(createPip('14%', '25%'));
+                    pips.push(createPip('14%', '75%'));
+                    pips.push(createPip('42%', '25%'));
+                    pips.push(createPip('42%', '75%'));
+                    pips.push(createPip('70%', '25%'));
+                    pips.push(createPip('70%', '75%'));
+                    break;
+                case 7:
+                    pips.push(createPip('12%', '25%'));
+                    pips.push(createPip('12%', '75%'));
+                    pips.push(createPip('36%', '25%'));
+                    pips.push(createPip('36%', '75%'));
+                    pips.push(createPip('55%', '50%'));
+                    pips.push(createPip('68%', '25%'));
+                    pips.push(createPip('68%', '75%'));
+                    break;
+                case 8:
+                    pips.push(createPip('12%', '25%'));
+                    pips.push(createPip('12%', '75%'));
+                    pips.push(createPip('32%', '25%'));
+                    pips.push(createPip('32%', '75%'));
+                    pips.push(createPip('52%', '25%'));
+                    pips.push(createPip('52%', '75%'));
+                    pips.push(createPip('72%', '25%'));
+                    pips.push(createPip('72%', '75%'));
+                    break;
+                case 9:
+                    pips.push(createPip('10%', '25%'));
+                    pips.push(createPip('10%', '75%'));
+                    pips.push(createPip('30%', '25%'));
+                    pips.push(createPip('30%', '75%'));
+                    pips.push(createPip('50%', '50%'));
+                    pips.push(createPip('65%', '25%'));
+                    pips.push(createPip('65%', '75%'));
+                    pips.push(createPip('85%', '25%'));
+                    pips.push(createPip('85%', '75%'));
+                    break;
+                case 10:
+                    pips.push(createPip('8%', '25%'));
+                    pips.push(createPip('8%', '75%'));
+                    pips.push(createPip('26%', '50%'));
+                    pips.push(createPip('38%', '25%'));
+                    pips.push(createPip('38%', '75%'));
+                    pips.push(createPip('58%', '25%'));
+                    pips.push(createPip('58%', '75%'));
+                    pips.push(createPip('70%', '50%'));
+                    pips.push(createPip('82%', '25%'));
+                    pips.push(createPip('82%', '75%'));
+                    break;
+            }
+
+            return pips;
+        }
+
+        function createRealCardElement(cardStr) {
+            const container = document.createElement('div');
+            container.className = 'real-durak-card';
+            container.dataset.card = cardStr;
+
             const rank = cardStr.slice(0, -1);
-            const suit = cardStr.slice(-1);
-            const isRed = (suit === '♥' || suit === '♦');
-            const colorClass = isRed ? 'red' : 'black';
+            const suitChar = cardStr.slice(-1);
 
-            // Красивый вывод ранга
+            const suitMap = {
+                '♥': { name: 'hearts', symbol: '♥', color: 'red' },
+                '♦': { name: 'diamonds', symbol: '♦', color: 'red' },
+                '♣': { name: 'clubs', symbol: '♣', color: 'black' },
+                '♠': { name: 'spades', symbol: '♠', color: 'black' }
+            };
+
+            const suitInfo = suitMap[suitChar];
+            if (!suitInfo) {
+                // fallback
+                container.innerHTML = `<div class="durak-card">${cardStr}</div>`;
+                return container;
+            }
+
+            // Базовая карта
+            const base = document.createElement('img');
+            base.src = 'icons/durak/card_front.png';
+            base.className = 'card-base';
+            container.appendChild(base);
+
+            // Ранг (текстом, как просил пользователь)
             let displayRank = rank;
-            if (rank === 'J') displayRank = 'В';
-            if (rank === 'Q') displayRank = 'Д';
-            if (rank === 'K') displayRank = 'К';
-            if (rank === 'A') displayRank = 'Т';
+            if (rank === 'J' || rank === '11') displayRank = 'В';
+            if (rank === 'Q' || rank === '12') displayRank = 'Д';
+            if (rank === 'K' || rank === '13') displayRank = 'К';
+            if (rank === 'A' || rank === '14' || rank === '1') displayRank = 'Т';
 
-            return `
-                <div class="durak-card ${colorClass}">
-                    <div class="rank">${displayRank}</div>
-                    <div class="suit">${suit}</div>
-                </div>
+            // Верхний левый угол (ранг + масть)
+            const topLeft = document.createElement('div');
+            topLeft.className = `card-corner top-left ${suitInfo.color}`;
+            topLeft.innerHTML = `
+                <div class="rank-text">${displayRank}</div>
+                <img src="icons/durak/${suitInfo.name}.png" class="suit-small">
             `;
+            container.appendChild(topLeft);
+
+            // Нижний правый угол (перевёрнутый)
+            const bottomRight = document.createElement('div');
+            bottomRight.className = `card-corner bottom-right ${suitInfo.color}`;
+            bottomRight.innerHTML = `
+                <div class="rank-text">${displayRank}</div>
+                <img src="icons/durak/${suitInfo.name}.png" class="suit-small">
+            `;
+            container.appendChild(bottomRight);
+
+            // Центр карты
+            const center = document.createElement('div');
+            center.className = 'card-center';
+
+            const isCourt = ['J', 'Q', 'K', '11', '12', '13'].includes(rank);
+
+            if (isCourt) {
+                // Придворные карты — используем готовые изображения
+                let courtFile = 'jack.png';
+                if (rank === 'Q' || rank === '12') courtFile = 'queen.png';
+                if (rank === 'K' || rank === '13') courtFile = 'king.png';
+
+                const courtImg = document.createElement('img');
+                courtImg.src = `icons/durak/${courtFile}`;
+                courtImg.className = 'court-image';
+                center.appendChild(courtImg);
+            } else if (rank === 'A' || rank === '14' || rank === '1') {
+                // Туз — специальная большая масть
+                const aceImg = document.createElement('img');
+                aceImg.src = `icons/durak/${suitInfo.name}_ace.png`;
+                aceImg.className = 'ace-image';
+                center.appendChild(aceImg);
+            } else {
+                // Обычные карты 2-10 — правильное расположение пипсов
+                const pips = createPips(rank, suitInfo);
+                pips.forEach(pip => center.appendChild(pip));
+
+                // Опционально: маленькая цифра в центре для 10 и некоторых других
+                if (rank === '10') {
+                    const smallRank = document.createElement('div');
+                    smallRank.className = 'rank-text center-rank';
+                    smallRank.textContent = '10';
+                    smallRank.style.fontSize = '11px';
+                    smallRank.style.position = 'absolute';
+                    smallRank.style.bottom = '2px';
+                    center.appendChild(smallRank);
+                }
+            }
+
+            container.appendChild(center);
+
+            return container;
         }
 
         async function fetchAndRenderDurakState() {
@@ -2743,35 +3056,62 @@
             attacksEl.innerHTML = '';
             beatsEl.innerHTML = '';
 
-            const isDefender = currentGameState && currentGameState.role === 'defender';
-
             table.forEach(pair => {
-                // Attack card
-                const atkDiv = document.createElement('div');
-                atkDiv.className = 'durak-card attack';
+                const atk = document.createElement('div');
+                atk.className = 'durak-card attack';
+                atk.innerHTML = cardToHtml(pair.attack);
+                atk.onclick = () => onTableAttackClick(pair.attack);
+                attacksEl.appendChild(atk);
 
-                // Если мы защищаемся — делаем неприбитые карты более заметными
-                if (isDefender && !pair.beat) {
-                    atkDiv.style.border = '3px solid #3a9cff';
-                    atkDiv.style.boxShadow = '0 0 0 4px rgba(58, 156, 255, 0.25)';
-                    atkDiv.title = 'Кликните, чтобы выбрать для отбива';
-                }
-
-                atkDiv.innerHTML = cardToHtml(pair.attack).replace('durak-card', '');
-                atkDiv.onclick = () => onTableAttackClick(pair.attack);
-                attacksEl.appendChild(atkDiv);
-
-                // Beat card (if exists)
-                const btDiv = document.createElement('div');
+                const bt = document.createElement('div');
                 if (pair.beat) {
-                    btDiv.className = 'durak-card beat';
-                    btDiv.innerHTML = cardToHtml(pair.beat).replace('durak-card', '');
+                    bt.className = 'durak-card beat';
+                    bt.innerHTML = cardToHtml(pair.beat);
                 } else {
-                    btDiv.className = 'durak-card';
-                    btDiv.style.opacity = '0.25';
-                    btDiv.innerHTML = '<div style="font-size:10px;color:#666">—</div>';
+                    bt.className = 'durak-card';
+                    bt.style.opacity = '0.15';
                 }
-                beatsEl.appendChild(btDiv);
+                beatsEl.appendChild(bt);
+            });
+
+            // Динамическое перекрытие (оба варианта)
+            updateCardOverlap(attacksEl);
+            updateCardOverlap(beatsEl);
+        }
+
+        /**
+         * Динамическое лёгкое перекрытие карт на столе.
+         * Вариант 1: Фиксированное + небольшое усиление от количества карт.
+         */
+        function updateCardOverlap(container) {
+            if (!container) return;
+
+            const cards = container.querySelectorAll('.real-durak-card');
+            if (cards.length <= 1) return;
+
+            const count = cards.length;
+            const isAttack = container.classList.contains('attack-cards');
+
+            let overlap = isAttack ? 16 : 14;
+
+            // Лёгкое усиление при большом количестве карт
+            if (count >= 4) {
+                overlap += Math.floor((count - 3) * 1.8);
+            }
+            overlap = Math.min(overlap, 28);
+
+            cards.forEach((card, index) => {
+                card.style.marginLeft = index === 0 ? '0' : `-${overlap}px`;
+                card.style.zIndex = String(10 + index); // Позже добавленные карты поверх
+
+                // Лёгкий случайный поворот для естественного вида кучи
+                if (index > 0) {
+                    const rotation = (Math.random() * 7 - 3.5).toFixed(1);
+                    card.style.transform = `rotate(${rotation}deg)`;
+                } else {
+                    card.style.transform = '';
+                    card.style.zIndex = '10';
+                }
             });
         }
 
@@ -3044,8 +3384,8 @@
                 item.onclick = (e) => {
                     e.stopImmediatePropagation();
                     picker.classList.remove('show');
-                    showFlyingReaction(name);
-                    // TODO: в будущем — отправка через сокет
+                    showFlyingReaction(name, 'self');   // Всегда от себя
+                    // TODO: в будущем — отправка через сокет с указанием позиции
                 };
                 picker.appendChild(item);
             });
@@ -3064,7 +3404,7 @@
             });
         }
 
-        function showFlyingReaction(emojiName) {
+        function showFlyingReaction(emojiName, position = 'self') {
             const board = document.getElementById('durak-game-board');
             if (!board) return;
 
@@ -3072,13 +3412,62 @@
             reaction.className = 'flying-reaction';
             reaction.innerHTML = `<img src="icons/emoji/${emojiName}.png" alt="">`;
 
-            // Случайная горизонтальная позиция
-            const randomX = 25 + Math.random() * 55;
-            reaction.style.left = `${randomX}%`;
-            reaction.style.bottom = '90px';
+            const boardRect = board.getBoundingClientRect();
+
+            let startX, startY;
+
+            if (position === 'self') {
+                // Снизу, примерно над рукой игрока
+                startX = boardRect.width * 0.5;
+                startY = boardRect.height - 70;
+            } 
+            else if (position === 'top') {
+                const topDeck = document.getElementById('durak-opponents-top');
+                if (topDeck) {
+                    const rect = topDeck.getBoundingClientRect();
+                    startX = rect.left + rect.width / 2 - boardRect.left;
+                    startY = rect.bottom - boardRect.top + 10;
+                } else {
+                    startX = boardRect.width * 0.5;
+                    startY = 60;
+                }
+            } 
+            else if (position === 'left') {
+                const leftDeck = document.getElementById('durak-opponents-left');
+                if (leftDeck) {
+                    const rect = leftDeck.getBoundingClientRect();
+                    startX = rect.right - boardRect.left + 5;
+                    startY = rect.top + rect.height / 2 - boardRect.top;
+                } else {
+                    startX = 50;
+                    startY = boardRect.height * 0.4;
+                }
+            } 
+            else if (position === 'right') {
+                const rightDeck = document.getElementById('durak-opponents-right');
+                if (rightDeck) {
+                    const rect = rightDeck.getBoundingClientRect();
+                    startX = rect.left - boardRect.left - 5;
+                    startY = rect.top + rect.height / 2 - boardRect.top;
+                } else {
+                    startX = boardRect.width - 50;
+                    startY = boardRect.height * 0.4;
+                }
+            } 
+            else {
+                // fallback
+                startX = boardRect.width * 0.5;
+                startY = boardRect.height * 0.5;
+            }
+
+            // Устанавливаем начальную позицию относительно игрового поля
+            reaction.style.left = `${startX}px`;
+            reaction.style.top = `${startY}px`;
+            reaction.style.bottom = 'auto';
 
             board.appendChild(reaction);
 
+            // Анимация улета вверх + в сторону (для визуального разнообразия)
             setTimeout(() => {
                 if (reaction.parentNode) reaction.parentNode.removeChild(reaction);
             }, 1900);
@@ -3086,10 +3475,7 @@
 
         /**
          * Анимирует бросок карты с одной позиции на другую.
-         * @param {HTMLElement} fromEl - элемент, откуда летит карта (обычно карта в руке)
-         * @param {HTMLElement} toContainer - контейнер, куда должна прилететь карта
-         * @param {string} cardHTML - HTML карточки
-         * @param {function} [onComplete] - колбэк после окончания анимации
+         * Учитывает текущее перекрытие в контейнере (чтобы карта прилетала сразу в правильное место кучи).
          */
         function animateCardThrow(fromEl, toContainer, cardHTML, onComplete) {
             if (!fromEl || !toContainer) {
@@ -3098,31 +3484,54 @@
             }
 
             const fromRect = fromEl.getBoundingClientRect();
-            const toRect = toContainer.getBoundingClientRect();
+            const cardsInTarget = toContainer.querySelectorAll('.real-durak-card');
+            const currentCount = cardsInTarget.length;
+
+            // Рассчитываем перекрытие, которое будет после добавления этой карты
+            const isAttack = toContainer.classList.contains('attack-cards');
+            let overlap = isAttack ? 16 : 14;
+            if (currentCount + 1 >= 4) {
+                overlap += Math.floor(((currentCount + 1) - 3) * 1.8);
+            }
+            overlap = Math.min(overlap, 28);
+
+            // Примерная финальная позиция с учётом перекрытия
+            const lastCard = cardsInTarget[cardsInTarget.length - 1];
+            let targetLeft, targetTop;
+
+            if (lastCard) {
+                const lastRect = lastCard.getBoundingClientRect();
+                targetLeft = lastRect.left + overlap * 0.6; // смещаемся вправо относительно последней
+                targetTop = lastRect.top;
+            } else {
+                const containerRect = toContainer.getBoundingClientRect();
+                targetLeft = containerRect.left + containerRect.width / 2 - 27;
+                targetTop = containerRect.top + 8;
+            }
 
             const flying = document.createElement('div');
             flying.className = 'flying-card';
             flying.innerHTML = cardHTML;
 
-            // Начальная позиция
             flying.style.left = `${fromRect.left}px`;
             flying.style.top = `${fromRect.top}px`;
 
             document.body.appendChild(flying);
-
-            // Форсируем reflow
             flying.offsetWidth;
 
-            // Целевая позиция + небольшой scale down
-            const deltaX = toRect.left + toRect.width / 2 - (fromRect.left + fromRect.width / 2);
-            const deltaY = toRect.top + toRect.height / 2 - (fromRect.top + fromRect.height / 2);
+            const deltaX = targetLeft - fromRect.left;
+            const deltaY = targetTop - fromRect.top;
 
-            flying.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(0.82)`;
+            // Небольшой случайный поворот при приземлении
+            const landRotation = (Math.random() * 6 - 3).toFixed(1);
+
+            flying.style.transition = 'transform 0.48s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.3s';
+            flying.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(0.78) rotate(${landRotation}deg)`;
 
             setTimeout(() => {
                 if (flying.parentNode) flying.parentNode.removeChild(flying);
                 if (onComplete) onComplete();
-            }, 480);
+            }, 520);
         }
 
         // Переопределяем обработчик game_started, чтобы показывать реальную доску
