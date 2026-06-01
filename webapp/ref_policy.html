@@ -457,7 +457,12 @@
         window.addEventListener('DOMContentLoaded', async () => {
             if (tg) {
                 tg.ready();
-                tg.expand();
+                // Полный экран только на телефоне
+                if (typeof window.initTelegramFullscreen === 'function') {
+                  window.initTelegramFullscreen();
+                } else {
+                  tg.expand();
+                }
                 tg.BackButton.show();
                 tg.BackButton.onClick(() => tg.close());
             }

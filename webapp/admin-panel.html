@@ -222,8 +222,13 @@
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.ready(); tg.expand();
-        if (tg.requestFullscreen) tg.requestFullscreen();
+        tg.ready();
+        // Полный экран только на телефоне
+        if (typeof window.initTelegramFullscreen === 'function') {
+          window.initTelegramFullscreen();
+        } else {
+          tg.expand();
+        }
         if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
 
         // Padding for safe areas (как profile.html / contest-panel.html)

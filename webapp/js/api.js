@@ -187,6 +187,44 @@
     };
   };
 
+  // ─────────────────────────────────────────────────────────────
+  // CONDITIONAL FULLSCREEN (phone only)
+  // ─────────────────────────────────────────────────────────────
+
+  /**
+   * Безопасная инициализация полноэкранного режима.
+   * 
+   * - На телефонах (ios / android): делает expand + requestFullscreen
+   * - На ПК (tdesktop, macos, web и т.д.): только лёгкий expand, без fullscreen
+   * 
+   * Использование:
+   *   <script src="js/api.js"></script>
+   *   <script>window.initTelegramFullscreen?.();</script>
+   */
+  window.initTelegramFullscreen = function initTelegramFullscreen() {
+    const tg = window.Telegram?.WebApp;
+    if (!tg) return;
+
+    tg.ready();
+
+    const platform = (tg.platform || '').toLowerCase();
+    const isMobilePlatform = ['ios', 'android'].includes(platform);
+
+    // expand() безопасен везде — просто делает приложение выше
+    try {
+      tg.expand();
+    } catch (e) {}
+
+    // requestFullscreen агрессивный и нужен только на мобильных
+    if (isMobilePlatform && typeof tg.requestFullscreen === 'function') {
+      try {
+        tg.requestFullscreen();
+      } catch (e) {
+        console.warn('[Telegram] requestFullscreen failed:', e);
+      }
+    }
+  };
+
   /**
    * Проверяет бан и при необходимости показывает оверлей.
    * Возвращает true, если пользователь забанен.

@@ -260,8 +260,10 @@ class DurakGame:
         но и любой другой игрок, у кого есть карта подходящего номинала,
         пока атака ещё открыта.
         """
-        if self.game_over or self.attack_finished:
+        if self.game_over:
             return False
+        # attack_finished больше не является жёстким блокером нового раунда
+        # (мы сбрасываем его после take/finish + ротации)
         if not self.attack_in_progress:
             # Только текущий атакующий может начать атаку первой картой
             if player_id != self.current_attacker:
@@ -301,7 +303,7 @@ class DurakGame:
         Защищающийся отбивает конкретную атакующую карту.
         Усиленная валидация.
         """
-        if self.game_over or self.attack_finished:
+        if self.game_over:
             return False
         if player_id != self.current_defender:
             return False
@@ -366,8 +368,11 @@ class DurakGame:
 
         # Общий сброс раунда (карты НЕ идут в сброс, а в руку)
         self._cleanup_round(to_discard=None)
-        # attack_finished оставляем как маркер, что раунд завершён (для клиента)
-        self.attack_finished = True
+
+        # После "взял" сразу начинается новая атака от нового атакующего.
+        # Нельзя оставлять attack_finished=True — это блокирует is_legal_attack для следующего раунда.
+        self.attack_in_progress = False
+        self.attack_finished = False
 
         return True
 
@@ -397,7 +402,11 @@ class DurakGame:
 
         # Общий сброс раунда + перемещение в сброс
         self._cleanup_round(to_discard=to_discard)
-        self.attack_finished = True
+
+        # После успешного "бита" тоже сразу начинается новый раунд.
+        # Новый атакующий (бывший защитник) должен иметь возможность начать атаку.
+        self.attack_in_progress = False
+        self.attack_finished = False
 
         return True
 
@@ -406,7 +415,7 @@ class DurakGame:
 
     def can_attack_more(self) -> bool:
         """Может ли текущий атакующий подкинуть ещё карту?"""
-        if self.game_over or self.attack_finished:
+        if self.game_over:
             return False
         return self.get_max_attack_cards_remaining() > 0
 
@@ -417,7 +426,7 @@ class DurakGame:
         - Есть неприбитые карты на столе, И
         - Атакующий (или другие игроки) могут ещё подкидывать карты.
         """
-        if self.game_over or self.attack_finished:
+        if self.game_over:
             return False
         if self._get_unbeaten_count() == 0:
             return False
@@ -439,7 +448,7 @@ class DurakGame:
         (нет легальных ходов или закончились карты).
         Возвращает True, если что-то было сделано.
         """
-        if self.game_over or self.attack_finished:
+        if self.game_over:
             return False
 
         defender = self.current_defender
@@ -464,7 +473,7 @@ class DurakGame:
         - Все карты на столе отбиты, И
         - Больше никто не может/хочет подкидывать (нет легальных бросков).
         """
-        if self.game_over or self.attack_finished:
+        if self.game_over:
             return False
         if self._get_unbeaten_count() > 0:
             return False
@@ -475,7 +484,7 @@ class DurakGame:
 
     def can_take_table(self) -> bool:
         """Может ли защитник забрать карты со стола?"""
-        if self.game_over or self.attack_finished:
+        if self.game_over:
             return False
         return len(self.table) > 0 and self._get_unbeaten_count() > 0
 
@@ -580,7 +589,7 @@ class DurakGame:
 
     def is_legal_beat(self, player_id: int, attack_card: Card, beat_card: Card) -> bool:
         """Чистая проверка (без изменения состояния), можно ли отбить карту."""
-        if self.game_over or self.attack_finished:
+        if self.game_over:
             return False
         if player_id != self.current_defender:
             return False
@@ -612,7 +621,7 @@ class DurakGame:
         - Важно: один и тот же игрок не может подкидывать **второй раз** в одной волне атаки,
           пока круг не завершится (защитник отбил всё или взял карты).
         """
-        if self.game_over or self.attack_finished:
+        if self.game_over:
             return False
 
         hand = self.hands.get(player_id, [])

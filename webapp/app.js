@@ -2,8 +2,15 @@ const tg = window.Telegram.WebApp;
 
 // ===================== ЗАЩИТА MINI APP =====================
 tg.ready();
-tg.expand();                          // Полноэкранный режим
 tg.enableClosingConfirmation();       // Просит подтверждение при попытке закрыть
+
+// Полноэкранный режим ТОЛЬКО на телефоне
+if (typeof window.initTelegramFullscreen === 'function') {
+  window.initTelegramFullscreen();
+} else {
+  // Fallback, если api.js ещё не подключён
+  tg.expand();
+}
 
 // Максимальная защита от свайпа вниз и других жестов
 document.documentElement.style.overscrollBehavior = 'none';
