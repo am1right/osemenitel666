@@ -828,6 +828,24 @@
             filter: drop-shadow(0.5px 0.5px 1px rgba(0,0,0,0.35));
         }
 
+        /* Улучшения для модалов на маленьких экранах телефонов */
+        @media (max-width: 380px) {
+            #create-modal > div,
+            #edit-settings-modal > div,
+            #confirm-modal > div {
+                padding: 14px !important;
+                width: 94vw !important;
+            }
+            
+            #create-modal input,
+            #create-modal select,
+            #edit-settings-modal input,
+            #edit-settings-modal select {
+                padding: 6px 8px !important;
+                font-size: 15px;
+            }
+        }
+
         /* Пипсы (масти) для 2-10 */
         .real-durak-card .pips-container {
             position: absolute;
@@ -1112,7 +1130,7 @@
 
     <!-- Модал создания лобби -->
     <div id="create-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); align-items:center; justify-content:center; z-index:1000;">
-        <div style="background:#1a103d; border:1px solid #d122e3; border-radius:16px; padding:24px; width:90%; max-width:380px;">
+        <div style="background:#1a103d; border:1px solid #d122e3; border-radius:16px; padding:18px; width:min(92vw, 340px); box-sizing:border-box; overflow-x:hidden;">
             <h3 style="margin-top:0;">Создать лобби</h3>
 
             <div style="margin-bottom:12px;">
@@ -1173,7 +1191,7 @@
 
     <!-- Красивое модальное подтверждение (для старта игры и т.д.) -->
     <div id="confirm-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); align-items:center; justify-content:center; z-index:1100;">
-        <div style="background:#1a1633; border:1px solid #d122e3; border-radius:16px; padding:24px; width:90%; max-width:360px; text-align:center;">
+        <div style="background:#1a1633; border:1px solid #d122e3; border-radius:16px; padding:18px; width:min(92vw, 340px); box-sizing:border-box; overflow-x:hidden; text-align:center;">
             <h3 id="confirm-title" style="margin:0 0 12px 0; color:#fff; font-size:1.25rem;"></h3>
             <p id="confirm-message" style="margin:0 0 24px 0; color:#ccc; font-size:0.95rem; line-height:1.4;"></p>
 
@@ -1192,7 +1210,7 @@
 
     <!-- Модал редактирования настроек лобби -->
     <div id="edit-settings-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); align-items:center; justify-content:center; z-index:1000;">
-        <div style="background:#1a103d; border:1px solid #6655aa; border-radius:16px; padding:24px; width:90%; max-width:380px;">
+        <div style="background:#1a103d; border:1px solid #6655aa; border-radius:16px; padding:18px; width:min(92vw, 340px); box-sizing:border-box; overflow-x:hidden;">
             <h3 style="margin-top:0;">Настройки лобби</h3>
 
             <div style="margin-bottom:12px;">
