@@ -392,6 +392,14 @@
         if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
         tg.enableClosingConfirmation();
 
+        // ── Проверка бана + запуск периодической проверки ──
+        if (window.enforceBanIfNeeded) {
+            window.enforceBanIfNeeded();
+        }
+        if (window.startBanWatcher) {
+            window.startBanWatcher(45000);
+        }
+
         // ====== ГЛОБАЛЬНАЯ ЗАЩИТА ======
         // Полностью блокируем скролл/свайп на уровне документа.
         // Игровые свайпы читаются ОТДЕЛЬНО — на элементе game-board.

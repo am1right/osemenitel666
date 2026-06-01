@@ -344,7 +344,16 @@
         }, false);
 
         function launchGame(url) {
-            window.location.href = url;
+            // Проверка бана перед запуском любой игры
+            if (window.enforceBanIfNeeded) {
+                window.enforceBanIfNeeded().then(isBanned => {
+                    if (!isBanned) {
+                        window.location.href = url;
+                    }
+                });
+            } else {
+                window.location.href = url;
+            }
         }
 
         // ─── Отступ сверху под шапку Telegram ───────────────
@@ -364,6 +373,29 @@
         // Монтируем виджет энергии на главной
         Energy.showWidget(document.getElementById('energy-container'));
         Energy.pull();
+
+        // ── Проверка бана пользователя + запуск watcher'а ──
+        (async () => {
+            const flags = await (window.checkUserBan ? window.checkUserBan() : Promise.resolve({ blocked: 0 }));
+            if (flags && flags.blocked) {
+                // Блокируем все карточки игр визуально и по клику
+                document.querySelectorAll('.game-card').forEach(card => {
+                    card.style.opacity = '0.4';
+                    card.style.pointerEvents = 'auto';
+                    card.style.filter = 'grayscale(0.8)';
+
+                    card.onclick = (e) => {
+                        e.preventDefault();
+                        if (window.showBanOverlay) window.showBanOverlay();
+                    };
+                });
+            }
+
+            // Запускаем периодическую проверку статуса бана (каждые ~45 сек)
+            if (window.startBanWatcher) {
+                window.startBanWatcher(45000);
+            }
+        })();
     </script>
     <script>
         // ── Активные соревнования → баджи + NFT-модал ────────────

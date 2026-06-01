@@ -765,6 +765,16 @@
         loadReferralStats();
         loadContests();
         loadStats();
+
+        // Отключаем кнопку «Игры» в навигации, если пользователь забанен
+        if (window.disableGamesNavIfBanned) {
+            window.disableGamesNavIfBanned();
+        }
+
+        // Запускаем периодическую проверку бана (на случай разблокировки/блокировки в реальном времени)
+        if (window.startBanWatcher) {
+            window.startBanWatcher(45000);
+        }
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
                 loadWalletBalance();

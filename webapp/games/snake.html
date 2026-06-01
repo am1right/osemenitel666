@@ -133,6 +133,14 @@
         const tg = window.Telegram?.WebApp;
         if (tg) { tg.ready(); tg.expand(); tg.enableClosingConfirmation(); }
 
+        // ── Проверка бана + запуск периодической проверки ──
+        if (window.enforceBanIfNeeded) {
+            window.enforceBanIfNeeded();
+        }
+        if (window.startBanWatcher) {
+            window.startBanWatcher(45000);
+        }
+
         // Защита от свайпов
         document.documentElement.style.overscrollBehavior = 'none';
         document.body.style.overscrollBehavior = 'none';

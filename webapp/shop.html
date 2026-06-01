@@ -1660,4 +1660,14 @@
 
         // Загружаем баланс кошелька при старте
         loadWalletBalance();
+
+        // Отключаем кнопку «Игры» в нижней навигации, если пользователь забанен
+        if (window.disableGamesNavIfBanned) {
+            window.disableGamesNavIfBanned();
+        }
+
+        // Запускаем периодическую проверку бана
+        if (window.startBanWatcher) {
+            window.startBanWatcher(45000);
+        }
     </script>
