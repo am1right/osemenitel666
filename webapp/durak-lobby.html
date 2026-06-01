@@ -735,143 +735,117 @@
             try {
                 const api = window.apiFetch || fetch;
                 const res = await api(`/api/durak/lobbies/${currentLobbyId}`);
-                if (res.ok) {
-                    const lobby = await res.json();
-                    currentLobbyData = lobby;
 
-                    // Обновляем видимость кнопки настроек
-                    const editBtn = document.getElementById('edit-settings-btn');
-                    if (editBtn) {
-                        const isCreator = currentUserId && currentLobbyData && currentUserId === currentLobbyData.creator_id;
-                        const canEdit = isCreator && (currentLobbyData.current_players || 1) <= 1;
-                        editBtn.style.display = canEdit ? 'inline-block' : 'none';
-                    }
+                if (!res.ok) {
+                    throw new Error('Failed to load lobby info');
+                }
 
-                    const bet = lobby.bet_amount > 0 ? `${lobby.bet_amount} ⭐` : 'Без ставки';
-                    const typeText = lobby.game_type === 'podkidnoy' ? 'Подкидной' : 'Переводной';
-                    const cheatText = lobby.cheating_enabled ? 'Разрешено' : 'Запрещено';
+                const lobby = await res.json();
+                currentLobbyData = lobby;
 
-                    // Если лобби перешло в статус playing
-                    if (lobby.status === 'playing') {
-                        infoEl.innerHTML = `
-                            <strong>Лобби #${lobby.id}</strong><br>
-                            <span style="color:#00ff88; font-weight:600; font-size:1.05rem;">🎮 Игра запущена!</span>
-                        `;
+                // Обновляем видимость кнопки настроек
+                const editBtn = document.getElementById('edit-settings-btn');
+                if (editBtn) {
+                    const isCreator = currentUserId && lobby.creator_id === currentUserId;
+                    const canEdit = isCreator && (lobby.current_players || 1) <= 1;
+                    editBtn.style.display = canEdit ? 'inline-block' : 'none';
+                }
 
-                        // Полностью отключаем все элементы комнаты ожидания
-                        const editBtn = document.getElementById('edit-settings-btn');
-                        const readyBtn = document.getElementById('ready-btn');
-                        const startBtn = document.getElementById('start-btn');
-                        const playersHeading = document.querySelector('#waiting-room-view h3');
-                        if (editBtn) editBtn.style.display = 'none';
-                        if (readyBtn) readyBtn.style.display = 'none';
-                        if (startBtn) startBtn.style.display = 'none';
-                        if (playersHeading) playersHeading.style.display = 'none';
-
-                        // Очищаем список игроков
-                        const playersContainer = document.getElementById('players-list');
-                        if (playersContainer) {
-                            playersContainer.innerHTML = '<div style="color:#666; font-size:0.9rem; padding:8px 0;">Игроки в игре (см. будущий игровой стол)</div>';
-                        }
-
-                        // Скрываем блок счётчика готовых и уведомления (в игре они не нужны)
-                        const readyStatus = document.getElementById('ready-status');
-                        if (readyStatus) readyStatus.style.display = 'none';
-
-                        const notifs = document.getElementById('lobby-notifications');
-                        if (notifs) notifs.style.display = 'none';
-
-                        // Показываем игровую комнату
-                        const gameRoom = document.getElementById('game-room-section');
-                        if (gameRoom) {
-                            gameRoom.style.display = 'block';
-                        }
-
-                        // Обновляем dev-панель (показываем, что мы в режиме игры)
-                        const devPanel = document.getElementById('durak-dev-panel');
-                        if (devPanel) {
-                            const header = devPanel.querySelector('strong');
-                            if (header) header.innerHTML = '🛠 Инструменты разработки <span style="color:#ffaa00; font-size:0.7rem;">[PLAYING]</span>';
-                        }
-
-                        // Заполняем краткую информацию в игровой комнате
-                        const gameInfo = document.getElementById('game-room-lobby-info');
-                        if (gameInfo && lobby) {
-                            const bet = lobby.bet_amount > 0 ? `${lobby.bet_amount} ⭐` : 'Без ставки';
-                            const pot = (lobby.pot && lobby.pot > 0) ? ` • Банк: ${lobby.pot}⭐` : '';
-                            gameInfo.innerHTML = `Дека: ${lobby.deck_size || 36} • Тип: ${lobby.game_type || 'podkidnoy'} • Ставка: ${bet}${pot}`;
-                        }
-                    }
-
-                        // Инициализируем WebSocket
-                        if (!durakSocket && currentUserId) {
-                            durakSocket = new DurakSocket(currentLobbyId, currentUserId);
-                            durakSocket.connect();
-
-                            // Настраиваем подписки на события
-                            setupDurakSocketListeners();
-
-                            durakSocket.on('connected', () => {
-                                console.log('[Durak] WebSocket подключён');
-                                const statusEl = document.getElementById('socket-status');
-                                if (statusEl) statusEl.textContent = 'Подключено (заглушка)';
-                            });
-
-                            durakSocket.on('disconnected', () => {
-                                const statusEl = document.getElementById('socket-status');
-                                if (statusEl) statusEl.textContent = 'Отключено';
-                            });
-                        }
-
-                        // Останавливаем агрессивный polling, так как игра уже идёт
-                        if (playersRefreshInterval) {
-                            clearInterval(playersRefreshInterval);
-                            playersRefreshInterval = null;
-                        }
-
-                        return;
-                    }
-
-                    // Обновляем видимость кнопки настроек
-                    const editBtn = document.getElementById('edit-settings-btn');
-                    if (editBtn) {
-                        const isCreator = currentUserId && lobby.creator_id && currentUserId === lobby.creator_id;
-                        const canEdit = isCreator && (lobby.current_players || 1) <= 1;
-                        editBtn.style.display = canEdit ? 'inline-block' : 'none';
-                    }
-
-                    const ownerName = lobby.creator_name || 'Игрок';
-                    const bet = lobby.bet_amount > 0 ? `${lobby.bet_amount} ⭐` : 'Без ставки';
-                    const potText = (lobby.pot && lobby.pot > 0) ? ` • Банк: ${lobby.pot}⭐` : '';
-                    const typeText = lobby.game_type === 'podkidnoy' ? 'Подкидной' : 'Переводной';
-                    const cheatText = lobby.cheating_enabled ? 'Разрешено' : 'Запрещено';
-
-                    let stakeWarning = '';
-                    if (lobby.bet_amount > 0) {
-                        stakeWarning = `<br><span style="color:#ffaa66; font-size:0.8rem;">⚠️ При выходе ставка уходит в банк лобби</span>`;
-                    }
-
+                // === ИГРА УЖЕ ЗАПУЩЕНА ===
+                if (lobby.status === 'playing') {
                     infoEl.innerHTML = `
-                        <strong>Лобби #${lobby.id}</strong> 
-                        <span style="font-size:0.8rem; color:#888;">(владелец: ${ownerName})</span><br>
-                        <span style="font-size:0.85rem; color:#ccc;">
-                            ${lobby.max_players} игроков • 
-                            ${lobby.deck_size} карт • 
-                            ${typeText} • 
-                            Шулерство: ${cheatText} • 
-                            Ставка: ${bet}${potText}
-                        </span>
-                        ${stakeWarning}
+                        <strong>Лобби #${lobby.id}</strong><br>
+                        <span style="color:#00ff88; font-weight:600; font-size:1.05rem;">🎮 Игра запущена!</span>
                     `;
+
+                    // Прячем всё лишнее
+                    const editBtnEl = document.getElementById('edit-settings-btn');
+                    const readyBtn = document.getElementById('ready-btn');
+                    const startBtn = document.getElementById('start-btn');
+                    const playersHeading = document.querySelector('#waiting-room-view h3');
+
+                    if (editBtnEl) editBtnEl.style.display = 'none';
+                    if (readyBtn) readyBtn.style.display = 'none';
+                    if (startBtn) startBtn.style.display = 'none';
+                    if (playersHeading) playersHeading.style.display = 'none';
+
+                    const playersContainer = document.getElementById('players-list');
+                    if (playersContainer) {
+                        playersContainer.innerHTML = '<div style="color:#666; font-size:0.9rem; padding:8px 0;">Игроки в игре</div>';
+                    }
+
+                    const readyStatus = document.getElementById('ready-status');
+                    if (readyStatus) readyStatus.style.display = 'none';
+
+                    const notifs = document.getElementById('lobby-notifications');
+                    if (notifs) notifs.style.display = 'none';
+
+                    // Показываем игровую комнату
+                    const gameRoom = document.getElementById('game-room-section');
+                    if (gameRoom) gameRoom.style.display = 'block';
+
+                    // Обновляем dev панель
+                    const devPanel = document.getElementById('durak-dev-panel');
+                    if (devPanel) {
+                        const header = devPanel.querySelector('strong');
+                        if (header) header.innerHTML = '🛠 Инструменты разработки <span style="color:#ffaa00; font-size:0.7rem;">[PLAYING]</span>';
+                    }
+
+                    // Заполняем инфо в игровой комнате
+                    const gameInfo = document.getElementById('game-room-lobby-info');
+                    if (gameInfo) {
+                        const bet = lobby.bet_amount > 0 ? `${lobby.bet_amount} ⭐` : 'Без ставки';
+                        const pot = (lobby.pot && lobby.pot > 0) ? ` • Банк: ${lobby.pot}⭐` : '';
+                        gameInfo.innerHTML = `Дека: ${lobby.deck_size || 36} • Тип: ${lobby.game_type || 'podkidnoy'} • Ставка: ${bet}${pot}`;
+                    }
+
+                    // Инициализируем сокет если нужно
+                    if (!durakSocket && currentUserId) {
+                        durakSocket = new DurakSocket(currentLobbyId, currentUserId);
+                        durakSocket.connect();
+                        setupDurakSocketListeners();
+                    }
+
+                    if (playersRefreshInterval) {
+                        clearInterval(playersRefreshInterval);
+                        playersRefreshInterval = null;
+                    }
+
                     return;
                 }
-            } catch (e) {}
 
-            // Fallback
-            infoEl.innerHTML = `
-                <strong>Лобби #${currentLobbyId}</strong><br>
-                <span style="font-size:0.9rem; color:#aaa;">Ожидание игроков...</span>
-            `;
+                // === ОБЫЧНОЕ СОСТОЯНИЕ (WAITING) ===
+                const bet = lobby.bet_amount > 0 ? `${lobby.bet_amount} ⭐` : 'Без ставки';
+                const potText = (lobby.pot && lobby.pot > 0) ? ` • Банк: ${lobby.pot}⭐` : '';
+                const typeText = lobby.game_type === 'podkidnoy' ? 'Подкидной' : 'Переводной';
+                const cheatText = lobby.cheating_enabled ? 'Разрешено' : 'Запрещено';
+
+                let stakeWarning = '';
+                if (lobby.bet_amount > 0) {
+                    stakeWarning = `<br><span style="color:#ffaa66; font-size:0.8rem;">⚠️ При выходе ставка уходит в банк лобби</span>`;
+                }
+
+                infoEl.innerHTML = `
+                    <strong>Лобби #${lobby.id}</strong> 
+                    <span style="font-size:0.8rem; color:#888;">(владелец: ${lobby.creator_name || 'Игрок'})</span><br>
+                    <span style="font-size:0.85rem; color:#ccc;">
+                        ${lobby.max_players} игроков • 
+                        ${lobby.deck_size} карт • 
+                        ${typeText} • 
+                        Шулерство: ${cheatText} • 
+                        Ставка: ${bet}${potText}
+                    </span>
+                    ${stakeWarning}
+                `;
+
+            } catch (e) {
+                console.error("loadLobbyInfo error:", e);
+                // Fallback
+                infoEl.innerHTML = `
+                    <strong>Лобби #${currentLobbyId}</strong><br>
+                    <span style="font-size:0.9rem; color:#aaa;">Ожидание игроков...</span>
+                `;
+            }
         }
 
         async function loadPlayers() {
