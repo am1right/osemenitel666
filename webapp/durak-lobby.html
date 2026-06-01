@@ -126,7 +126,7 @@
         <div id="lobby-list-view">
             <div class="header">
                 <h1>🃏 Дурак Онлайн</h1>
-                <button class="create-btn" onclick="openCreateLobbyModal()">+ Создать лобби</button>
+                <button class="create-btn" id="create-lobby-btn">+ Создать лобби</button>
             </div>
 
             <div class="filter-bar">
@@ -372,6 +372,30 @@
         tg.ready();
         tg.expand();
 
+        // ── Кнопка "Назад" вместо крестика для меню Дурака Онлайн ──
+        if (tg.BackButton) {
+            tg.BackButton.show();
+
+            tg.BackButton.onClick(() => {
+                // Умная логика "Назад":
+                // - Если внутри конкретного лобби → выходим только из него (возвращаемся к списку лобби)
+                // - Если уже на списке лобби → уходим на главную страницу
+                if (currentLobbyId && typeof leaveCurrentLobby === 'function') {
+                    // Пользователь в лобби — выходим из него, но остаёмся на странице
+                    leaveCurrentLobby().finally(() => {
+                        tg.BackButton.show(); // оставляем кнопку, так как всё ещё в меню Дурака
+                    });
+                } else {
+                    // Находимся на общем списке лобби — уходим на главную
+                    if (tg.BackButton) tg.BackButton.hide();
+
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 60);
+                }
+            });
+        }
+
         // ── Top padding под шапку Telegram (как в shop.html) ──
         function applyDurakTopPadding() {
             const container = document.querySelector('.durak-container');
@@ -475,11 +499,24 @@
         }
 
         function openCreateLobbyModal() {
-            if (currentLobbyId) {
-                alert("Сначала выйдите из текущего лобби");
-                return;
+            try {
+                if (currentLobbyId) {
+                    alert("Сначала выйдите из текущего лобби");
+                    return;
+                }
+
+                const modal = document.getElementById('create-modal');
+                if (!modal) {
+                    console.error("Create modal not found in DOM");
+                    alert("Ошибка: окно создания лобби не найдено");
+                    return;
+                }
+
+                modal.style.display = 'flex';
+            } catch (err) {
+                console.error("Error opening create modal:", err);
+                alert("Не удалось открыть окно создания лобби");
             }
-            document.getElementById('create-modal').style.display = 'flex';
         }
 
         function closeCreateModal() {
@@ -487,24 +524,32 @@
         }
 
         async function createLobby() {
-            const user = tg.initDataUnsafe?.user;
-            if (!user) {
-                alert("Не удалось получить данные пользователя Telegram");
-                return;
-            }
-            currentUserId = user.id;
-
-            const settings = {
-                user_id: user.id,
-                first_name: user.first_name || "",
-                max_players: parseInt(document.getElementById('max-players').value),
-                deck_size: parseInt(document.getElementById('deck-size').value),
-                game_type: document.getElementById('game-type').value,
-                cheating_enabled: document.getElementById('cheating').value === 'true',
-                bet_amount: parseInt(document.getElementById('bet-amount').value) || 0
-            };
+            const createBtn = event?.currentTarget;
+            const originalText = createBtn ? createBtn.textContent : '';
 
             try {
+                const user = tg.initDataUnsafe?.user;
+                if (!user) {
+                    alert("Не удалось получить данные пользователя Telegram");
+                    return;
+                }
+                currentUserId = user.id;
+
+                const settings = {
+                    user_id: user.id,
+                    first_name: user.first_name || "",
+                    max_players: parseInt(document.getElementById('max-players').value),
+                    deck_size: parseInt(document.getElementById('deck-size').value),
+                    game_type: document.getElementById('game-type').value,
+                    cheating_enabled: document.getElementById('cheating').value === 'true',
+                    bet_amount: parseInt(document.getElementById('bet-amount').value) || 0
+                };
+
+                if (createBtn) {
+                    createBtn.textContent = 'Создаём...';
+                    createBtn.disabled = true;
+                }
+
                 const api = window.apiFetch || fetch;
                 const res = await api('/api/durak/lobbies', {
                     method: 'POST',
@@ -513,7 +558,14 @@
                 });
 
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.detail || 'Ошибка создания лобби');
+
+                if (!res.ok) {
+                    throw new Error(data.detail || 'Ошибка создания лобби');
+                }
+
+                if (!data.lobby_id) {
+                    throw new Error('Сервер не вернул ID лобби');
+                }
 
                 closeCreateModal();
 
@@ -521,8 +573,13 @@
                 enterWaitingRoom(data.lobby_id);
 
             } catch (e) {
-                console.error(e);
-                alert("Не удалось создать лобби: " + e.message);
+                console.error("Create lobby error:", e);
+                alert("Не удалось создать лобби: " + (e.message || e));
+            } finally {
+                if (createBtn) {
+                    createBtn.textContent = originalText || 'Создать';
+                    createBtn.disabled = false;
+                }
             }
         }
 
@@ -1028,6 +1085,11 @@
             document.getElementById('waiting-room-view').style.display = 'none';
             document.getElementById('lobby-list-view').style.display = 'block';
 
+            // Прячем кнопку "Назад", если пользователь вышел через интерфейс
+            if (tg.BackButton) {
+                tg.BackButton.hide();
+            }
+
             loadLobbies();
         }
 
@@ -1526,6 +1588,15 @@
             if (user) currentUserId = user.id;
 
             loadLobbies();
+
+            // Надёжная обработка кнопки создания лобби
+            const createBtn = document.getElementById('create-lobby-btn');
+            if (createBtn) {
+                createBtn.addEventListener('click', (e) => {
+                    e.stopImmediatePropagation();
+                    openCreateLobbyModal();
+                });
+            }
 
             // Фильтры (пока декоративные)
             document.querySelectorAll('.filter-btn').forEach(btn => {
