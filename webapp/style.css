@@ -173,8 +173,13 @@ h1.glitch::after {
     text-transform: uppercase;
     letter-spacing: 1.5px;
     font-family: 'Orbitron', sans-serif;
-    margin: 8px 0 2px;
-    padding-bottom: 4px;
+    margin: 4px 0 2px;
+    padding-bottom: 2px;
+}
+
+/* Разделители, которые обрамляют заголовки секций — делаем их плотнее */
+.games-grid > .games-separator {
+    margin: 2px 0;
 }
 
 .games-separator {
@@ -187,7 +192,6 @@ h1.glitch::after {
         rgba(188, 19, 254, 0.2), 
         transparent
     );
-    margin: 6px 0 10px;
 }
 
 .game-card {
