@@ -117,6 +117,177 @@
             border-color: #00ff88;
             color: #00ff88;
         }
+
+        /* ========== DURAK IN-GAME STYLES (Этап 3 → 4) ========== */
+        .durak-game-board {
+            background: rgba(20, 16, 40, 0.85);
+            border: 1px solid rgba(0, 255, 136, 0.25);
+            border-radius: 14px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .durak-info-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0a0818;
+            border-radius: 8px;
+            padding: 6px 10px;
+            margin-bottom: 10px;
+            font-size: 0.85rem;
+        }
+
+        .durak-role {
+            font-weight: 700;
+            padding: 2px 10px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+        }
+        .durak-role.attacker { background: #ff4466; color: white; }
+        .durak-role.defender { background: #3a9cff; color: white; }
+        .durak-role.participant { background: #6644aa; color: #ddd; }
+
+        .durak-trump {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #1a1433;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .durak-table {
+            min-height: 110px;
+            background: #11102a;
+            border: 2px dashed rgba(0,255,136,0.3);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .durak-table-label {
+            position: absolute;
+            top: -8px;
+            left: 12px;
+            background: #0d0b22;
+            padding: 0 6px;
+            font-size: 0.7rem;
+            color: #00cc88;
+        }
+
+        .durak-table-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .durak-table-row:last-child { margin-bottom: 0; }
+
+        .durak-card {
+            width: 48px;
+            height: 68px;
+            background: linear-gradient(145deg, #f8f1e3 0%, #e8d9b8 100%);
+            border: 2px solid #3a2a1a;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', monospace;
+            font-size: 15px;
+            font-weight: 700;
+            color: #1a1208;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.6);
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.1s ease, box-shadow 0.1s;
+            position: relative;
+        }
+        .durak-card:hover {
+            transform: translateY(-3px) scale(1.03);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+        }
+        .durak-card.selected {
+            border-color: #00ff88;
+            box-shadow: 0 0 0 3px rgba(0,255,136,0.5);
+            transform: translateY(-4px);
+        }
+        .durak-card.attack {
+            border-color: #ff4466;
+            box-shadow: 0 0 0 2px rgba(255,68,102,0.4);
+        }
+        .durak-card.beat {
+            border-color: #3a9cff;
+            box-shadow: 0 0 0 2px rgba(58,156,255,0.4);
+        }
+        .durak-card.disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            filter: grayscale(0.3);
+        }
+        .durak-card .suit {
+            font-size: 18px;
+            line-height: 1;
+        }
+        .durak-card.red { color: #c62828; }
+        .durak-card.black { color: #1a1a1a; }
+
+        .durak-hand {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            min-height: 76px;
+            padding: 8px;
+            background: rgba(0,0,0,0.25);
+            border-radius: 10px;
+            justify-content: center;
+        }
+
+        .durak-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .durak-action-btn {
+            flex: 1;
+            min-width: 110px;
+            padding: 10px 14px;
+            border: none;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+        .durak-action-btn.primary {
+            background: linear-gradient(90deg, #00ff88, #00cc6a);
+            color: #000;
+        }
+        .durak-action-btn.danger {
+            background: #ff4466;
+            color: white;
+        }
+        .durak-action-btn.secondary {
+            background: rgba(255,255,255,0.1);
+            color: #ddd;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        .durak-action-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .durak-status {
+            font-size: 0.8rem;
+            color: #888;
+            text-align: center;
+            margin: 4px 0;
+        }
     </style>
 </head>
 <body>
@@ -182,19 +353,56 @@
                         <span style="background:#003322; color:#00ff88; font-size:0.75rem; padding:2px 8px; border-radius:999px; border:1px solid #00aa66;">ИГРА ИДЁТ</span>
                     </div>
                     <div id="game-room-content">
-                        <div style="margin-bottom: 12px;">
-                            <p style="color: #00ff88; margin: 0 0 8px; font-weight: 600;">
-                                🎮 Игра официально началась!
-                            </p>
-                            <p style="font-size:0.9rem; color:#aaa; margin:0 0 8px;">
-                                Сокет активен. Готовимся к настоящей игровой логике Дурака (следующий этап).
-                            </p>
-                        </div>
-                        <div id="game-room-lobby-info" style="font-size:0.8rem; color:#666; background:#0a0a0a; padding:6px 8px; border-radius:6px;">
-                            <!-- сюда подставляется инфо о лобби -->
+                        <!-- Real Durak game board (populated by JS) -->
+                        <div id="durak-game-board" class="durak-game-board" style="display:none;">
+                            <div class="durak-info-bar">
+                                <div>
+                                    <span id="durak-role-badge" class="durak-role">—</span>
+                                    <span id="durak-phase" style="margin-left:8px; color:#aaa; font-size:0.8rem;"></span>
+                                </div>
+                                <div>
+                                    <span class="durak-trump">
+                                        Козырь: <span id="durak-trump-suit">—</span>
+                                    </span>
+                                    <span style="margin-left:8px; font-size:0.75rem; color:#888;">
+                                        Колодa: <span id="durak-deck">—</span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Table -->
+                            <div class="durak-table">
+                                <div class="durak-table-label">СТОЛ</div>
+                                <div id="durak-table-attacks" class="durak-table-row" style="min-height:32px;"></div>
+                                <div id="durak-table-beats" class="durak-table-row" style="min-height:32px; opacity:0.9;"></div>
+                            </div>
+
+                            <div id="durak-status-line" class="durak-status"></div>
+
+                            <!-- Player's hand -->
+                            <div style="font-size:0.75rem; color:#888; margin-bottom:4px;">Ваша рука</div>
+                            <div id="durak-hand" class="durak-hand"></div>
+
+                            <!-- Action buttons (dynamic from allowed_actions) -->
+                            <div id="durak-actions" class="durak-actions"></div>
+
+                            <!-- Testing helper -->
+                            <div style="margin-top: 10px; text-align: right;">
+                                <button onclick="if (typeof fetchAndRenderDurakState === 'function') fetchAndRenderDurakState()"
+                                        style="font-size: 0.75rem; padding: 4px 10px; background: #222; color: #0f0; border: 1px solid #0a0; border-radius: 6px; cursor: pointer;">
+                                    ⟳ Обновить состояние (тест)
+                                </button>
+                            </div>
                         </div>
 
-                        <!-- Dev-панель перенесена вниз для постоянной видимости (см. ниже) -->
+                        <!-- Fallback / loading state -->
+                        <div id="durak-game-loading" style="padding:12px; text-align:center; color:#888;">
+                            Загрузка игрового состояния...
+                        </div>
+
+                        <div id="game-room-lobby-info" style="font-size:0.75rem; color:#666; background:#0a0a0a; padding:5px 8px; border-radius:6px; margin-top:8px;">
+                            <!-- lobby meta -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -227,6 +435,12 @@
                     <button onclick="simulateSocketEvent('game_started')" style="padding:3px 8px; font-size:0.75rem; background:#2a2a4a; border:1px solid #555; color:#ccc; border-radius:5px; cursor:pointer;">Игра началась</button>
                     <button onclick="simulateSocketEvent('game_action')" style="padding:3px 8px; font-size:0.75rem; background:#3a2a1a; border:1px solid #aa8800; color:#ffcc66; border-radius:5px; cursor:pointer;">game_action</button>
                     <button onclick="if(durakSocket) durakSocket.simulateSend('game_action', {test:true})" style="padding:3px 8px; font-size:0.7rem; background:#2a3a2a; border:1px solid #446655; color:#99ccaa; border-radius:5px; cursor:pointer; margin-left:6px;">test send()</button>
+
+                    <!-- Реальные эндпоинты игры (Этап 3 интеграция) -->
+                    <button onclick="if (typeof fetchAndRenderDurakState === 'function') fetchAndRenderDurakState()" 
+                            style="padding:3px 8px; font-size:0.7rem; background:#1a3a2a; border:1px solid #00aa66; color:#66ddaa; border-radius:5px; cursor:pointer;">Fetch real /state</button>
+                    <button onclick="if (typeof window.__durakShowRealGameBoard === 'function') window.__durakShowRealGameBoard()" 
+                            style="padding:3px 8px; font-size:0.7rem; background:#1a3a2a; border:1px solid #00aa66; color:#66ddaa; border-radius:5px; cursor:pointer;">Show game board</button>
                 </div>
 
                 <div style="margin-top:6px;">
@@ -724,11 +938,16 @@
                         setupDurakSocketListeners();
                     }
 
-                    // Заполняем инфо в игровой комнате (для случая прямого входа в playing)
+                    // Заполняем инфо
                     const gInfo = document.getElementById('game-room-lobby-info');
                     if (gInfo && currentLobbyData) {
                         const b = currentLobbyData.bet_amount > 0 ? `${currentLobbyData.bet_amount} ⭐` : 'Без ставки';
                         gInfo.innerHTML = `Дека: ${currentLobbyData.deck_size || 36} • Тип: ${currentLobbyData.game_type || 'podkidnoy'} • Ставка: ${b}`;
+                    }
+
+                    // Реальная игровая доска
+                    if (typeof window.__durakShowRealGameBoard === 'function') {
+                        window.__durakShowRealGameBoard();
                     }
 
                     return;
@@ -814,7 +1033,7 @@
                     const notifs = document.getElementById('lobby-notifications');
                     if (notifs) notifs.style.display = 'none';
 
-                    // Показываем игровую комнату
+                    // Показываем реальную игровую доску Дурака
                     const gameRoom = document.getElementById('game-room-section');
                     if (gameRoom) gameRoom.style.display = 'block';
 
@@ -825,12 +1044,21 @@
                         if (header) header.innerHTML = '🛠 Инструменты разработки <span style="color:#ffaa00; font-size:0.7rem;">[PLAYING]</span>';
                     }
 
-                    // Заполняем инфо в игровой комнате
+                    // Заполняем инфо
                     const gameInfo = document.getElementById('game-room-lobby-info');
                     if (gameInfo) {
                         const bet = lobby.bet_amount > 0 ? `${lobby.bet_amount} ⭐` : 'Без ставки';
                         const pot = (lobby.pot && lobby.pot > 0) ? ` • Банк: ${lobby.pot}⭐` : '';
                         gameInfo.innerHTML = `Дека: ${lobby.deck_size || 36} • Тип: ${lobby.game_type || 'podkidnoy'} • Ставка: ${bet}${pot}`;
+                    }
+
+                    // Показываем настоящую игровую доску + начинаем polling реального state
+                    if (typeof window.__durakShowRealGameBoard === 'function') {
+                        window.__durakShowRealGameBoard();
+                    } else {
+                        // fallback на старый блок (на случай если скрипт ещё не загрузился)
+                        const board = document.getElementById('durak-game-board');
+                        if (board) board.style.display = 'block';
                     }
 
                     // Инициализируем сокет если нужно
@@ -1350,15 +1578,19 @@
                 loadPlayers();
             });
 
-            // Новое: игра стартовала (переход в игровую фазу)
+            // Новое: игра стартовала — показываем реальную доску Дурака
             durakSocket.on('game_started', (data) => {
-                console.log('[Durak] Игра запущена!', data);
-                const gameRoom = document.getElementById('game-room-content');
-                if (gameRoom) {
-                    gameRoom.innerHTML = `
-                        <p style="color:#00ff88; font-weight:600;">🎮 Игра официально началась!</p>
-                        <p style="color:#888; font-size:0.9rem;">Сокет активен. Готов к приёму и отправке игровых событий.</p>
-                    `;
+                console.log('[Durak] Игра запущена (socket)!', data);
+                showLobbyNotification('Игра официально началась!', 'success');
+
+                // Показываем настоящую игровую доску + начинаем опрос state
+                if (typeof window.__durakShowRealGameBoard === 'function') {
+                    window.__durakShowRealGameBoard();
+                } else {
+                    const section = document.getElementById('game-room-section');
+                    if (section) section.style.display = 'block';
+                    fetchAndRenderDurakState();
+                    startDurakGamePolling();
                 }
             });
 
@@ -1623,6 +1855,334 @@
                 alert('Ошибка: ' + e.message);
             }
         }
+
+        // ============================================================
+        // DURAK GAME CLIENT (реальная интеграция с /state и /action)
+        // ============================================================
+        let currentGameState = null;
+        let durakGamePollingInterval = null;
+        let selectedBeatAttackCard = null;   // для двухшагового отбива
+
+        function stopDurakGamePolling() {
+            if (durakGamePollingInterval) {
+                clearInterval(durakGamePollingInterval);
+                durakGamePollingInterval = null;
+            }
+        }
+
+        function startDurakGamePolling() {
+            stopDurakGamePolling();
+            durakGamePollingInterval = setInterval(() => {
+                if (currentLobbyData && currentLobbyData.status === 'playing') {
+                    fetchAndRenderDurakState();
+                } else {
+                    stopDurakGamePolling();
+                }
+            }, 1800);
+        }
+
+        function cardToHtml(cardStr) {
+            if (!cardStr) return '';
+            const rank = cardStr.slice(0, -1);
+            const suit = cardStr.slice(-1);
+            const isRed = (suit === '♥' || suit === '♦');
+            const colorClass = isRed ? 'red' : 'black';
+            return `<div class="durak-card ${colorClass}"><div>${rank}</div><div class="suit">${suit}</div></div>`;
+        }
+
+        async function fetchAndRenderDurakState() {
+            if (!currentLobbyId || !currentUserId) return;
+
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api(`/api/durak/lobbies/${currentLobbyId}/state?user_id=${currentUserId}`);
+
+                if (!res.ok) {
+                    console.warn('[Durak] state fetch failed');
+                    return;
+                }
+
+                const data = await res.json();
+                if (data.state) {
+                    currentGameState = data.state;
+                    renderDurakBoard(currentGameState);
+                }
+            } catch (e) {
+                console.error('fetchAndRenderDurakState error', e);
+            }
+        }
+
+        function renderDurakBoard(state) {
+            if (!state) return;
+
+            const board = document.getElementById('durak-game-board');
+            const loading = document.getElementById('durak-game-loading');
+            if (loading) loading.style.display = 'none';
+            if (board) board.style.display = 'block';
+
+            // Role + phase
+            const roleEl = document.getElementById('durak-role-badge');
+            const phaseEl = document.getElementById('durak-phase');
+            if (roleEl) {
+                const role = state.role || 'participant';
+                roleEl.textContent = role === 'attacker' ? 'ВЫ АТАКУЕТЕ' : role === 'defender' ? 'ВЫ ЗАЩИЩАЕТЕСЬ' : 'УЧАСТНИК';
+                roleEl.className = `durak-role ${role}`;
+            }
+            if (phaseEl) {
+                phaseEl.textContent = state.phase || '';
+            }
+
+            // Trump + deck
+            const trumpEl = document.getElementById('durak-trump-suit');
+            if (trumpEl) trumpEl.innerHTML = state.trump_suit ? state.trump_suit : '—';
+
+            const deckEl = document.getElementById('durak-deck');
+            if (deckEl) deckEl.textContent = state.deck_remaining ?? '—';
+
+            // Table
+            renderTable(state.table || []);
+
+            // Status line
+            const statusLine = document.getElementById('durak-status-line');
+            if (statusLine) {
+                if (state.game_over) {
+                    statusLine.innerHTML = `<strong style="color:#ffaa00">ИГРА ЗАВЕРШЕНА</strong> — Победитель: ${state.winner || '?'}`;
+                } else if (state.attack_finished) {
+                    statusLine.textContent = 'Раунд завершён. Ожидание следующего хода...';
+                } else {
+                    statusLine.textContent = state.attack_in_progress ? 'Атака идёт...' : 'Ожидание первого хода';
+                }
+            }
+
+            // Hand
+            const handContainer = document.getElementById('durak-hand');
+            if (handContainer) {
+                handContainer.innerHTML = '';
+                const myHand = Array.isArray(state.hands?.[currentUserId]) ? state.hands[currentUserId] : [];
+                const allowed = state.allowed_actions || [];
+
+                myHand.forEach(cardStr => {
+                    const cardDiv = document.createElement('div');
+                    cardDiv.className = 'durak-card';
+                    cardDiv.innerHTML = cardToHtml(cardStr).replace('durak-card', '');
+                    cardDiv.onclick = () => onDurakCardClick(cardStr, allowed);
+                    handContainer.appendChild(cardDiv);
+                });
+
+                if (myHand.length === 0) {
+                    handContainer.innerHTML = '<div style="color:#666; padding:12px;">Карт нет</div>';
+                }
+            }
+
+            // Action buttons
+            renderDurakActionButtons(state.allowed_actions || [], state);
+
+            // Game over handling
+            if (state.game_over) {
+                stopDurakGamePolling();
+                setTimeout(() => {
+                    if (confirm(`Игра окончена! Победитель: ${state.winner}. Вернуться в список лобби?`)) {
+                        exitWaitingRoom();
+                    }
+                }, 800);
+            }
+        }
+
+        function renderTable(table) {
+            const attacksEl = document.getElementById('durak-table-attacks');
+            const beatsEl = document.getElementById('durak-table-beats');
+            if (!attacksEl || !beatsEl) return;
+
+            attacksEl.innerHTML = '';
+            beatsEl.innerHTML = '';
+
+            table.forEach(pair => {
+                // Attack card
+                const atkDiv = document.createElement('div');
+                atkDiv.className = 'durak-card attack';
+                atkDiv.innerHTML = cardToHtml(pair.attack).replace('durak-card', '');
+                atkDiv.onclick = () => onTableAttackClick(pair.attack);
+                attacksEl.appendChild(atkDiv);
+
+                // Beat card (if exists)
+                const btDiv = document.createElement('div');
+                if (pair.beat) {
+                    btDiv.className = 'durak-card beat';
+                    btDiv.innerHTML = cardToHtml(pair.beat).replace('durak-card', '');
+                } else {
+                    btDiv.className = 'durak-card';
+                    btDiv.style.opacity = '0.3';
+                    btDiv.innerHTML = '<div style="font-size:10px;color:#666">—</div>';
+                }
+                beatsEl.appendChild(btDiv);
+            });
+        }
+
+        function renderDurakActionButtons(allowed, state) {
+            const container = document.getElementById('durak-actions');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const canTake = allowed.includes('take_table');
+            const canFinish = allowed.includes('finish_attack');
+            const canAttackOrThrow = allowed.includes('attack') || allowed.includes('throw_in');
+
+            if (canTake) {
+                const btn = document.createElement('button');
+                btn.className = 'durak-action-btn danger';
+                btn.textContent = 'ВЗЯТЬ';
+                btn.onclick = () => performDurakAction('take_table');
+                container.appendChild(btn);
+            }
+
+            if (canFinish) {
+                const btn = document.createElement('button');
+                btn.className = 'durak-action-btn primary';
+                btn.textContent = 'БИТО';
+                btn.onclick = () => performDurakAction('finish_attack');
+                container.appendChild(btn);
+            }
+
+            if (!canTake && !canFinish && !canAttackOrThrow && !state.game_over) {
+                const hint = document.createElement('div');
+                hint.style.cssText = 'width:100%; text-align:center; font-size:0.8rem; color:#666; padding:6px;';
+                hint.textContent = 'Ожидание хода других игроков...';
+                container.appendChild(hint);
+            }
+
+            // Reset beat selection helper
+            if (!canTake && selectedBeatAttackCard) {
+                selectedBeatAttackCard = null;
+            }
+        }
+
+        async function performDurakAction(action, extra = {}) {
+            if (!currentLobbyId || !currentUserId) return;
+
+            const payload = {
+                user_id: currentUserId,
+                action: action,
+                ...extra
+            };
+
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api(`/api/durak/lobbies/${currentLobbyId}/action`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+
+                if (!res.ok || !data.success) {
+                    const msg = data.detail || data.message || 'Недопустимый ход';
+                    console.error('[Durak Action Error]', msg, data);
+                    // Более заметное сообщение для тестирования
+                    const statusLine = document.getElementById('durak-status-line');
+                    if (statusLine) {
+                        statusLine.innerHTML = `<span style="color:#ff6666; font-weight:600;">Ошибка: ${msg}</span>`;
+                    } else {
+                        showLobbyNotification(msg, 'error');
+                    }
+                    // Refresh state anyway
+                    await fetchAndRenderDurakState();
+                    return;
+                }
+
+                // Success — обновляем состояние
+                if (data.state) {
+                    currentGameState = data.state;
+                    renderDurakBoard(currentGameState);
+                } else {
+                    await fetchAndRenderDurakState();
+                }
+
+                // Сбрасываем выбор для отбива
+                selectedBeatAttackCard = null;
+
+            } catch (e) {
+                console.error('performDurakAction error', e);
+                showLobbyNotification('Ошибка хода', 'error');
+            }
+        }
+
+        function onDurakCardClick(cardStr, allowedActions) {
+            const isAttacker = allowedActions.includes('attack');
+            const canThrow = allowedActions.includes('throw_in');
+
+            if (isAttacker || canThrow) {
+                // Атака / подкидывание
+                performDurakAction(isAttacker ? 'attack' : 'throw_in', { card: cardStr });
+                return;
+            }
+
+            // Если мы защитник и выбрали карту для отбива
+            if (selectedBeatAttackCard) {
+                performDurakAction('beat', {
+                    attack_card: selectedBeatAttackCard,
+                    beat_card: cardStr
+                });
+                selectedBeatAttackCard = null;
+                // визуально сбрасываем выделение на столе (простой способ)
+                document.querySelectorAll('#durak-table-attacks .durak-card').forEach(el => el.classList.remove('selected'));
+            } else {
+                showLobbyNotification('Сначала выберите карту на столе для отбива', 'info');
+            }
+        }
+
+        function onTableAttackClick(attackCardStr) {
+            if (!currentGameState) return;
+
+            const allowed = currentGameState.allowed_actions || [];
+            if (!allowed.includes('beat')) {
+                return;
+            }
+
+            // Выбираем карту для отбива
+            selectedBeatAttackCard = attackCardStr;
+
+            // Визуальное выделение
+            document.querySelectorAll('#durak-table-attacks .durak-card').forEach(el => {
+                el.classList.remove('selected');
+                if (el.textContent.includes(attackCardStr.slice(0,-1)) && el.textContent.includes(attackCardStr.slice(-1))) {
+                    el.classList.add('selected');
+                }
+            });
+
+            showLobbyNotification(`Выбрана карта для отбива: ${attackCardStr}. Теперь кликните карту из руки.`, 'info');
+        }
+
+        function showDurakGameBoard() {
+            const section = document.getElementById('game-room-section');
+            if (section) section.style.display = 'block';
+
+            const board = document.getElementById('durak-game-board');
+            const loading = document.getElementById('durak-game-loading');
+            if (loading) loading.style.display = 'block';
+            if (board) board.style.display = 'none';
+
+            // Первый запрос реального состояния
+            fetchAndRenderDurakState().then(() => {
+                startDurakGamePolling();
+            });
+
+            // Тестовая подсказка (можно удалить позже)
+            setTimeout(() => {
+                const status = document.getElementById('durak-status-line');
+                if (status && !status.textContent.includes('Ошибка') && status.textContent.includes('Ожидание')) {
+                    status.innerHTML = 'Тестовый режим. Для игры нужно ≥2 игроков в лобби. Используй dev-кнопки и «Обновить состояние».';
+                }
+            }, 1200);
+
+            // Обновляем dev-панель
+            const devHeader = document.querySelector('#durak-dev-panel strong');
+            if (devHeader) devHeader.innerHTML = '🛠 Инструменты разработки <span style="color:#ffaa00">[В ИГРЕ]</span>';
+        }
+
+        // Переопределяем обработчик game_started, чтобы показывать реальную доску
+        // (вызывается позже при подключении сокета)
+        window.__durakShowRealGameBoard = showDurakGameBoard;
 
         // ================== ИНИЦИАЛИЗАЦИЯ ==================
 

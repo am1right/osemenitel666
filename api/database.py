@@ -1712,6 +1712,36 @@ def is_user_in_active_lobby(user_id: int) -> Optional[int]:
     return row["lobby_id"] if row else None
 
 
+def start_durak_game(lobby_id: int, creator_id: int) -> bool:
+    """Переводит лобби в статус 'playing'. Только создатель и только из waiting.
+    Дополнительные проверки (все готовы, мин. 2 игрока) — на уровне routes.
+    """
+    conn = get_connection()
+    cur = _cursor(conn)
+
+    cur.execute('''
+        SELECT creator_id, status
+        FROM durak_lobbies
+        WHERE id = %s
+    ''', (lobby_id,))
+    row = cur.fetchone()
+    if not row or row["creator_id"] != creator_id or row["status"] != "waiting":
+        cur.close()
+        conn.close()
+        return False
+
+    cur.execute('''
+        UPDATE durak_lobbies
+        SET status = 'playing', updated_at = NOW()
+        WHERE id = %s
+    ''', (lobby_id,))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    return True
+
+
 def get_durak_lobby_by_id(lobby_id: int) -> Optional[Dict[str, Any]]:
     """Получает лобби по id (включая playing)."""
     conn = get_connection()

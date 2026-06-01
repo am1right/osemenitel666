@@ -15,10 +15,15 @@ logger = logging.getLogger(__name__)
 
 try:
     from api import database as db
+    from api.durak_game import DurakGame, Card
 except ImportError:
     import database as db
+    from durak_game import DurakGame, Card
 
 router = APIRouter(prefix="/api/durak", tags=["durak"])
+
+# Временное хранилище активных игр (позже заменим на Redis / БД)
+active_games: dict[int, DurakGame] = {}  # lobby_id -> DurakGame
 
 # ── Pydantic модели ─────────────────────────────────────────────
 
@@ -172,61 +177,170 @@ class StartGameRequest(BaseModel):
     user_id: int
 
 
+class GameActionRequest(BaseModel):
+    user_id: int
+    action: str                     # attack | throw_in | beat | take_table | finish_attack
+    card: Optional[str] = None      # "10♥" для attack/throw_in
+    attack_card: Optional[str] = None  # "K♠" для beat
+    beat_card: Optional[str] = None    # "A♥" для beat
+
+
 @router.post("/lobbies/{lobby_id}/start")
 async def start_game(lobby_id: int, req: StartGameRequest):
-    """Создатель запускает игру."""
-    conn = get_connection()
-    cur = _cursor(conn)
-
-    # Получаем информацию о лобби
-    cur.execute('''
-        SELECT creator_id, status, max_players 
-        FROM durak_lobbies 
-        WHERE id = %s
-    ''', (lobby_id,))
-    lobby = cur.fetchone()
-
+    """Создатель запускает игру. Создаёт авторитетный DurakGame."""
+    # 1. Базовые проверки через DB helpers
+    lobby = db.get_durak_lobby_by_id(lobby_id)
     if not lobby:
-        cur.close()
-        conn.close()
         raise HTTPException(status_code=404, detail="Lobby not found")
 
-    if lobby["creator_id"] != req.user_id:
-        cur.close()
-        conn.close()
+    if lobby.get("creator_id") != req.user_id:
         raise HTTPException(status_code=403, detail="Only the creator can start the game")
 
-    if lobby["status"] != "waiting":
-        cur.close()
-        conn.close()
+    if lobby.get("status") != "waiting":
         raise HTTPException(status_code=400, detail="Lobby is not in waiting state")
 
-    # Проверяем, что все игроки готовы и набрано минимальное количество
-    cur.execute('''
-        SELECT COUNT(*) as total_players,
-               SUM(CASE WHEN is_ready = TRUE THEN 1 ELSE 0 END) as ready_players
-        FROM durak_lobby_players
-        WHERE lobby_id = %s
-    ''', (lobby_id,))
-    stats = cur.fetchone()
-
-    total = stats["total_players"] or 0
-    ready = stats["ready_players"] or 0
+    players = db.get_lobby_players(lobby_id)
+    total = len(players)
+    ready_count = sum(1 for p in players if p.get("is_ready"))
 
     if total < 2:
-        cur.close()
-        conn.close()
         raise HTTPException(status_code=400, detail="At least 2 players are required to start")
-
-    if ready < total:
-        cur.close()
-        conn.close()
+    if ready_count < total:
         raise HTTPException(status_code=400, detail="All players must be ready to start the game")
 
-    # Запускаем игру
-    cur.execute("UPDATE durak_lobbies SET status = 'playing', updated_at = NOW() WHERE id = %s", (lobby_id,))
-    conn.commit()
-    cur.close()
-    conn.close()
+    # 2. Переводим лобби в playing (атомарно, с проверкой создателя)
+    started = db.start_durak_game(lobby_id, req.user_id)
+    if not started:
+        raise HTTPException(status_code=400, detail="Failed to start game (state changed?)")
 
-    return {"status": "started"}
+    # 3. Создаём авторитетную игровую сессию
+    game_created = False
+    try:
+        player_ids = [int(p["user_id"]) for p in players]
+        deck_size = int(lobby.get("deck_size", 36))
+        game_type = lobby.get("game_type", "podkidnoy")
+
+        if player_ids:
+            game = DurakGame(player_ids, deck_size=deck_size, game_type=game_type)
+            active_games[lobby_id] = game
+            game.start_game()
+            game_created = True
+            logger.info(f"[DURAK] Game started for lobby #{lobby_id} with {len(player_ids)} players")
+    except Exception as e:
+        logger.exception(f"Failed to instantiate DurakGame for lobby {lobby_id}: {e}")
+        # Не откатываем статус лобби — клиент увидит playing без game instance (редкий кейс)
+        # В будущем можно добавить recovery
+
+    initial_state = None
+    if game_created and lobby_id in active_games:
+        # Возвращаем начальное состояние (без конкретного viewer — клиент запросит сам)
+        initial_state = active_games[lobby_id].get_full_game_state()
+
+    return {
+        "status": "started",
+        "game_created": game_created,
+        "initial_state": initial_state
+    }
+
+
+# ── Игровые эндпоинты (Этап 3, начало интеграции) ─────────────────
+
+@router.get("/lobbies/{lobby_id}/state")
+async def get_game_state(lobby_id: int, user_id: Optional[int] = None):
+    """Возвращает текущее состояние игры (если лобби в playing и игра создана)."""
+    game = active_games.get(lobby_id)
+    if not game:
+        # Попробуем проверить статус лобби
+        lobby = db.get_durak_lobby_by_id(lobby_id)
+        if lobby and lobby.get("status") == "playing":
+            return {"status": "playing", "game_instance": False, "message": "Game state not yet loaded on this node"}
+        raise HTTPException(status_code=404, detail="No active game for this lobby")
+
+    state = game.get_full_game_state(viewer_id=user_id)
+    return {"status": "ok", "state": state}
+
+
+def _parse_card(s: Optional[str]) -> Optional[Card]:
+    if not s:
+        return None
+    try:
+        return Card.from_str(s)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid card format: {s} ({e})")
+
+
+@router.post("/lobbies/{lobby_id}/action")
+async def perform_game_action(lobby_id: int, req: GameActionRequest):
+    """
+    Универсальный эндпоинт для совершения ходов.
+    Клиент должен сначала запросить /state, чтобы получить allowed_actions и legal_*.
+    Серверная валидация — жёсткая.
+    """
+    game = active_games.get(lobby_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found or not started")
+    if game.game_over:
+        raise HTTPException(status_code=400, detail="Game is already over")
+
+    pid = req.user_id
+    if pid not in game.player_ids:
+        raise HTTPException(status_code=403, detail="You are not a participant in this game")
+
+    action = (req.action or "").strip().lower()
+
+    success = False
+    message = ""
+
+    try:
+        if action in ("attack", "throw_in"):
+            card = _parse_card(req.card)
+            if not card:
+                raise HTTPException(status_code=400, detail="card is required for attack/throw_in")
+            # is_legal_attack уже учитывает wave + ранг + лимиты
+            if not game.is_legal_attack(pid, card):
+                raise HTTPException(status_code=400, detail="Illegal attack/throw_in")
+            success = game.attack(pid, card)
+            message = "attacked" if success else "attack failed"
+
+        elif action == "beat":
+            atk = _parse_card(req.attack_card)
+            bt = _parse_card(req.beat_card)
+            if not atk or not bt:
+                raise HTTPException(status_code=400, detail="attack_card and beat_card required for beat")
+            if not game.is_legal_beat(pid, atk, bt):
+                raise HTTPException(status_code=400, detail="Illegal beat")
+            success = game.beat(pid, atk, bt)
+            message = "beat" if success else "beat failed"
+
+        elif action == "take_table":
+            success = game.take_table(pid)
+            message = "took table" if success else "cannot take table now"
+
+        elif action in ("finish_attack", "finish", "bito"):
+            if pid not in (game.current_attacker, game.current_defender):
+                # Разрешаем финиш только участникам атаки (на практике — attacker)
+                pass
+            success = game.finish_attack()
+            message = "attack finished" if success else "cannot finish attack now"
+
+        else:
+            raise HTTPException(status_code=400, detail=f"Unknown action: {action}")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Action {action} failed in lobby {lobby_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal game error")
+
+    new_state = game.get_full_game_state(viewer_id=pid)
+
+    # Если игра закончилась — можно почистить active_games (опционально, для MVP оставляем)
+    if game.game_over and lobby_id in active_games:
+        logger.info(f"[DURAK] Game over in lobby {lobby_id}, winner={game.winner}")
+
+    return {
+        "status": "ok" if success else "error",
+        "success": success,
+        "message": message,
+        "state": new_state
+    }
