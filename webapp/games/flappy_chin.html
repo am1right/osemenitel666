@@ -187,7 +187,20 @@
 
     <script>
         const tg = window.Telegram?.WebApp;
-        if (tg) { tg.ready(); tg.expand(); tg.enableClosingConfirmation(); }
+        if (tg) { 
+            tg.ready(); 
+            tg.expand(); 
+            tg.enableClosingConfirmation();
+
+            // === Кнопка "Назад" в шапке Telegram (как в лобби Дурака) ===
+            if (tg.BackButton) {
+                tg.BackButton.show();
+                tg.BackButton.onClick(() => {
+                    if (tg.BackButton) tg.BackButton.hide();
+                    window.location.href = '../index.html';
+                });
+            }
+        }
 
         // ── Проверка бана + запуск периодической проверки ──
         if (window.enforceBanIfNeeded) {

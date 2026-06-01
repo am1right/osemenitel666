@@ -382,6 +382,15 @@
         tg.onEvent('safeAreaChanged', applyTopPadding);
         tg.onEvent('contentSafeAreaChanged', applyTopPadding);
 
+        // === Кнопка "Назад" в шапке Telegram (как в лобби Дурака) ===
+        if (tg.BackButton) {
+            tg.BackButton.show();
+            tg.BackButton.onClick(() => {
+                if (tg.BackButton) tg.BackButton.hide();
+                window.location.href = '../index.html';
+            });
+        }
+
         document.addEventListener('touchmove', e => {
             e.preventDefault();
         }, { passive: false });
