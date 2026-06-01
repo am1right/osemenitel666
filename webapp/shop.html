@@ -968,6 +968,39 @@
                 </div>
             </div>
 
+            <!-- CASE (перемещено наверх, сразу после пополнения баланса) -->
+            <div class="section-title">Кейсы</div>
+            <div class="case-section">
+                <div class="pack-card featured case-card" onclick="buyCase()">
+                    <div class="pack-badge badge-premium">🎲 Случайно</div>
+                    <div class="pack-featured-inner">
+                        <div class="pack-featured-left">
+                            <div class="pack-icon" style="margin-bottom:4px;">
+                                <img src="icons/box.png" alt="Кейс">
+                            </div>
+                        </div>
+                        <div class="pack-featured-mid">
+                            <div class="pack-featured-name">Случайный кейс</div>
+                            <div class="pack-featured-desc case-desc">
+                                <p class="case-desc__lead">Внутри может ждать энергия, звёзды или неожиданный NFT — угадай, что выпадет тебе.</p>
+                                <div class="case-desc__tags">
+                                    <span class="case-desc__tag"><img src="icons/enegry.png" alt="">энергия</span>
+                                    <span class="case-desc__tag case-desc__tag--stars">⭐ звёзды</span>
+                                    <span class="case-desc__tag case-desc__tag--nft">NFT-подарок</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pack-featured-right">
+                            <div class="pack-price" style="flex-direction:column;gap:2px;padding:8px 12px;">
+                                <span class="star-icon" style="font-size:1.3rem;">⭐</span>
+                                <span style="font-size:1.1rem;">1000</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="case-cooldown-hint" id="case-cooldown-hint"></div>
+            </div>
+
             <!-- ENERGY PACKS -->
             <div class="section-title">Пакеты энергии</div>
 
@@ -1040,39 +1073,6 @@
                     </div>
                 </div>
 
-            </div>
-
-            <!-- CASE -->
-            <div class="section-title">Кейсы</div>
-            <div class="case-section">
-                <div class="pack-card featured case-card" onclick="buyCase()">
-                    <div class="pack-badge badge-premium">🎲 Случайно</div>
-                    <div class="pack-featured-inner">
-                        <div class="pack-featured-left">
-                            <div class="pack-icon" style="margin-bottom:4px;">
-                                <img src="icons/box.png" alt="Кейс">
-                            </div>
-                        </div>
-                        <div class="pack-featured-mid">
-                            <div class="pack-featured-name">Случайный кейс</div>
-                            <div class="pack-featured-desc case-desc">
-                                <p class="case-desc__lead">Внутри может ждать энергия, звёзды или неожиданный NFT — угадай, что выпадет тебе.</p>
-                                <div class="case-desc__tags">
-                                    <span class="case-desc__tag"><img src="icons/enegry.png" alt="">энергия</span>
-                                    <span class="case-desc__tag case-desc__tag--stars">⭐ звёзды</span>
-                                    <span class="case-desc__tag case-desc__tag--nft">NFT-подарок</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="pack-featured-right">
-                            <div class="pack-price" style="flex-direction:column;gap:2px;padding:8px 12px;">
-                                <span class="star-icon" style="font-size:1.3rem;">⭐</span>
-                                <span style="font-size:1.1rem;">1000</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="case-cooldown-hint" id="case-cooldown-hint"></div>
             </div>
 
             <!-- INFO BANNER -->
