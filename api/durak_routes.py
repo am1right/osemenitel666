@@ -25,11 +25,38 @@ router = APIRouter(prefix="/api/durak", tags=["durak"])
 # Временное хранилище активных игр (позже заменим на Redis / БД)
 active_games: dict[int, DurakGame] = {}  # lobby_id -> DurakGame
 
+# ── Blacklist для названий лобби ─────────────────────────────────
+FORBIDDEN_LOBBY_WORDS = {
+    # Русский мат и оскорбления
+    "хуй", "хуи", "хуя", "хуёв", "хуев", "хер", "херов",
+    "пизда", "пизд", "пиздец", "пиздюк",
+    "ебать", "ебал", "ебёт", "ебан", "еблани", "уеб", "уёб", "уебок", "еблан",
+    "бля", "блядь", "блядина", "бляди",
+    "сука", "суки", "сукин",
+    "мудак", "мудаки", "мудило", "муди",
+    "дроч", "дрочить", "дрочер",
+    "пидор", "пидр", "педик", "пидорас",
+    "нацист", "фашист", "гитлер",
+    # Английский
+    "fuck", "shit", "cunt", "dick", "pussy", "asshole", "bastard",
+}
+
+def is_lobby_name_allowed(name: str) -> bool:
+    """Проверяет название лобби на запрещённые слова."""
+    if not name:
+        return True
+    name_lower = name.lower()
+    for word in FORBIDDEN_LOBBY_WORDS:
+        if word in name_lower:
+            return False
+    return True
+
 # ── Pydantic модели ─────────────────────────────────────────────
 
 class CreateLobbyRequest(BaseModel):
     user_id: int
     first_name: str = ""
+    name: str | None = None
     max_players: int = 4
     deck_size: int = 36
     game_type: str = "podkidnoy"          # podkidnoy | perevodnoy
@@ -69,6 +96,10 @@ async def create_lobby(req: CreateLobbyRequest):
     if req.bet_amount < 0:
         raise HTTPException(status_code=400, detail="bet_amount cannot be negative")
 
+    # Проверка на запрещённые слова в названии
+    if req.name and not is_lobby_name_allowed(req.name):
+        raise HTTPException(status_code=400, detail="Название лобби содержит недопустимые слова. Выберите другое название.")
+
     # Проверка: пользователь не должен уже быть в активном лобби
     existing = db.is_user_in_active_lobby(req.user_id)
     if existing:
@@ -77,6 +108,7 @@ async def create_lobby(req: CreateLobbyRequest):
     lobby_id = db.create_durak_lobby(
         creator_id=req.user_id,
         creator_name=req.first_name,
+        name=req.name,
         max_players=req.max_players,
         deck_size=req.deck_size,
         game_type=req.game_type,

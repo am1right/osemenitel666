@@ -329,7 +329,11 @@
         document.getElementById('dur-custom').addEventListener('input', validate);
 
         // ── Динамические поля NFT ─────────────────────────────
-        const PLACE_LABELS = ['🥇 Приз за Топ 1', '🥈 Приз за Топ 2', '🥉 Приз за Топ 3'];
+        const PLACE_LABELS = [
+    '<img src="icons/cup.png" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;"> Приз за Топ 1',
+    '🥈 Приз за Топ 2',
+    '🥉 Приз за Топ 3'
+];
         const PLACE_COLORS = ['#ffd700','#c0c0c0','#cd7f32'];
 
         function buildGiftFields() {

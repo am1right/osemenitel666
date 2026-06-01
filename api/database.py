@@ -163,6 +163,7 @@ def init_db():
     cur.execute('''
         CREATE TABLE IF NOT EXISTS durak_lobbies (
             id                SERIAL PRIMARY KEY,
+            name              TEXT,
             creator_id        BIGINT NOT NULL,
             creator_name      TEXT,
             max_players       INTEGER NOT NULL CHECK (max_players BETWEEN 2 AND 6),
@@ -170,7 +171,7 @@ def init_db():
             game_type         TEXT NOT NULL DEFAULT 'podkidnoy' CHECK (game_type IN ('podkidnoy', 'perevodnoy')),
             cheating_enabled  BOOLEAN DEFAULT FALSE,
             bet_amount        INTEGER DEFAULT 0,
-            pot               INTEGER DEFAULT 0,   -- банк лобби (ставки ушедших игроков)
+            pot               INTEGER DEFAULT 0,
             status            TEXT DEFAULT 'waiting' CHECK (status IN ('waiting', 'playing', 'finished', 'cancelled')),
             created_at        TIMESTAMP DEFAULT NOW(),
             updated_at        TIMESTAMP DEFAULT NOW()
@@ -182,6 +183,12 @@ def init_db():
     # Миграция: добавляем pot, если колонки ещё нет (для существующих БД)
     try:
         cur.execute("ALTER TABLE durak_lobbies ADD COLUMN IF NOT EXISTS pot INTEGER DEFAULT 0")
+    except Exception:
+        pass
+
+    # Миграция: название лобби
+    try:
+        cur.execute("ALTER TABLE durak_lobbies ADD COLUMN IF NOT EXISTS name TEXT")
     except Exception:
         pass
 
@@ -1400,7 +1407,8 @@ def create_durak_lobby(
     deck_size: int,
     game_type: str,
     cheating_enabled: bool,
-    bet_amount: int = 0
+    bet_amount: int = 0,
+    name: str = None
 ) -> int:
     """Создаёт новое лобби Дурака и добавляет создателя как первого игрока."""
     conn = get_connection()
@@ -1414,12 +1422,17 @@ def create_durak_lobby(
             conn.close()
             raise Exception("Недостаточно Stars для создания лобби со ставкой")
 
+    # Автогенерация названия, если не передано
+    final_name = name
+    if not final_name or not final_name.strip():
+        final_name = f"Лобби {creator_name or 'Игрок'}"
+
     cur.execute('''
         INSERT INTO durak_lobbies 
-            (creator_id, creator_name, max_players, deck_size, game_type, cheating_enabled, bet_amount)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
+            (name, creator_id, creator_name, max_players, deck_size, game_type, cheating_enabled, bet_amount)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING id
-    ''', (creator_id, creator_name, max_players, deck_size, game_type, cheating_enabled, bet_amount))
+    ''', (final_name, creator_id, creator_name, max_players, deck_size, game_type, cheating_enabled, bet_amount))
 
     lobby_id = cur.fetchone()["id"]
 
@@ -1460,6 +1473,7 @@ def get_active_durak_lobbies(limit: int = 50) -> list[Dict[str, Any]]:
     for r in rows:
         result.append({
             "id": r["id"],
+            "name": r.get("name"),
             "creator_id": r["creator_id"],
             "creator_name": r["creator_name"],
             "max_players": r["max_players"],
@@ -1763,6 +1777,7 @@ def get_durak_lobby_by_id(lobby_id: int) -> Optional[Dict[str, Any]]:
 
     return {
         "id": row["id"],
+        "name": row.get("name"),
         "creator_id": row["creator_id"],
         "creator_name": row["creator_name"],
         "max_players": row["max_players"],
