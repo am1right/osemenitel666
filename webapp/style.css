@@ -194,6 +194,12 @@ h1.glitch::after {
     );
 }
 
+/* Визуальное выделение лобби со ставками */
+.lobby-card.lobby-card--with-bet {
+    border-color: rgba(255, 200, 0, 0.5);
+    background: rgba(255, 200, 0, 0.04);
+}
+
 .game-card {
     background: rgba(43, 29, 84, 0.88);
     border: 1px solid rgba(255, 255, 255, 0.1);
