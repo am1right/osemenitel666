@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 
 from telegram import (
     Update, InlineKeyboardButton, InlineKeyboardMarkup,
-    WebAppInfo, InlineQueryResultsButton
+    WebAppInfo, InlineQueryResultsButton,
+    InlineQueryResultArticle, InputTextMessageContent
 )
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler,
@@ -25,9 +26,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / "config" / ".env")
 
 BOT_TOKEN    = os.getenv("BOT_TOKEN")
-API_BASE     = os.getenv("API_BASE", "https://chin-games-bot.onrender.com")
-BASE_STATIC  = f"{API_BASE}/static"
-WEBAPP_URL   = f"{BASE_STATIC}/index.html?v=2205241"
+API_BASE         = os.getenv("API_BASE", "https://chin-games-bot.onrender.com")
+BASE_STATIC      = f"{API_BASE}/static"
+WEBAPP_URL       = f"{BASE_STATIC}/index.html?v=2205241"
+INLINE_IMAGE_URL = f"{BASE_STATIC}/icons/inline.png"  # используется для inline превью
 
 # ID владельца бота для уведомлений о подозрительной активности
 ADMIN_ID          = int(os.getenv("ADMIN_ID", "0"))
@@ -198,20 +200,58 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Обработчик inline-запросов (@chingamebot в любом чате).
-    Показывает большую кнопку "Играть" прямо в списке inline-результатов.
+
+    Показывает превью с картинкой inline.png + большую кнопку "Играть".
+    Реализован максимально надёжно: при любой ошибке с фото — падает обратно на простую кнопку.
     """
     try:
+        results = []
+
+        # Пытаемся показать красивое превью с картинкой
+        if INLINE_IMAGE_URL:
+            try:
+                results.append(
+                    InlineQueryResultArticle(
+                        id="chin_games_preview",
+                        title="Chin Games",
+                        description="Мини-игры • Призы в Stars • Турниры",
+                        thumb_url=INLINE_IMAGE_URL,
+                        thumb_width=128,
+                        thumb_height=128,
+                        input_message_content=InputTextMessageContent(
+                            message_text="🎮 Открыть Chin Games"
+                        ),
+                    )
+                )
+            except Exception as photo_err:
+                logger.warning(f"[INLINE] Не удалось добавить превью с фото: {photo_err}")
+
+        # Всегда показываем большую кнопку "Играть" внизу
         await update.inline_query.answer(
-            results=[],                    # Пустой список — показываем только кнопку
-            cache_time=1,
+            results=results,
+            cache_time=5,
             is_personal=True,
             button=InlineQueryResultsButton(
                 text="🎮 Играть в Chin Games",
                 start_parameter="play"
             )
         )
+
     except Exception as e:
         logger.error(f"Inline error: {e}")
+        # Последний фоллбэк — просто кнопка без результатов
+        try:
+            await update.inline_query.answer(
+                results=[],
+                cache_time=1,
+                is_personal=True,
+                button=InlineQueryResultsButton(
+                    text="🎮 Играть в Chin Games",
+                    start_parameter="play"
+                )
+            )
+        except Exception:
+            pass
 
 
 async def pre_checkout_query_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
