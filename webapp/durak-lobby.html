@@ -126,14 +126,14 @@
         <div id="lobby-list-view">
             <div class="header">
                 <h1>🃏 Дурак Онлайн</h1>
-                <button class="create-btn" id="create-lobby-btn">+ Создать лобби</button>
+                <button class="create-btn" id="create-lobby-btn" onclick="openCreateLobbyModal()">+ Создать лобби</button>
             </div>
 
             <div class="filter-bar">
-                <div class="filter-btn active" onclick="applyFilter('all')">Все</div>
-                <div class="filter-btn" onclick="applyFilter('small')">2-3 игрока</div>
-                <div class="filter-btn" onclick="applyFilter('large')">4-6 игроков</div>
-                <div class="filter-btn" onclick="applyFilter('bet')">Со ставкой</div>
+                <div class="filter-btn active" onclick="applyFilter('all', this)">Все</div>
+                <div class="filter-btn" onclick="applyFilter('small', this)">2-3 игрока</div>
+                <div class="filter-btn" onclick="applyFilter('large', this)">4-6 игроков</div>
+                <div class="filter-btn" onclick="applyFilter('bet', this)">Со ставкой</div>
             </div>
 
             <div id="lobby-list" class="lobby-list">
@@ -368,33 +368,14 @@
 
     <script src="js/api.js"></script>
     <script>
+        // Глобальный перехват ошибок, чтобы видеть проблемы в консоли
+        window.addEventListener('error', (e) => {
+            console.error('Global error in Durak lobby:', e.message, e.filename, e.lineno);
+        });
+
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
-
-        // ── Кнопка "Назад" вместо крестика для меню Дурака Онлайн ──
-        if (tg.BackButton) {
-            tg.BackButton.show();
-
-            tg.BackButton.onClick(() => {
-                // Умная логика "Назад":
-                // - Если внутри конкретного лобби → выходим только из него (возвращаемся к списку лобби)
-                // - Если уже на списке лобби → уходим на главную страницу
-                if (currentLobbyId && typeof leaveCurrentLobby === 'function') {
-                    // Пользователь в лобби — выходим из него, но остаёмся на странице
-                    leaveCurrentLobby().finally(() => {
-                        tg.BackButton.show(); // оставляем кнопку, так как всё ещё в меню Дурака
-                    });
-                } else {
-                    // Находимся на общем списке лобби — уходим на главную
-                    if (tg.BackButton) tg.BackButton.hide();
-
-                    setTimeout(() => {
-                        window.location.href = 'index.html';
-                    }, 60);
-                }
-            });
-        }
 
         // ── Top padding под шапку Telegram (как в shop.html) ──
         function applyDurakTopPadding() {
@@ -416,6 +397,25 @@
         let currentLobbyId = null;
         let currentUserId = null;
         let playersRefreshInterval = null;
+
+        // ── Кнопка "Назад" вместо крестика для меню Дурака Онлайн ──
+        // Перемещено сюда, чтобы избежать Temporal Dead Zone с let-переменными
+        if (tg.BackButton) {
+            tg.BackButton.show();
+
+            tg.BackButton.onClick(() => {
+                if (currentLobbyId && typeof leaveCurrentLobby === 'function') {
+                    leaveCurrentLobby().finally(() => {
+                        if (tg.BackButton) tg.BackButton.show();
+                    });
+                } else {
+                    if (tg.BackButton) tg.BackButton.hide();
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 60);
+                }
+            });
+        }
 
         // ================== СПИСОК ЛОББИ ==================
 
@@ -440,12 +440,17 @@
             }
         }
 
-        function applyFilter(filter) {
+        function applyFilter(filter, btnElement) {
             currentFilter = filter;
 
             // Обновляем активный класс
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+
+            // Используем переданный элемент или ищем через event (fallback)
+            const target = btnElement || (typeof event !== 'undefined' ? event.target : null);
+            if (target) {
+                target.classList.add('active');
+            }
 
             renderFilteredLobbies();
         }
@@ -1589,12 +1594,14 @@
 
             loadLobbies();
 
-            // Надёжная обработка кнопки создания лобби
+            // Дополнительная защита для кнопки создания лобби (на случай если inline onclick не сработает)
             const createBtn = document.getElementById('create-lobby-btn');
             if (createBtn) {
-                createBtn.addEventListener('click', (e) => {
-                    e.stopImmediatePropagation();
-                    openCreateLobbyModal();
+                createBtn.addEventListener('click', () => {
+                    // Не используем stopImmediatePropagation, чтобы не ломать inline onclick
+                    if (typeof openCreateLobbyModal === 'function') {
+                        openCreateLobbyModal();
+                    }
                 });
             }
 
