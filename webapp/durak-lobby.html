@@ -399,20 +399,24 @@
         let playersRefreshInterval = null;
 
         // ── Кнопка "Назад" вместо крестика для меню Дурака Онлайн ──
-        // Перемещено сюда, чтобы избежать Temporal Dead Zone с let-переменными
+        // Показываем кнопку при входе на страницу. Она остаётся видимой всё время,
+        // пока пользователь находится внутри меню Дурака (список лобби или конкретное лобби).
         if (tg.BackButton) {
             tg.BackButton.show();
 
             tg.BackButton.onClick(() => {
                 if (currentLobbyId && typeof leaveCurrentLobby === 'function') {
+                    // Находимся внутри лобби → выходим из него и возвращаемся к списку лобби Дурака
+                    // Кнопка "Назад" при этом остаётся (теперь она будет вести на главную)
                     leaveCurrentLobby().finally(() => {
                         if (tg.BackButton) tg.BackButton.show();
                     });
                 } else {
+                    // Находимся на общем списке лобби Дурака → полностью выходим из раздела
                     if (tg.BackButton) tg.BackButton.hide();
                     setTimeout(() => {
                         window.location.href = 'index.html';
-                    }, 60);
+                    }, 50);
                 }
             });
         }
@@ -1063,10 +1067,9 @@
             document.getElementById('waiting-room-view').style.display = 'none';
             document.getElementById('lobby-list-view').style.display = 'block';
 
-            // Прячем кнопку "Назад", если пользователь вышел через интерфейс
-            if (tg.BackButton) {
-                tg.BackButton.hide();
-            }
+            // Не прячем BackButton здесь!
+            // Кнопка "Назад" должна оставаться видимой, пока пользователь находится в меню Дурака.
+            // Она прячется только при полном выходе на index.html.
 
             loadLobbies();
         }
