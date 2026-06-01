@@ -1600,6 +1600,12 @@
             }
             currentUserId = user.id;
 
+            // Если это лобби, где мы создатель — сразу заходим без повторного join
+            if (lobbyData && lobbyData.creator_id === currentUserId) {
+                enterWaitingRoom(lobbyId, lobbyData);
+                return;
+            }
+
             try {
                 const api = window.apiFetch || fetch;
                 const res = await api(`/api/durak/lobbies/${lobbyId}/join`, {
@@ -1619,6 +1625,11 @@
                 enterWaitingRoom(lobbyId, lobbyData);
 
             } catch (e) {
+                // Если ошибка "уже в лобби" — всё равно пытаемся зайти в это лобби
+                if (e.message.includes('already in') || e.message.includes('уже в')) {
+                    enterWaitingRoom(lobbyId, lobbyData);
+                    return;
+                }
                 alert("Ошибка входа: " + e.message);
             }
         }
@@ -3609,7 +3620,17 @@
                 }
             }
 
-            loadLobbies();
+            // Автоматически заходим в лобби, если мы его создатель (после перезагрузки страницы)
+            loadLobbies().then(() => {
+                if (!currentLobbyId && currentUserId && allLobbies.length > 0) {
+                    const myLobby = allLobbies.find(l => l.creator_id === currentUserId);
+                    if (myLobby) {
+                        // Прямо входим в своё лобби
+                        enterWaitingRoom(myLobby.id, myLobby);
+                    }
+                }
+            });
+
             startLobbyListPolling();   // запускаем авто-обновление списка лобби
 
             // Дополнительная защита для кнопки создания лобби (на случай если inline onclick не сработает)
