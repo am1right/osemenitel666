@@ -528,6 +528,12 @@ async def api_referral_stats(user_id: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/bot-username")
+async def api_bot_username():
+    """Возвращает юзернейм бота для генерации deep links (приглашения и т.д.)."""
+    return {"username": BOT_USERNAME}
+
+
 # ── Contests ───────────────────────────────────────────────────────
 
 @app.get("/api/contests/active")

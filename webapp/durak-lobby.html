@@ -2263,7 +2263,7 @@
         /**
          * Приглашение в текущее лобби через стандартный шэринг Telegram
          */
-        function inviteToCurrentLobby() {
+        async function inviteToCurrentLobby() {
             if (!currentLobbyId || !currentLobbyData) {
                 alert("Сначала зайдите в лобби");
                 return;
@@ -2278,7 +2278,22 @@
             const lobby = currentLobbyData;
             const lobbyName = lobby.name || `Лобби #${currentLobbyId}`;
 
-            const botUsername = "chingamebot";
+            // Получаем актуальный юзернейм бота с сервера (чтобы всегда совпадал с BOT_USERNAME в env)
+            let botUsername = "chingamebot";
+            try {
+                if (!window.__durakBotUsername) {
+                    const api = window.apiFetch || fetch;
+                    const res = await api('/api/bot-username');
+                    if (res.ok) {
+                        const data = await res.json();
+                        window.__durakBotUsername = data.username || "chingamebot";
+                    }
+                }
+                botUsername = window.__durakBotUsername || "chingamebot";
+            } catch (e) {
+                console.warn('Failed to fetch bot username, using fallback', e);
+            }
+
             const link = `https://t.me/${botUsername}?startapp=durak_lobby_${currentLobbyId}`;
 
             // Собираем красивый текст приглашения с полной информацией
@@ -3941,6 +3956,12 @@
         document.addEventListener('DOMContentLoaded', () => {
             const user = tg.initDataUnsafe?.user;
             if (user) currentUserId = user.id;
+
+            // Предзагружаем юзернейм бота для пригласительных ссылок (чтобы всегда был актуальный из env)
+            (window.apiFetch || fetch)('/api/bot-username')
+                .then(r => r.ok ? r.json() : null)
+                .then(d => { if (d && d.username) window.__durakBotUsername = d.username; })
+                .catch(() => {});
 
             // === Обработка приглашения в лобби через start_param ===
             const startParam = tg.initDataUnsafe?.start_param;
