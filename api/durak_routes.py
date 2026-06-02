@@ -7,9 +7,9 @@ durak_routes.py
 """
 
 import logging
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect, Query
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +24,47 @@ router = APIRouter(prefix="/api/durak", tags=["durak"])
 
 # Временное хранилище активных игр (позже заменим на Redis / БД)
 active_games: dict[int, DurakGame] = {}  # lobby_id -> DurakGame
+
+# ── WebSocket Connection Manager для Durak (реальный realtime) ─────
+class DurakConnectionManager:
+    def __init__(self):
+        # lobby_id -> list of {user_id: int, websocket: WebSocket}
+        self.active_connections: Dict[int, List[Dict]] = {}
+
+    async def connect(self, lobby_id: int, user_id: int, websocket: WebSocket):
+        await websocket.accept()
+        if lobby_id not in self.active_connections:
+            self.active_connections[lobby_id] = []
+        self.active_connections[lobby_id].append({"user_id": user_id, "websocket": websocket})
+        logger.info(f"[DURAK WS] User {user_id} connected to lobby {lobby_id}")
+
+    def disconnect(self, lobby_id: int, user_id: int):
+        if lobby_id in self.active_connections:
+            self.active_connections[lobby_id] = [
+                conn for conn in self.active_connections[lobby_id]
+                if conn["user_id"] != user_id
+            ]
+            logger.info(f"[DURAK WS] User {user_id} disconnected from lobby {lobby_id}")
+
+    async def broadcast(self, lobby_id: int, message: dict):
+        """Отправить сообщение всем подключённым в лобби."""
+        if lobby_id not in self.active_connections:
+            return
+        dead = []
+        for conn in self.active_connections[lobby_id]:
+            try:
+                await conn["websocket"].send_json(message)
+            except Exception:
+                dead.append(conn)
+        # очистка мёртвых соединений
+        for conn in dead:
+            try:
+                self.active_connections[lobby_id].remove(conn)
+            except ValueError:
+                pass
+
+# Глобальный менеджер
+durak_ws_manager = DurakConnectionManager()
 
 # ── Blacklist для названий лобби ─────────────────────────────────
 FORBIDDEN_LOBBY_WORDS = {
@@ -155,12 +196,27 @@ async def join_lobby(lobby_id: int, req: JoinLobbyRequest):
     success = db.join_durak_lobby(lobby_id, req.user_id, req.first_name)
     if not success:
         raise HTTPException(status_code=400, detail="Cannot join lobby (full, already in another lobby, or not available)")
+
+    # Broadcast
+    await durak_ws_manager.broadcast(lobby_id, {
+        "type": "player_joined",
+        "user_id": req.user_id,
+        "first_name": req.first_name
+    })
+
     return {"status": "joined"}
 
 
 @router.post("/lobbies/{lobby_id}/leave")
 async def leave_lobby(lobby_id: int, req: LeaveLobbyRequest):
     db.leave_durak_lobby(lobby_id, req.user_id)
+
+    # Broadcast
+    await durak_ws_manager.broadcast(lobby_id, {
+        "type": "player_left",
+        "user_id": req.user_id
+    })
+
     return {"status": "left"}
 
 
@@ -188,6 +244,13 @@ async def update_settings(lobby_id: int, req: UpdateSettingsRequest):
     success = db.update_lobby_settings(lobby_id, req.user_id, **updates)
     if not success:
         raise HTTPException(status_code=403, detail="Not allowed or invalid settings")
+
+    # Broadcast settings update
+    await durak_ws_manager.broadcast(lobby_id, {
+        "type": "lobby_updated",
+        "settings": updates
+    })
+
     return {"status": "updated"}
 
 
@@ -202,6 +265,14 @@ async def set_ready(lobby_id: int, req: SetReadyRequest):
     success = db.set_player_ready(lobby_id, req.user_id, req.is_ready)
     if not success:
         raise HTTPException(status_code=400, detail="Failed to update ready status")
+
+    # Broadcast realtime
+    await durak_ws_manager.broadcast(lobby_id, {
+        "type": "player_ready_changed",
+        "user_id": req.user_id,
+        "is_ready": req.is_ready
+    })
+
     return {"status": "ok", "is_ready": req.is_ready}
 
 
@@ -267,6 +338,13 @@ async def start_game(lobby_id: int, req: StartGameRequest):
     if game_created and lobby_id in active_games:
         # Возвращаем начальное состояние (без конкретного viewer — клиент запросит сам)
         initial_state = active_games[lobby_id].get_full_game_state()
+
+    # Broadcast game started to all in lobby (real-time)
+    await durak_ws_manager.broadcast(lobby_id, {
+        "type": "game_started",
+        "started_by": req.user_id,
+        "initial_state": initial_state
+    })
 
     return {
         "status": "started",
@@ -370,9 +448,72 @@ async def perform_game_action(lobby_id: int, req: GameActionRequest):
     if game.game_over and lobby_id in active_games:
         logger.info(f"[DURAK] Game over in lobby {lobby_id}, winner={game.winner}")
 
+    # Broadcast update to all connected clients in the lobby
+    await durak_ws_manager.broadcast(lobby_id, {
+        "type": "game_action",
+        "user_id": pid,
+        "action": action,
+        "success": success,
+        "message": message,
+        "state": new_state
+    })
+
+    if game.game_over:
+        await durak_ws_manager.broadcast(lobby_id, {
+            "type": "game_ended",
+            "winner_id": game.winner,
+            "final_state": new_state
+        })
+
     return {
         "status": "ok" if success else "error",
         "success": success,
         "message": message,
         "state": new_state
     }
+
+
+# ── Реальный WebSocket для Durak (реaltime обновления) ────────────
+
+@router.websocket("/ws/{lobby_id}")
+async def durak_websocket(websocket: WebSocket, lobby_id: int, user_id: int = Query(..., description="User ID")):
+    """WebSocket соединение для лобби/игры Дурака.
+    Клиент подключается: ws(s)://host/api/durak/ws/{lobby_id}?user_id=XXX
+    """
+    await durak_ws_manager.connect(lobby_id, user_id, websocket)
+    try:
+        # Отправляем подтверждение подключения
+        await websocket.send_json({
+            "type": "connected",
+            "lobby_id": lobby_id,
+            "user_id": user_id
+        })
+
+        while True:
+            # Принимаем сообщения от клиента (опционально для действий, но основные действия идут через REST)
+            try:
+                data = await websocket.receive_json()
+                action = data.get("action")
+                payload = data.get("data", {})
+
+                if action == "ready":
+                    # Можно обработать ready через WS (для удобства), но пока просто лог
+                    logger.info(f"[DURAK WS] ready from {user_id} in {lobby_id}")
+                    # В реальности ready лучше через REST /ready, потом broadcast
+
+                elif action == "game_action":
+                    # Для будущего: действия тоже можно слать через WS, но validation в REST надёжнее
+                    logger.info(f"[DURAK WS] game_action from {user_id}: {payload}")
+
+                # Можно расширять
+
+            except Exception as recv_err:
+                # Если не JSON или ошибка — просто продолжаем слушать
+                logger.debug(f"[DURAK WS] receive error (ignored): {recv_err}")
+                continue
+
+    except WebSocketDisconnect:
+        durak_ws_manager.disconnect(lobby_id, user_id)
+    except Exception as e:
+        logger.exception(f"[DURAK WS] error in lobby {lobby_id} user {user_id}: {e}")
+        durak_ws_manager.disconnect(lobby_id, user_id)

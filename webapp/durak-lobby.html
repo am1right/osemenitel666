@@ -2466,7 +2466,7 @@
         }
 
         // ============================================================
-        // DurakSocket — базовый клиент для WebSocket (постепенно развиваем)
+        // DurakSocket — клиент для реального WebSocket + dev simulation fallback
         // ============================================================
         class DurakSocket {
             constructor(lobbyId, userId) {
@@ -2478,19 +2478,56 @@
             }
 
             connect() {
-                console.log(`[DurakSocket] Подключение к лобби #${this.lobbyId} (пока заглушка)`);
+                console.log(`[DurakSocket] Подключение к лобби #${this.lobbyId} (реальный WS)`);
 
-                // TODO: Заменить на реальное подключение, когда backend будет готов
-                // const wsUrl = `wss://твой-домен/ws/durak/${this.lobbyId}?user_id=${this.userId}`;
-                // this.socket = new WebSocket(wsUrl);
-                // this.socket.onmessage = (event) => { ... }
+                const protocol = (window.location.protocol === 'https:') ? 'wss:' : 'ws:';
+                const host = window.location.host || 'localhost:8000';
+                const wsUrl = `${protocol}//${host}/api/durak/ws/${this.lobbyId}?user_id=${this.userId}`;
 
-                this.connected = true;
+                try {
+                    this.socket = new WebSocket(wsUrl);
 
-                // Эмулируем успешное подключение
-                setTimeout(() => {
-                    this._trigger('connected', { lobbyId: this.lobbyId });
-                }, 200);
+                    this.socket.onopen = () => {
+                        console.log('[DurakSocket] WebSocket connected');
+                        this.connected = true;
+                        this._trigger('connected', { lobbyId: this.lobbyId });
+                    };
+
+                    this.socket.onmessage = (event) => {
+                        try {
+                            const msg = JSON.parse(event.data);
+                            const eventType = msg.type || msg.event;
+                            if (eventType) {
+                                // Для совместимости с существующими обработчиками
+                                this._trigger(eventType, msg);
+                                // Также логируем
+                                if (typeof logSocketEvent === 'function') {
+                                    logSocketEvent(`← ${eventType}`, msg);
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('[DurakSocket] Failed to parse WS message', e);
+                        }
+                    };
+
+                    this.socket.onclose = () => {
+                        console.log('[DurakSocket] WebSocket closed');
+                        this.connected = false;
+                        this._trigger('disconnected');
+                    };
+
+                    this.socket.onerror = (err) => {
+                        console.error('[DurakSocket] WebSocket error', err);
+                        this.connected = false;
+                    };
+                } catch (e) {
+                    console.error('[DurakSocket] Failed to create WebSocket, falling back to simulation mode', e);
+                    // Fallback to old simulation behavior for dev
+                    this.connected = true;
+                    setTimeout(() => {
+                        this._trigger('connected', { lobbyId: this.lobbyId });
+                    }, 200);
+                }
             }
 
             disconnect() {
@@ -2502,11 +2539,6 @@
             }
 
             send(action, data = {}) {
-                if (!this.connected) {
-                    console.warn('[DurakSocket] Попытка отправить без подключения');
-                    return;
-                }
-
                 const payload = {
                     action,
                     lobby_id: this.lobbyId,
@@ -2516,13 +2548,18 @@
 
                 console.log('[DurakSocket] → send:', payload);
 
-                // Показываем в видимом dev-логе (полезно для разработки)
                 if (typeof logSocketEvent === 'function') {
                     logSocketEvent(`→ send ${action}`, data);
                 }
 
-                // В будущем:
-                // this.socket.send(JSON.stringify(payload));
+                if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                    this.socket.send(JSON.stringify(payload));
+                } else {
+                    if (!this.connected) {
+                        console.warn('[DurakSocket] Попытка отправить без подключения');
+                    }
+                    // Для dev: если нет реального сокета, всё равно логируем (симуляция)
+                }
             }
 
             /**
@@ -2593,9 +2630,9 @@
         //   - 'game_action'           { user_id, action, payload, ... }
         //   - 'game_ended'            { winner_id, final_state, payouts? }
         //
-        // На текущий момент все события работают через simulateIncomingMessage
-        // для разработки и демо. Реальный WebSocket-бэкенд будет добавлен
-        // после завершения фазы лобби.
+        // Реальный WebSocket бэкенд реализован.
+        // События приходят по WS (см. /api/durak/ws/{lobby_id}).
+        // simulateIncomingMessage оставлен для dev-панели и тестов.
         // ============================================================
 
         const DURAK_EVENTS = {
@@ -2675,8 +2712,29 @@
 
             // Пример обработки игрового действия (пока просто логируем)
             durakSocket.on('game_action', (data) => {
-                console.log('[Durak] Получено игровое действие', data);
+                console.log('[Durak] Получено игровое действие по WS', data);
                 logSocketEvent('← game_action', data);
+                // Реальное обновление состояния без лишнего polling
+                if (data && data.state) {
+                    currentGameState = data.state;
+                    if (typeof renderDurakBoard === 'function') {
+                        renderDurakBoard(data.state);
+                    }
+                } else if (currentLobbyId) {
+                    // fallback
+                    if (typeof fetchAndRenderDurakState === 'function') fetchAndRenderDurakState();
+                }
+            });
+
+            durakSocket.on('game_ended', (data) => {
+                console.log('[Durak] Игра завершена по WS', data);
+                logSocketEvent('← game_ended', data);
+                if (typeof fetchAndRenderDurakState === 'function') {
+                    fetchAndRenderDurakState().then(() => {
+                        // TODO: показать красивый экран окончания игры
+                        showLobbyNotification(`Игра окончена! Победитель: ${data.winner_id || 'неизвестно'}`, 'success');
+                    });
+                }
             });
         }
 
@@ -2955,7 +3013,14 @@
         function startDurakGamePolling() {
             stopDurakGamePolling();
             durakGamePollingInterval = setInterval(() => {
-                if (isPerformingDurakAction) return; // не дёргать сервер во время действия игрока
+                if (isPerformingDurakAction) return;
+                // Если есть активное WS соединение — polling можно сильно разредить или отключить
+                // (обновления приходят по WS). Оставляем лёгкий fallback на случай потери WS.
+                const hasActiveWS = durakSocket && durakSocket.connected;
+                if (hasActiveWS) {
+                    // Можно вообще ничего не делать, или раз в 10-15 сек проверять
+                    return;
+                }
                 if (currentLobbyData && currentLobbyData.status === 'playing') {
                     fetchAndRenderDurakState();
                 } else {
