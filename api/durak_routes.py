@@ -1,9 +1,7 @@
 """
 durak_routes.py
 ────────────────
-Роуты для системы лобби Дурак Онлайн (Этап 2).
-
-Пока без игровой логики — только лобби, игроки, настройки.
+Роуты для Durak Online (лобби + игра + WS + история + экономика).
 """
 
 import logging
@@ -357,7 +355,7 @@ async def start_game(lobby_id: int, req: StartGameRequest):
     }
 
 
-# ── Игровые эндпоинты (Этап 3, начало интеграции) ─────────────────
+# ── Игровые эндпоинты ─────────────────
 
 @router.get("/lobbies/{lobby_id}/state")
 async def get_game_state(lobby_id: int, user_id: Optional[int] = None):

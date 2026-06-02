@@ -52,7 +52,7 @@ if admin_router is not None:
 else:
     logger.error("❌ admin_router не инициализирован — проверь логи admin_routes.py")
 
-# ── Durak Online Routes (Этап 2) ────────────────────────────────
+# ── Durak Online Routes ────────────────────────────────
 try:
     from api.durak_routes import router as durak_router
     if durak_router is not None:
