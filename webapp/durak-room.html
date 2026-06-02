@@ -361,6 +361,7 @@
     </div>
 
     <script src="js/api.js"></script>
+    <script src="js/durak-lobby.js"></script>
     <script>
         // Глобальный перехват ошибок, чтобы видеть проблемы в консоли
         window.addEventListener('error', (e) => {
@@ -397,6 +398,9 @@
         let currentUserId = null;
         let playersRefreshInterval = null;
         let lobbyListRefreshInterval = null;   // polling для списка лобби, когда пользователь на главном экране меню Дурака
+
+        // Хук для js/durak-lobby.js: знать, находимся ли мы в комнате (чтобы не дёргать список)
+        window.isInWaitingRoom = () => !!currentLobbyId;
 
         // ── Кнопка "Назад" вместо крестика для меню Дурака Онлайн ──
         // Показываем кнопку при входе на страницу. Она остаётся видимой всё время,
@@ -1551,18 +1555,20 @@
                 }
             }
 
-            // Автоматически заходим в лобби, если мы его создатель (после перезагрузки страницы)
-            loadLobbies().then(() => {
-                if (!currentLobbyId && currentUserId && allLobbies.length > 0) {
-                    const myLobby = allLobbies.find(l => l.creator_id === currentUserId);
-                    if (myLobby) {
-                        // Прямо входим в своё лобби
-                        enterWaitingRoom(myLobby.id, myLobby);
-                    }
-                }
-            });
+            // Читаем ID лобби из URL (?lobby=ID) — это страница конкретной комнаты
+            const params = new URLSearchParams(window.location.search);
+            const urlLobbyId = parseInt(params.get('lobby') || params.get('lobby_id') || '0', 10);
 
-            startLobbyListPolling();   // запускаем авто-обновление списка лобби
+            if (urlLobbyId) {
+                // Входим прямо в комнату ожидания указанного лобби
+                const listView = document.getElementById('lobby-list-view');
+                if (listView) listView.style.display = 'none';
+                enterWaitingRoom(urlLobbyId);
+            } else {
+                // Нет ID — показываем список лобби (как фоллбэк)
+                loadLobbies();
+                startLobbyListPolling();
+            }
 
             // Дополнительная защита для кнопки создания лобби (на случай если inline onclick не сработает)
             const createBtn = document.getElementById('create-lobby-btn');
