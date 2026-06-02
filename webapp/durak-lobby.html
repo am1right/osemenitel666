@@ -748,11 +748,21 @@
             position: fixed;
             z-index: 9999;
             pointer-events: none;
-            transition: transform 0.45s cubic-bezier(0.25, 0.1, 0.25, 1),
+            transition: transform 0.55s cubic-bezier(0.25, 0.1, 0.25, 1),
                         opacity 0.3s ease;
-            width: 48px;
-            height: 66px;
+            /* размер задаётся динамически в JS под размер исходной карты */
             will-change: transform;
+            overflow: visible;
+        }
+
+        /* Поддержка настоящих композитных карт в полёте (и старых) */
+        .flying-card .real-durak-card,
+        .flying-card > .real-durak-card {
+            width: 100% !important;
+            height: 100% !important;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+            border-radius: 6px;
+            overflow: hidden;
         }
 
         .flying-card .durak-card {
@@ -809,14 +819,14 @@
         }
 
         .real-durak-card .rank-text {
-            font-size: 13px;
+            font-size: 14px;
             line-height: 0.9;
             font-weight: 800;
         }
 
         .real-durak-card .suit-small {
-            width: 11px;
-            height: 11px;
+            width: 13px;
+            height: 13px;
             margin-top: -2px;
         }
 
@@ -828,8 +838,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 70%;
-            height: 55%;
+            width: 82%;
+            height: 68%;
         }
 
         .real-durak-card .suit-big {
@@ -839,10 +849,20 @@
 
         .real-durak-card .ace-image,
         .real-durak-card .court-image {
-            max-width: 85%;
-            max-height: 85%;
+            width: 100%;
+            height: 100%;
+            max-width: 100%;
+            max-height: 100%;
             object-fit: contain;
             filter: drop-shadow(1px 2px 3px rgba(0,0,0,0.45));
+        }
+
+        /* Сделать придворные (В, Д, К) крупнее и визуально ровными */
+        .real-durak-card .court-image {
+            width: 105%;
+            height: 105%;
+            max-width: 105%;
+            max-height: 105%;
         }
 
         .real-durak-card .number-image {
@@ -921,8 +941,8 @@
 
         .real-durak-card .pip {
             position: absolute;
-            width: 15px;
-            height: 15px;
+            width: 17px;
+            height: 17px;
             object-fit: contain;
             transform: translate(-50%, -50%);
         }
@@ -2358,6 +2378,8 @@
             const gameRoom = document.getElementById('game-room-section');
             if (gameRoom) gameRoom.style.display = 'none';
 
+            isPerformingDurakAction = false;
+
             const readyStatus = document.getElementById('ready-status');
             if (readyStatus) readyStatus.style.display = 'block';
 
@@ -2905,17 +2927,20 @@
         let durakGamePollingInterval = null;
         let selectedBeatAttackCard = null;   // для двухшагового отбива (fallback)
         let currentLegalBeats = [];          // от сервера: [{attack: "...", beat: "..."}, ...] для текущего viewer'а
+        let isPerformingDurakAction = false; // защита от одновременных действий и лишних рендеров
 
         function stopDurakGamePolling() {
             if (durakGamePollingInterval) {
                 clearInterval(durakGamePollingInterval);
                 durakGamePollingInterval = null;
             }
+            isPerformingDurakAction = false;
         }
 
         function startDurakGamePolling() {
             stopDurakGamePolling();
             durakGamePollingInterval = setInterval(() => {
+                if (isPerformingDurakAction) return; // не дёргать сервер во время действия игрока
                 if (currentLobbyData && currentLobbyData.status === 'playing') {
                     fetchAndRenderDurakState();
                 } else {
@@ -3125,6 +3150,7 @@
 
         async function fetchAndRenderDurakState() {
             if (!currentLobbyId || !currentUserId) return;
+            if (isPerformingDurakAction) return; // не перезаписывать состояние во время хода
 
             try {
                 const api = window.apiFetch || fetch;
@@ -3137,6 +3163,11 @@
 
                 const data = await res.json();
                 if (data.state) {
+                    const newHash = JSON.stringify(data.state);
+                    if (window.__lastDurakHash === newHash) {
+                        return; // состояние не изменилось — не дёргать DOM зря
+                    }
+                    window.__lastDurakHash = newHash;
                     currentGameState = data.state;
                     renderDurakBoard(currentGameState);
                 }
@@ -3181,6 +3212,16 @@
 
             // Кнопки
             renderDurakActionButtons(state.allowed_actions || [], state);
+
+            // Восстанавливаем визуал выбранной карты для отбива (если был выбран до ре-рендера от поллинга)
+            if (selectedBeatAttackCard) {
+                document.querySelectorAll('#durak-table-attacks .real-durak-card').forEach(el => {
+                    el.classList.remove('selected');
+                    if (el.dataset.card === selectedBeatAttackCard) {
+                        el.classList.add('selected');
+                    }
+                });
+            }
         }
 
         function renderTable(table) {
@@ -3203,9 +3244,13 @@
                     bt = createRealCardElement(pair.beat);
                     bt.classList.add('beat');
                 } else {
-                    bt = createRealCardElement(pair.attack); // placeholder, will be dimmed
-                    bt.style.opacity = '0.15';
-                    bt.style.filter = 'grayscale(0.6)';
+                    // Пустой слот для отбива — не дублируем атакующую карту (выглядит странно)
+                    bt = document.createElement('div');
+                    bt.className = 'real-durak-card beat-slot';
+                    bt.style.opacity = '0.18';
+                    bt.style.border = '2px dashed #5a5678';
+                    bt.style.background = 'rgba(255,255,255,0.03)';
+                    bt.style.boxShadow = 'none';
                 }
                 beatsEl.appendChild(bt);
             });
@@ -3436,7 +3481,7 @@
                         const allCards = [...attacks.children, ...beats.children];
                         allCards.forEach((card, i) => {
                             setTimeout(() => {
-                                animateCardThrow(card, hand, card.innerHTML);
+                                animateCardThrow(card, hand, card.outerHTML || card.innerHTML);
                             }, i * 70);
                         });
                     }
@@ -3461,7 +3506,7 @@
                         const allCards = [...attacks.children, ...beats.children];
                         allCards.forEach((card, i) => {
                             setTimeout(() => {
-                                animateCardThrow(card, discard, card.innerHTML);
+                                animateCardThrow(card, discard, card.outerHTML || card.innerHTML);
                             }, i * 60);
                         });
                     }
@@ -3495,6 +3540,8 @@
                 ...extra
             };
 
+            isPerformingDurakAction = true;
+
             try {
                 const api = window.apiFetch || fetch;
                 const res = await api(`/api/durak/lobbies/${currentLobbyId}/action`, {
@@ -3522,8 +3569,12 @@
 
                 // Success — обновляем состояние
                 if (data.state) {
-                    currentGameState = data.state;
-                    renderDurakBoard(currentGameState);
+                    const newHash = JSON.stringify(data.state);
+                    if (window.__lastDurakHash !== newHash) {
+                        window.__lastDurakHash = newHash;
+                        currentGameState = data.state;
+                        renderDurakBoard(currentGameState);
+                    }
                 } else {
                     await fetchAndRenderDurakState();
                 }
@@ -3534,10 +3585,14 @@
             } catch (e) {
                 console.error('performDurakAction error', e);
                 showLobbyNotification('Ошибка хода', 'error');
+            } finally {
+                // Разрешаем поллинг и следующие действия
+                isPerformingDurakAction = false;
             }
         }
 
         function onDurakCardClick(cardStr, allowedActions, clickedCardEl = null) {
+            if (isPerformingDurakAction) return; // игнорируем клики во время выполнения хода
 
             const isAttacker = allowedActions.includes('attack');
             const canThrow = allowedActions.includes('throw_in');
@@ -3547,7 +3602,7 @@
 
                 // Анимация броска из руки
                 if (clickedCardEl && targetContainer) {
-                    const cardHTML = clickedCardEl.innerHTML;
+                    const cardHTML = clickedCardEl.outerHTML || clickedCardEl.innerHTML;
                     animateCardThrow(clickedCardEl, targetContainer, cardHTML, () => {
                         performDurakAction(isAttacker ? 'attack' : 'throw_in', { card: cardStr });
                     });
@@ -3566,7 +3621,7 @@
                     const targetContainer = document.getElementById('durak-table-beats');
 
                     if (clickedCardEl && targetContainer) {
-                        const cardHTML = clickedCardEl.innerHTML;
+                        const cardHTML = clickedCardEl.outerHTML || clickedCardEl.innerHTML;
                         animateCardThrow(clickedCardEl, targetContainer, cardHTML, () => {
                             performDurakAction('beat', { attack_card: targetAttack, beat_card: cardStr });
                         });
@@ -3583,7 +3638,7 @@
                 if (selectedBeatAttackCard) {
                     const targetContainer = document.getElementById('durak-table-beats');
                     if (clickedCardEl && targetContainer) {
-                        const cardHTML = clickedCardEl.innerHTML;
+                        const cardHTML = clickedCardEl.outerHTML || clickedCardEl.innerHTML;
                         animateCardThrow(clickedCardEl, targetContainer, cardHTML, () => {
                             performDurakAction('beat', {
                                 attack_card: selectedBeatAttackCard,
@@ -3609,7 +3664,7 @@
         }
 
         function onTableAttackClick(attackCardStr) {
-            if (!currentGameState) return;
+            if (!currentGameState || isPerformingDurakAction) return;
 
             const allowed = currentGameState.allowed_actions || [];
             if (!allowed.includes('beat')) {
@@ -3819,37 +3874,62 @@
 
             if (lastCard) {
                 const lastRect = lastCard.getBoundingClientRect();
-                targetLeft = lastRect.left + overlap * 0.6; // смещаемся вправо относительно последней
+                targetLeft = lastRect.left + overlap * 0.65;
                 targetTop = lastRect.top;
             } else {
                 const containerRect = toContainer.getBoundingClientRect();
-                targetLeft = containerRect.left + containerRect.width / 2 - 27;
-                targetTop = containerRect.top + 8;
+                targetLeft = containerRect.left + containerRect.width / 2 - (fromRect.width / 2);
+                targetTop = containerRect.top + 6;
             }
 
             const flying = document.createElement('div');
             flying.className = 'flying-card';
-            flying.innerHTML = cardHTML;
 
+            // Используем outerHTML если возможно, чтобы сохранить структуру .real-durak-card
+            // Иначе fallback на переданный HTML (для обратной совместимости)
+            let contentHTML = cardHTML;
+            if (!contentHTML && fromEl) {
+                contentHTML = fromEl.outerHTML || fromEl.innerHTML;
+            }
+            if (contentHTML) {
+                flying.innerHTML = contentHTML;
+            } else if (fromEl) {
+                // Клон как последний вариант
+                const clone = fromEl.cloneNode(true);
+                clone.style.width = '100%';
+                clone.style.height = '100%';
+                flying.appendChild(clone);
+            }
+
+            // Размер flying точно под исходную карту (чтобы не было прыжка размера)
+            flying.style.width = `${fromRect.width}px`;
+            flying.style.height = `${fromRect.height}px`;
             flying.style.left = `${fromRect.left}px`;
             flying.style.top = `${fromRect.top}px`;
 
             document.body.appendChild(flying);
+
+            // Сразу прячем оригинал — анимация его "забирает"
+            fromEl.style.visibility = 'hidden';
+
+            // force reflow
             flying.offsetWidth;
 
             const deltaX = targetLeft - fromRect.left;
             const deltaY = targetTop - fromRect.top;
 
-            // Небольшой случайный поворот при приземлении
-            const landRotation = (Math.random() * 6 - 3).toFixed(1);
+            // Лёгкий случайный поворот при приземлении + чуть меньше scale чтобы не "странно"
+            const landRotation = (Math.random() * 5 - 2.5).toFixed(1);
 
-            flying.style.transition = 'transform 0.48s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.3s';
-            flying.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(0.78) rotate(${landRotation}deg)`;
+            flying.style.transition = 'transform 0.52s cubic-bezier(0.22, 0.1, 0.25, 1), opacity 0.25s ease';
+            // scale чуть ближе к 1, чтобы карта не сильно "уменьшалась в полёте"
+            flying.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(0.92) rotate(${landRotation}deg)`;
 
             setTimeout(() => {
                 if (flying.parentNode) flying.parentNode.removeChild(flying);
                 if (onComplete) onComplete();
-            }, 520);
+                // Оригинал останется hidden, но ближайший рендер его заменит полностью
+            }, 580);
         }
 
         // Переопределяем обработчик game_started, чтобы показывать реальную доску
