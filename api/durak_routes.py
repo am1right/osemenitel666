@@ -128,6 +128,8 @@ class UpdateSettingsRequest(BaseModel):
 @router.post("/lobbies")
 async def create_lobby(req: CreateLobbyRequest):
     """Создать новое лобби."""
+    if db.is_durak_banned(req.user_id):
+        raise HTTPException(status_code=403, detail="You are banned from Durak")
     if req.max_players < 2 or req.max_players > 6:
         raise HTTPException(status_code=400, detail="max_players must be between 2 and 6")
     if req.deck_size not in (24, 36, 52):
@@ -188,6 +190,8 @@ async def get_lobby(lobby_id: int):
 
 @router.post("/lobbies/{lobby_id}/join")
 async def join_lobby(lobby_id: int, req: JoinLobbyRequest):
+    if db.is_durak_banned(req.user_id):
+        raise HTTPException(status_code=403, detail="You are banned from Durak")
     # Проверка: пользователь уже не в другом активном лобби
     existing = db.is_user_in_active_lobby(req.user_id)
     if existing and existing != lobby_id:
@@ -447,6 +451,40 @@ async def perform_game_action(lobby_id: int, req: GameActionRequest):
     # Если игра закончилась — можно почистить active_games (опционально, для MVP оставляем)
     if game.game_over and lobby_id in active_games:
         logger.info(f"[DURAK] Game over in lobby {lobby_id}, winner={game.winner}")
+        winner = game.winner
+        try:
+            lobby = db.get_durak_lobby_by_id(lobby_id) or {}
+            pot = lobby.get('pot', 0) or 0
+            if winner and pot > 0:
+                commission = int(pot * 0.05)
+                award = pot - commission
+                db.topup_wallet(winner, '', award, f"Победа в дураке (лобби #{lobby_id})")
+                logger.info(f"[DURAK PAYOUT] {award} to {winner} (comm {commission}) from pot {pot}")
+            # mark finished
+            # db can use update or direct, for now log
+        except Exception as e:
+            logger.exception("Payout error")
+
+        # Save history
+        try:
+            players = db.get_lobby_players(lobby_id) or []
+            players_data = [{"user_id": p["user_id"], "first_name": p.get("first_name"), "is_winner": p["user_id"] == winner} for p in players]
+            db.save_durak_game_history(lobby_id, winner, pot, players_data)
+            # mark finished
+            conn = None
+            cur = None
+            try:
+                conn = db.get_connection()
+                cur = db._cursor(conn)
+                cur.execute("UPDATE durak_lobbies SET status = 'finished', updated_at = NOW() WHERE id = %s", (lobby_id,))
+                conn.commit()
+            finally:
+                if cur: cur.close()
+                if conn: conn.close()
+        except Exception as e:
+            logger.exception("History save error")
+
+        del active_games[lobby_id]
 
     # Broadcast update to all connected clients in the lobby
     await durak_ws_manager.broadcast(lobby_id, {
@@ -471,6 +509,70 @@ async def perform_game_action(lobby_id: int, req: GameActionRequest):
         "message": message,
         "state": new_state
     }
+
+
+@router.get("/history")
+async def get_durak_history(user_id: Optional[int] = None, limit: int = 20):
+    """История завершённых игр Дурака."""
+    try:
+        history = db.get_durak_history(user_id=user_id, limit=limit)
+        return {"history": history}
+    except Exception as e:
+        logger.exception("get_durak_history error")
+        raise HTTPException(status_code=500, detail="Failed to load history")
+
+
+@router.get("/ratings")
+async def get_durak_ratings(limit: int = 20):
+    """Рейтинг игроков Дурака по победам."""
+    try:
+        ratings = db.get_durak_ratings(limit=limit)
+        return {"ratings": ratings}
+    except Exception as e:
+        logger.exception("get_durak_ratings error")
+        raise HTTPException(status_code=500, detail="Failed to load ratings")
+
+
+# --- Простая админка для Дурака (доступ по user_id, в реальном - проверка роли) ---
+
+@router.get("/admin/lobbies")
+async def admin_durak_lobbies(user_id: int):
+    # TODO: проверить что user_id админ
+    try:
+        lobbies = db.get_active_durak_lobbies(limit=100)
+        return {"lobbies": lobbies}
+    except Exception as e:
+        raise HTTPException(500, "error")
+
+
+@router.post("/admin/lobbies/{lobby_id}/force-end")
+async def admin_force_end(lobby_id: int, user_id: int):
+    # TODO: admin check
+    try:
+        if lobby_id in active_games:
+            del active_games[lobby_id]
+        db.leave_durak_lobby(lobby_id, 0)  # cleanup players? better direct
+        # mark finished
+        conn = db.get_connection()
+        cur = db._cursor(conn)
+        cur.execute("UPDATE durak_lobbies SET status='finished' WHERE id=%s", (lobby_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"status": "ended"}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+@router.post("/admin/ban")
+async def admin_ban_durak(user_id: int, target_user: int, reason: str = ""):
+    # TODO admin check
+    try:
+        db.ban_durak_user(target_user, reason)
+        return {"status": "banned"}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
 
 
 # ── Реальный WebSocket для Durak (реaltime обновления) ────────────

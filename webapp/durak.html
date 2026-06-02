@@ -978,28 +978,44 @@
             <div id="empty-state" class="empty-state" style="display:none;">
                 <p>Пока нет открытых лобби.<br>Создай своё!</p>
             </div>
-        </div>
 
-        <!-- ================== КОМНАТА ОЖИДАНИЯ ================== -->
-        <div id="waiting-room-view" style="display: none;">
-            <div class="header">
-                <h1>🃏 Комната ожидания</h1>
-                <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
-                    <button id="edit-settings-btn" onclick="openEditSettingsModal()" 
-                            style="background:#3a2a6e; color:#ccc; border:1px solid #6655aa; padding:6px 10px; border-radius:8px; display:none; font-size:0.85rem;">
-                        ⚙ Настройки
-                    </button>
+            <!-- История игр Дурака -->
+            <div style="margin-top: 24px;">
+                <button onclick="toggleDurakHistory()" style="background: rgba(209,34,227,0.1); border:1px solid #d122e3; color:#d122e3; padding:6px 14px; border-radius:8px; font-size:0.85rem;">
+                    📜 История игр
+                </button>
+                <button onclick="toggleDurakRatings()" style="background: rgba(209,34,227,0.1); border:1px solid #d122e3; color:#d122e3; padding:6px 14px; border-radius:8px; font-size:0.85rem; margin-left:8px;">
+                    🏆 Рейтинг
+                </button>
+                <button onclick="toggleDurakTournaments()" style="background: rgba(209,34,227,0.1); border:1px solid #d122e3; color:#d122e3; padding:6px 14px; border-radius:8px; font-size:0.85rem; margin-left:8px;">
+                    🏅 Турниры
+                </button>
+                <div id="durak-history" style="display:none; margin-top:12px; background:rgba(255,255,255,0.03); padding:12px; border-radius:10px; font-size:0.85rem; max-height:300px; overflow:auto;">
+                    <!-- loaded via JS -->
+                    <div style="color:#888;">Загрузка...</div>
+                </div>
+                <div id="durak-ratings" style="display:none; margin-top:12px; background:rgba(255,255,255,0.03); padding:12px; border-radius:10px; font-size:0.85rem; max-height:300px; overflow:auto;">
+                    <!-- loaded via JS -->
+                    <div style="color:#888;">Загрузка...</div>
+                </div>
 
-                    <button onclick="inviteToCurrentLobby()" 
-                            style="background:#a31bb8; color:#000; border:none; padding:6px 10px; border-radius:8px; font-weight:600; font-size:0.85rem;">
-                        ➕ Пригласить
-                    </button>
+                <!-- Простая админка Дурака (для теста) -->
+                <div style="margin-top:16px;">
+                    <button onclick="toggleDurakAdmin()" style="background:#ff4466; color:white; border:none; padding:4px 10px; border-radius:6px; font-size:0.75rem;">🔧 Admin Durak</button>
+                    <div id="durak-admin" style="display:none; margin-top:8px; background:#2a1a1a; padding:8px; border-radius:8px; font-size:0.75rem;">
+                        <button onclick="loadDurakAdmin()">Refresh lobbies</button>
+                        <div id="durak-admin-list" style="margin-top:6px;"></div>
+                    </div>
 
-                    <button onclick="leaveCurrentLobby()" style="background:#ff4466; color:white; border:none; padding:6px 10px; border-radius:8px; font-size:0.85rem;">
-                        Выйти
-                    </button>
+                <div id="durak-tournaments" style="display:none; margin-top:8px; background:#1a2a1a; padding:8px; border-radius:8px; font-size:0.75rem;">
+                    <div>🏅 Турниры Дурака (coming soon)</div>
+                    <div style="margin-top:4px;">Ежедневный: 18:00 • Приз 100⭐</div>
+                    <button onclick="createTournamentLobby()" style="margin-top:4px;font-size:0.7rem;">Создать daily lobby</button>
                 </div>
             </div>
+        </div>
+
+
 
             <div id="lobby-info" style="margin-bottom: 16px; background: rgba(255,255,255,0.05); padding:12px; border-radius:10px;">
                 <!-- Информация о лобби будет сюда -->
@@ -1032,164 +1048,6 @@
             <div id="ready-status" style="margin-bottom: 12px; font-size: 0.95rem; color: #ccc;">
                 <!-- Сюда будет подставляться "Готовы: X / Y" -->
             </div>
-
-            <!-- ================== ИГРОВАЯ КОМНАТА (появляется после старта) ================== -->
-            <div id="game-room-section" style="display: none; margin-top: 20px;">
-                <div class="lobby-card" style="background: rgba(209, 34, 227, 0.08); border-color: #d122e3;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                        <h3 style="margin:0; color:#d122e3;">🎮 Игровая комната</h3>
-                        <span style="background:#003322; color:#d122e3; font-size:0.75rem; padding:2px 8px; border-radius:999px; border:1px solid #d122e3;">ИГРА ИДЁТ</span>
-                    </div>
-                    <div id="game-room-content">
-                        <!-- Real Durak game board (populated by JS) -->
-                        <div id="durak-game-board" class="durak-game-board" style="display:none; padding: 0; background: #0a0820; border: none;">
-
-                            <!-- Полноценный игровой стол -->
-                            <div class="durak-full-table">
-
-                                <!-- Верхняя часть: противники -->
-                                <div class="opponents-top" id="durak-opponents-top">
-                                    <!-- Динамически: колоды противников сверху -->
-                                </div>
-
-                                <!-- Центральная зона стола -->
-                                <div class="table-center">
-
-                                    <!-- Левая сторона: противники -->
-                                    <div class="opponents-left" id="durak-opponents-left"></div>
-
-                                    <!-- Центральное игровое поле -->
-                                    <div class="play-area">
-                                        
-                                        <!-- Колода + Козырь -->
-                                        <div class="deck-area">
-                                            <div class="deck-pile" id="durak-deck-pile">
-                                                <!-- Рубашки колоды -->
-                                                <div class="deck-stack"></div>
-                                                <!-- Козырь -->
-                                                <div class="trump-card" id="durak-trump-card"></div>
-                                            </div>
-                                            <div class="deck-label">Колода</div>
-                                        </div>
-
-                                        <!-- Зона игры (атака + отбой) -->
-                                        <div class="center-play-zone">
-                                            <div class="play-label">Атака</div>
-                                            <div id="durak-table-attacks" class="play-cards attack-cards"></div>
-                                            
-                                            <div class="play-label" style="margin-top: 12px;">Отбой</div>
-                                            <div id="durak-table-beats" class="play-cards beat-cards"></div>
-                                        </div>
-
-                                        <!-- Бито (сброс) -->
-                                        <div class="discard-area">
-                                            <div class="discard-pile" id="durak-discard-pile">
-                                                <!-- Карты в бито -->
-                                            </div>
-                                            <div class="discard-label">Бито</div>
-                                        </div>
-
-                                    </div>
-
-                                    <!-- Правая сторона: противники -->
-                                    <div class="opponents-right" id="durak-opponents-right"></div>
-
-                                </div>
-
-                                <!-- Нижняя часть: свой игрок -->
-                                <div class="player-bottom">
-                                    <div class="player-label">Вы</div>
-                                    <div id="durak-hand" class="player-hand"></div>
-                                </div>
-
-                            </div>
-
-                            <!-- Минимальная нижняя панель -->
-                            <div class="durak-minimal-bottom">
-                                <button id="btn-take" class="btn-take" style="display:none;">БЕРУ</button>
-                                
-                                <div class="minimal-actions">
-                                    <div id="durak-actions" class="dynamic-actions"></div>
-                                    
-                                    <!-- Только эмоции -->
-                                    <div class="action-icon" id="emotions-btn" title="Эмоции">😊</div>
-                                    
-                                    <div class="action-icon" title="Выйти" onclick="if(confirm('Выйти из игры?')) exitWaitingRoom();">🚪</div>
-                                </div>
-
-                                <!-- Emoji Picker -->
-                                <div id="emoji-picker" class="emoji-picker"></div>
-                            </div>
-
-                        </div>
-
-                        <!-- Fallback / loading state -->
-                        <div id="durak-game-loading" style="padding:12px; text-align:center; color:#888;">
-                            Загрузка игрового состояния...
-                        </div>
-
-                        <div id="game-room-lobby-info" style="font-size:0.75rem; color:#666; background:#0a0a0a; padding:5px 8px; border-radius:6px; margin-top:8px;">
-                            <!-- lobby meta -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ============================================================
-                 ПОСТОЯННАЯ DEV-ПАНЕЛЬ (всегда видна в лобби)
-                 ============================================================ -->
-            <div id="durak-dev-panel" style="
-                margin: 20px 0 12px;
-                padding: 12px;
-                background: #0f0f1f;
-                border: 1px solid #333;
-                border-radius: 10px;
-                font-size: 0.8rem;
-                position: sticky;
-                bottom: 8px;
-                z-index: 50;
-                box-shadow: 0 -4px 12px rgba(0,0,0,0.4);
-            ">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:#888;">
-                    <strong style="color:#d122e3;">🛠 Инструменты разработки</strong>
-                    <span id="socket-status" style="color:#d122e3; font-size:0.7rem;">Подключение...</span>
-                </div>
-
-                <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px;">
-                    <button onclick="simulateSocketEvent('player_ready_changed')" style="padding:3px 8px; font-size:0.75rem; background:#2a2a4a; border:1px solid #555; color:#ccc; border-radius:5px; cursor:pointer;">Смена готовности</button>
-                    <button onclick="simulateSocketEvent('lobby_updated')" style="padding:3px 8px; font-size:0.75rem; background:#2a2a4a; border:1px solid #555; color:#ccc; border-radius:5px; cursor:pointer;">Обновление лобби</button>
-                    <button onclick="simulateSocketEvent('player_joined')" style="padding:3px 8px; font-size:0.75rem; background:#2a2a4a; border:1px solid #555; color:#ccc; border-radius:5px; cursor:pointer;">Игрок зашёл</button>
-                    <button onclick="simulateSocketEvent('player_left')" style="padding:3px 8px; font-size:0.75rem; background:#2a2a4a; border:1px solid #555; color:#ccc; border-radius:5px; cursor:pointer;">Игрок вышел</button>
-                    <button onclick="simulateSocketEvent('game_started')" style="padding:3px 8px; font-size:0.75rem; background:#2a2a4a; border:1px solid #555; color:#ccc; border-radius:5px; cursor:pointer;">Игра началась</button>
-                    <button onclick="simulateSocketEvent('game_action')" style="padding:3px 8px; font-size:0.75rem; background:#3a2a1a; border:1px solid #aa8800; color:#ffcc66; border-radius:5px; cursor:pointer;">game_action</button>
-                    <button onclick="if(durakSocket) durakSocket.simulateSend('game_action', {test:true})" style="padding:3px 8px; font-size:0.7rem; background:#2a3a2a; border:1px solid #446655; color:#99ccaa; border-radius:5px; cursor:pointer; margin-left:6px;">test send()</button>
-
-                    <!-- Реальные эндпоинты игры (Этап 3 интеграция) -->
-                    <button onclick="if (typeof fetchAndRenderDurakState === 'function') fetchAndRenderDurakState()" 
-                            style="padding:3px 8px; font-size:0.7rem; background:#1a3a2a; border:1px solid #d122e3; color:#66ddaa; border-radius:5px; cursor:pointer;">Fetch real /state</button>
-                    <button onclick="if (typeof window.__durakShowRealGameBoard === 'function') window.__durakShowRealGameBoard()" 
-                            style="padding:3px 8px; font-size:0.7rem; background:#1a3a2a; border:1px solid #d122e3; color:#66ddaa; border-radius:5px; cursor:pointer;">Show game board</button>
-                </div>
-
-                <!-- Симуляция реакций от разных позиций -->
-                <div style="margin-top:8px;">
-                    <div style="font-size:0.65rem; color:#888; margin-bottom:4px;">Симуляция эмоций от игроков:</div>
-                    <div style="display:flex; flex-wrap:wrap; gap:4px;">
-                        <button onclick="showFlyingReaction('like', 'self')" style="padding:2px 6px; font-size:0.65rem; background:#2a3a2a; border:1px solid #446655; color:#99ccaa; border-radius:4px; cursor:pointer;">Self</button>
-                        <button onclick="showFlyingReaction('wow', 'top')" style="padding:2px 6px; font-size:0.65rem; background:#2a3a2a; border:1px solid #446655; color:#99ccaa; border-radius:4px; cursor:pointer;">Top</button>
-                        <button onclick="showFlyingReaction('angry', 'left')" style="padding:2px 6px; font-size:0.65rem; background:#2a3a2a; border:1px solid #446655; color:#99ccaa; border-radius:4px; cursor:pointer;">Left</button>
-                        <button onclick="showFlyingReaction('troll', 'right')" style="padding:2px 6px; font-size:0.65rem; background:#2a3a2a; border:1px solid #446655; color:#99ccaa; border-radius:4px; cursor:pointer;">Right</button>
-                    </div>
-                </div>
-
-                <div style="margin-top:6px;">
-                    <div style="font-size:0.7rem; color:#666; margin-bottom:3px;">Лог событий:</div>
-                    <div id="event-log" style="font-size:0.65rem; color:#666; background:#0a0a0a; padding:5px; border-radius:4px; max-height:70px; overflow-y:auto; line-height:1.2;">
-                        <!-- события -->
-                    </div>
-                </div>
-            </div>
-            <!-- ============================================================ -->
 
             <h3 style="margin: 0 0 10px;">Игроки в лобби</h3>
             <div id="players-list" class="lobby-list">
@@ -4017,6 +3875,147 @@
         window.__durakShowRealGameBoard = showDurakGameBoard;
 
         // ================== ИНИЦИАЛИЗАЦИЯ ==================
+
+        async function toggleDurakHistory() {
+            const el = document.getElementById('durak-history');
+            if (!el) return;
+            if (el.style.display === 'block') {
+                el.style.display = 'none';
+                return;
+            }
+            el.style.display = 'block';
+            el.innerHTML = '<div style="color:#888;">Загрузка...</div>';
+            try {
+                const res = await (window.apiFetch || fetch)('/api/durak/history?limit=10');
+                const data = await res.json();
+                if (!data.history || data.history.length === 0) {
+                    el.innerHTML = '<div style="color:#888;">Пока нет завершённых игр.</div>';
+                    return;
+                }
+                let html = '';
+                data.history.forEach(h => {
+                    const date = h.ended_at ? new Date(h.ended_at).toLocaleDateString('ru') : '';
+                    let winnerName = h.winner_id ? `#${h.winner_id}` : '—';
+                    if (h.players && Array.isArray(h.players)) {
+                        const w = h.players.find(p => p.user_id === h.winner_id);
+                        if (w && w.first_name) winnerName = w.first_name;
+                    }
+                    const pot = h.pot ? h.pot + '⭐' : '';
+                    html += `<div style="padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.1);">
+                        ${date} • Победитель ${winnerName} • Банк ${pot} • Лобби #${h.lobby_id}
+                    </div>`;
+                });
+                el.innerHTML = html;
+            } catch(e) {
+                el.innerHTML = '<div style="color:#ff6666;">Ошибка загрузки истории.</div>';
+            }
+        }
+
+        async function toggleDurakRatings() {
+            const el = document.getElementById('durak-ratings');
+            if (!el) return;
+            if (el.style.display === 'block') {
+                el.style.display = 'none';
+                return;
+            }
+            el.style.display = 'block';
+            el.innerHTML = '<div style="color:#888;">Загрузка...</div>';
+            try {
+                const res = await (window.apiFetch || fetch)('/api/durak/ratings?limit=10');
+                const data = await res.json();
+                if (!data.ratings || data.ratings.length === 0) {
+                    el.innerHTML = '<div style="color:#888;">Пока нет данных рейтинга.</div>';
+                    return;
+                }
+                let html = '';
+                data.ratings.forEach((r, i) => {
+                    html += `<div style="padding:4px 0;">${i+1}. Игрок #${r.user_id} — ${r.wins} побед</div>`;
+                });
+                el.innerHTML = html;
+            } catch(e) {
+                el.innerHTML = '<div style="color:#ff6666;">Ошибка загрузки рейтинга.</div>';
+            }
+        }
+
+        async function toggleDurakAdmin() {
+            const el = document.getElementById('durak-admin');
+            if (!el) return;
+            el.style.display = el.style.display === 'block' ? 'none' : 'block';
+            if (el.style.display === 'block') loadDurakAdmin();
+        }
+
+        async function loadDurakAdmin() {
+            const list = document.getElementById('durak-admin-list');
+            if (!list) return;
+            list.innerHTML = 'Loading...';
+            try {
+                const user = tg.initDataUnsafe?.user;
+                const uid = user ? user.id : 0;
+                const res = await (window.apiFetch || fetch)(`/api/durak/admin/lobbies?user_id=${uid}`);
+                const data = await res.json();
+                let html = '<b>Active:</b><br>';
+                (data.lobbies || []).forEach(l => {
+                    html += `<div style="margin:2px 0;">#${l.id} ${l.name||''} ${l.status} p:${l.current_players} 
+                    <button onclick="forceEndDurak(${l.id}, ${uid})" style="font-size:0.6rem;padding:1px 4px;">end</button></div>`;
+                });
+                // Add finished from history
+                const hist = await (window.apiFetch || fetch)('/api/durak/history?limit=5');
+                const hdata = await hist.json();
+                html += '<b>Recent finished:</b><br>';
+                (hdata.history || []).forEach(h => {
+                    html += `<div>#${h.lobby_id} winner:#${h.winner_id} pot:${h.pot}</div>`;
+                });
+                html += `<br>Ban user: <input id="ban-user" style="width:60px"> <button onclick="banDurakUser(${uid})" style="font-size:0.6rem;">ban</button>`;
+                list.innerHTML = html || 'No lobbies';
+            } catch(e) { list.innerHTML = 'Error'; }
+        }
+
+        async function banDurakUser(uid) {
+            const inp = document.getElementById('ban-user');
+            if (!inp || !inp.value) return;
+            const target = parseInt(inp.value);
+            try {
+                await (window.apiFetch || fetch)(`/api/durak/admin/ban?user_id=${uid}&target_user=${target}&reason=test`, {method:'POST'});
+                alert('banned');
+                loadDurakAdmin();
+            } catch(e){alert('fail');}
+        }
+
+        async function forceEndDurak(lobbyId, uid) {
+            try {
+                await (window.apiFetch || fetch)(`/api/durak/admin/lobbies/${lobbyId}/force-end?user_id=${uid}`, {method:'POST'});
+                loadDurakAdmin();
+                loadLobbies();
+            } catch(e) { alert('fail'); }
+        }
+
+        function toggleDurakTournaments() {
+            const el = document.getElementById('durak-tournaments');
+            if (!el) return;
+            el.style.display = el.style.display === 'block' ? 'none' : 'block';
+        }
+
+        async function createTournamentLobby() {
+            const user = tg.initDataUnsafe?.user;
+            if (!user) return alert('no user');
+            try {
+                const res = await (window.apiFetch || fetch)('/api/durak/lobbies', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({
+                        user_id: user.id,
+                        first_name: user.first_name || '',
+                        name: 'Daily Tournament',
+                        max_players: 4,
+                        bet_amount: 100,
+                        game_type: 'podkidnoy'
+                    })
+                });
+                const d = await res.json();
+                alert('Created lobby #' + d.lobby_id);
+                loadLobbies();
+            } catch(e){alert('fail');}
+        }
 
         document.addEventListener('DOMContentLoaded', () => {
             const user = tg.initDataUnsafe?.user;

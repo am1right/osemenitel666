@@ -960,6 +960,15 @@
         <!-- Полноэкранный игровой стол -->
         <div class="durak-full-table" style="height:100vh; width:100vw; border-radius:0;">
 
+            <!-- Game Over Overlay (полноэкранный, поверх стола) -->
+            <div id="game-over-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:1000; align-items:center; justify-content:center; flex-direction:column; color:white; text-align:center;">
+                <h1 style="font-size:3rem; color:#d122e3; margin-bottom:20px;">ИГРА ОКОНЧЕНА</h1>
+                <div id="game-over-winner" style="font-size:1.8rem; margin-bottom:10px;"></div>
+                <div id="game-over-payout" style="font-size:1.4rem; margin-bottom:20px; color:#ffdd55;"></div>
+                <div id="game-over-pot" style="font-size:1rem; margin-bottom:30px; color:#aaa;"></div>
+                <button onclick="returnToLobby()" style="background:#d122e3; color:#000; border:none; padding:16px 40px; border-radius:12px; font-size:1.1rem; font-weight:700; cursor:pointer;">Вернуться в лобби</button>
+            </div>
+
                                 <!-- Верхняя часть: противники -->
                                 <div class="opponents-top" id="durak-opponents-top">
                                     <!-- Динамически: колоды противников сверху -->
@@ -1027,22 +1036,13 @@
                                     <!-- Только эмоции -->
                                     <div class="action-icon" id="emotions-btn" title="Эмоции">😊</div>
                                     
-                                    <div class="action-icon" title="Выйти" onclick="if(confirm('Выйти из игры?')) exitWaitingRoom();">🚪</div>
+                                    <div class="action-icon" title="Выйти из игры" onclick="window.location.href='durak.html';">🚪</div>
                                 </div>
 
                                 <!-- Emoji Picker -->
                                 <div id="emoji-picker" class="emoji-picker"></div>
                             </div>
 
-                        </div>
-
-                        <!-- Fallback / loading state -->
-                        <div id="durak-game-loading" style="padding:12px; text-align:center; color:#888;">
-                            Загрузка игрового состояния...
-                        </div>
-
-                        <div id="game-room-lobby-info" style="font-size:0.75rem; color:#666; background:#0a0a0a; padding:5px 8px; border-radius:6px; margin-top:8px;">
-                            <!-- lobby meta -->
                         </div>
                     </div>
                 </div>
@@ -1051,9 +1051,6 @@
             <!-- Конец полноэкранного стола -->
         </div>
     </div>
-
-    <!-- Минимальная нижняя панель действий (уже вставлена в структуре выше, но для чистоты) -->
-    <!-- Если дублируется, скрипт скроет -->
 
     <script>
         // Минимальный init для игрового экрана
@@ -1081,17 +1078,98 @@
             if (board) board.style.display = 'block';
 
             // Load initial state and start polling/WS
-            if (window.currentLobbyId && typeof fetchAndRenderDurakState === 'function') {
-                fetchAndRenderDurakState().then(() => {
+            if (window.currentLobbyId) {
+                // Simple state load for game page (minimal for end screen)
+                const loadState = async () => {
+                    try {
+                        const api = window.apiFetch || fetch;
+                        const res = await api(`/api/durak/lobbies/${window.currentLobbyId}/state?user_id=${window.currentUserId || 0}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.state) {
+                                window.currentGameState = data.state;
+                                // If we have render, use it, else basic
+                                if (typeof renderDurakBoard === 'function') {
+                                    renderDurakBoard(data.state);
+                                }
+                                if (data.state.game_over) {
+                                    showGameOver(data.state);
+                                }
+                                // Deck draw animation
+                                if (data.state.deck_remaining < (window.previousDeckCount || 0)) {
+                                    if (typeof animateDeckDraw === 'function') animateDeckDraw();
+                                }
+                                window.previousDeckCount = data.state.deck_remaining || 0;
+
+                                // Basic deck visual update
+                                const stack = document.querySelector('#durak-deck-pile .deck-stack');
+                                if (stack && data.state.deck_remaining != null) {
+                                    stack.innerHTML = `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:10px; color:#8a84b8; font-weight:700;">${data.state.deck_remaining}</div>`;
+                                }
+
+                                // Trigger initial deal + trump on first load or when deck is full (start of game)
+                                if (!window._dealDone && data.state.deck_remaining >= 30) {  // rough for 36 card deck start
+                                    setTimeout(() => animateInitialDeal(data.state), 300);
+                                    window._dealDone = true;
+                                }
+
+                                // Deck draw for self or opponent when deck decreases during game
+                                if (data.state.deck_remaining < (window.previousDeckCount || 0)) {
+                                    const target = (Math.random() > 0.5) ? 'durak-hand' : 'durak-opponents-top';
+                                    setTimeout(() => animateDeckDraw(target), 50);
+                                }
+
+                                // Fetch lobby info for pot etc in end screen
+                                fetch(`/api/durak/lobbies/${window.currentLobbyId}`).then(r => r.ok ? r.json() : null).then(l => { if (l) window.currentLobbyData = l; });
+                            }
+                        }
+                    } catch (e) {
+                        console.error('load state error', e);
+                    }
+                };
+
+                loadState().then(() => {
                     if (typeof startDurakGamePolling === 'function') startDurakGamePolling();
                     if (typeof initDurakEmotions === 'function') initDurakEmotions();
 
-                    // Connect real WS if available
+                    // Connect real WS
                     if (typeof DurakSocket === 'function' && !window.durakSocket) {
                         window.durakSocket = new DurakSocket(window.currentLobbyId, window.currentUserId);
                         window.durakSocket.connect();
                         if (typeof setupDurakSocketListeners === 'function') setupDurakSocketListeners();
                     }
+
+                    // Listen for end via WS if possible
+                    if (window.durakSocket) {
+                        window.durakSocket.on('game_ended', (data) => {
+                            if (data && data.final_state) {
+                                showGameOver(data.final_state);
+                            }
+                        });
+                        window.durakSocket.on('reaction', (data) => {
+                            if (data && data.emojiName && data.position && typeof showFlyingReaction === 'function') {
+                                showFlyingReaction(data.emojiName, data.position);
+                            }
+                        });
+                    }
+
+                    // Hook reactions to broadcast to others
+                    setTimeout(() => {
+                        const picker = document.getElementById('emoji-picker');
+                        if (picker) {
+                            picker.querySelectorAll('.emoji-item, [data-emoji]').forEach(el => {
+                                const origClick = el.onclick;
+                                el.onclick = (e) => {
+                                    const emoji = el.dataset.emoji || el.getAttribute('data-emoji') || 'like';
+                                    if (window.durakSocket && window.durakSocket.connected) {
+                                        window.durakSocket.send('reaction', {emojiName: emoji, position: 'self'});
+                                    }
+                                    if (origClick) origClick.call(el, e);
+                                    else if (typeof showFlyingReaction === 'function') showFlyingReaction(emoji, 'self');
+                                };
+                            });
+                        }
+                    }, 500);
                 });
             }
 
@@ -1105,8 +1183,433 @@
                 });
             }
 
-            console.log('[Durak Game] Full screen game page initialized for lobby', window.currentLobbyId);
+
         });
+
+        function showGameOver(state) {
+            const overlay = document.getElementById('game-over-overlay');
+            const winnerEl = document.getElementById('game-over-winner');
+            const potEl = document.getElementById('game-over-pot');
+            if (!overlay || !winnerEl || !potEl) return;
+
+            const winnerId = state.winner;
+            let winnerText = 'Победитель: неизвестно';
+            if (winnerId) {
+                winnerText = `Победитель: Игрок #${winnerId}`;
+            }
+            // Try to get name from currentLobbyData or fetch
+            (async () => {
+                try {
+                    if (!window.currentLobbyData || !window.currentLobbyData.players) {
+                        const res = await (window.apiFetch || fetch)(`/api/durak/lobbies/${window.currentLobbyId}/players`);
+                        if (res.ok) {
+                            const pdata = await res.json();
+                            window.currentLobbyData = window.currentLobbyData || {};
+                            window.currentLobbyData.players = pdata.players || [];
+                        }
+                    }
+                    if (window.currentLobbyData && window.currentLobbyData.players) {
+                        const w = window.currentLobbyData.players.find(p => p.user_id === winnerId);
+                        if (w && w.first_name) {
+                            winnerText = `Победитель: ${w.first_name}`;
+                            winnerEl.textContent = winnerText;
+                        }
+                    }
+                } catch(e){}
+            })();
+            if (winnerId) winnerEl.textContent = winnerText;
+
+            // Payout and pot
+            const pot = (window.currentLobbyData && window.currentLobbyData.pot) || 0;
+            let payoutText = '';
+            let potText = '';
+            if (pot > 0) {
+                const comm = Math.floor(pot * 0.05);
+                const award = pot - comm;
+                payoutText = `Победитель получает ${award}⭐ (комиссия ${comm}⭐)`;
+                potText = `Банк: ${pot}⭐`;
+            } else {
+                payoutText = 'Игра без ставки';
+                potText = 'Банк распределён';
+            }
+            const payoutEl = document.getElementById('game-over-payout');
+            if (payoutEl) payoutEl.textContent = payoutText;
+            potEl.textContent = potText;
+
+            overlay.style.display = 'flex';
+
+            // Stop polling
+            if (typeof stopDurakGamePolling === 'function') stopDurakGamePolling();
+        }
+
+        function returnToLobby() {
+            if (window.currentLobbyId) {
+                window.location.href = `durak-room.html?lobby=${window.currentLobbyId}`;
+            } else {
+                window.location.href = 'durak.html';
+            }
+        }
+
+        let previousDeckCount = 0;
+
+        /**
+         * Создаёт пипсы для 2-10
+         */
+        function createPips(rank, suitInfo) {
+            const pips = [];
+            const suitSrc = `icons/durak/${suitInfo.name}.png`;
+            const colorClass = suitInfo.color;
+            const createPip = (top, left) => {
+                const img = document.createElement('img');
+                img.src = suitSrc;
+                img.className = `pip ${colorClass}`;
+                img.style.top = top;
+                img.style.left = left;
+                return img;
+            };
+            const num = parseInt(rank);
+            switch (num) {
+                case 2: pips.push(createPip('18%', '50%')); pips.push(createPip('76%', '50%')); break;
+                case 3: pips.push(createPip('15%', '50%')); pips.push(createPip('48%', '50%')); pips.push(createPip('81%', '50%')); break;
+                case 4: pips.push(createPip('16%', '28%')); pips.push(createPip('16%', '72%')); pips.push(createPip('78%', '28%')); pips.push(createPip('78%', '72%')); break;
+                case 5: pips.push(createPip('14%', '25%')); pips.push(createPip('14%', '75%')); pips.push(createPip('48%', '50%')); pips.push(createPip('82%', '25%')); pips.push(createPip('82%', '75%')); break;
+                case 6: pips.push(createPip('14%', '25%')); pips.push(createPip('14%', '75%')); pips.push(createPip('42%', '25%')); pips.push(createPip('42%', '75%')); pips.push(createPip('70%', '25%')); pips.push(createPip('70%', '75%')); break;
+                case 7: pips.push(createPip('12%', '25%')); pips.push(createPip('12%', '75%')); pips.push(createPip('36%', '25%')); pips.push(createPip('36%', '75%')); pips.push(createPip('55%', '50%')); pips.push(createPip('68%', '25%')); pips.push(createPip('68%', '75%')); break;
+                case 8: pips.push(createPip('12%', '25%')); pips.push(createPip('12%', '75%')); pips.push(createPip('32%', '25%')); pips.push(createPip('32%', '75%')); pips.push(createPip('52%', '25%')); pips.push(createPip('52%', '75%')); pips.push(createPip('72%', '25%')); pips.push(createPip('72%', '75%')); break;
+                case 9: pips.push(createPip('10%', '25%')); pips.push(createPip('10%', '75%')); pips.push(createPip('30%', '25%')); pips.push(createPip('30%', '75%')); pips.push(createPip('50%', '50%')); pips.push(createPip('65%', '25%')); pips.push(createPip('65%', '75%')); pips.push(createPip('85%', '25%')); pips.push(createPip('85%', '75%')); break;
+                case 10: pips.push(createPip('8%', '25%')); pips.push(createPip('8%', '75%')); pips.push(createPip('26%', '50%')); pips.push(createPip('38%', '25%')); pips.push(createPip('38%', '75%')); pips.push(createPip('58%', '25%')); pips.push(createPip('58%', '75%')); pips.push(createPip('70%', '50%')); pips.push(createPip('82%', '25%')); pips.push(createPip('82%', '75%')); break;
+            }
+            return pips;
+        }
+
+        function createRealCardElement(cardStr) {
+            const container = document.createElement('div');
+            container.className = 'real-durak-card';
+            container.dataset.card = cardStr;
+
+            const rank = cardStr.slice(0, -1);
+            const suitChar = cardStr.slice(-1);
+
+            const suitMap = {
+                '♥': { name: 'hearts', symbol: '♥', color: 'red' },
+                '♦': { name: 'diamonds', symbol: '♦', color: 'red' },
+                '♣': { name: 'clubs', symbol: '♣', color: 'black' },
+                '♠': { name: 'spades', symbol: '♠', color: 'black' }
+            };
+
+            const suitInfo = suitMap[suitChar];
+            if (!suitInfo) {
+                container.innerHTML = `<div class="durak-card">${cardStr}</div>`;
+                return container;
+            }
+
+            const base = document.createElement('img');
+            base.src = 'icons/durak/card_front.png';
+            base.className = 'card-base';
+            container.appendChild(base);
+
+            let displayRank = rank;
+            if (rank === 'J' || rank === '11') displayRank = 'В';
+            if (rank === 'Q' || rank === '12') displayRank = 'Д';
+            if (rank === 'K' || rank === '13') displayRank = 'К';
+            if (rank === 'A' || rank === '14' || rank === '1') displayRank = 'Т';
+
+            const topLeft = document.createElement('div');
+            topLeft.className = `card-corner top-left ${suitInfo.color}`;
+            topLeft.innerHTML = `<div class="rank-text">${displayRank}</div><img src="icons/durak/${suitInfo.name}.png" class="suit-small">`;
+            container.appendChild(topLeft);
+
+            const bottomRight = document.createElement('div');
+            bottomRight.className = `card-corner bottom-right ${suitInfo.color}`;
+            bottomRight.innerHTML = `<div class="rank-text">${displayRank}</div><img src="icons/durak/${suitInfo.name}.png" class="suit-small">`;
+            container.appendChild(bottomRight);
+
+            const center = document.createElement('div');
+            center.className = 'card-center';
+
+            const isCourt = ['J', 'Q', 'K', '11', '12', '13'].includes(rank);
+            if (isCourt) {
+                let courtFile = 'jack.png';
+                if (rank === 'Q' || rank === '12') courtFile = 'queen.png';
+                if (rank === 'K' || rank === '13') courtFile = 'king.png';
+                const courtImg = document.createElement('img');
+                courtImg.src = `icons/durak/${courtFile}`;
+                courtImg.className = 'court-image';
+                center.appendChild(courtImg);
+            } else if (rank === 'A' || rank === '14' || rank === '1') {
+                const aceImg = document.createElement('img');
+                aceImg.src = `icons/durak/${suitInfo.name}_ace.png`;
+                aceImg.className = 'ace-image';
+                center.appendChild(aceImg);
+            } else {
+                const pips = createPips(rank, suitInfo);
+                pips.forEach(pip => center.appendChild(pip));
+                if (rank === '10') {
+                    const smallRank = document.createElement('div');
+                    smallRank.className = 'rank-text center-rank';
+                    smallRank.textContent = '10';
+                    smallRank.style.fontSize = '11px';
+                    smallRank.style.position = 'absolute';
+                    smallRank.style.bottom = '2px';
+                    center.appendChild(smallRank);
+                }
+            }
+            container.appendChild(center);
+            return container;
+        }
+
+        function renderDurakBoard(state) {
+            if (!state) return;
+            const board = document.getElementById('durak-game-board');
+            if (board) board.style.display = 'block';
+
+            // Update deck count visually
+            const stack = document.querySelector('#durak-deck-pile .deck-stack');
+            if (stack && state.deck_remaining != null) {
+                stack.innerHTML = `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:10px; color:#8a84b8; font-weight:700;">${state.deck_remaining}</div>`;
+            }
+
+            // Render trump (simple reveal)
+            renderTrumpCard(state);
+
+            // Render opponents as backs (with counts)
+            renderOpponentDecks(state);
+
+            // Render table
+            renderTable(state.table || []);
+
+            // Render own hand
+            renderPlayerHand(state);
+
+            // Render bito count
+            renderDiscardPile(state);
+
+            // Update actions
+            renderDurakActionButtons(state.allowed_actions || [], state);
+
+            if (state.game_over) {
+                showGameOver(state);
+            }
+        }
+
+        function renderTrumpCard(state) {
+            const trumpEl = document.getElementById('durak-trump-card');
+            if (!trumpEl || !state.trump_suit) return;
+            trumpEl.innerHTML = '';
+            const mini = createRealCardElement('A' + state.trump_suit);
+            mini.style.width = '36px';
+            mini.style.height = '50px';
+            mini.style.transform = 'rotate(18deg)';
+            trumpEl.appendChild(mini);
+        }
+
+        function renderOpponentDecks(state) {
+            const top = document.getElementById('durak-opponents-top');
+            const left = document.getElementById('durak-opponents-left');
+            const right = document.getElementById('durak-opponents-right');
+            if (!top || !left || !right || !state.hands) return;
+            top.innerHTML = ''; left.innerHTML = ''; right.innerHTML = '';
+            const others = (state.players || []).filter(p => String(p) !== String(window.currentUserId || 0));
+            const slots = [top, left, right];
+            others.slice(0,3).forEach((pid, i) => {
+                const slot = slots[i];
+                const num = typeof state.hands[pid] === 'number' ? state.hands[pid] : (Array.isArray(state.hands[pid]) ? state.hands[pid].length : 0);
+                const deck = document.createElement('div');
+                deck.className = 'opponent-deck';
+                const stackWrap = document.createElement('div');
+                stackWrap.style.position = 'relative';
+                stackWrap.style.width = '40px';
+                stackWrap.style.height = '54px';
+                for (let k=0; k<Math.min(3, Math.max(1,num||1)); k++) {
+                    const back = document.createElement('div');
+                    back.className = 'deck-back';
+                    back.style.position = 'absolute';
+                    back.style.left = (k*2)+'px';
+                    back.style.top = (k*1.5)+'px';
+                    back.style.width='40px'; back.style.height='54px';
+                    stackWrap.appendChild(back);
+                }
+                const count = document.createElement('div');
+                count.className = 'player-name';
+                count.textContent = num > 0 ? num + ' карт' : '—';
+                deck.appendChild(stackWrap);
+                deck.appendChild(count);
+                slot.appendChild(deck);
+            });
+        }
+
+        function renderPlayerHand(state) {
+            const handEl = document.getElementById('durak-hand');
+            if (!handEl) return;
+            handEl.innerHTML = '';
+            const myHand = state.hands ? state.hands[window.currentUserId || 0] : null;
+            if (!myHand || !Array.isArray(myHand)) return;
+            myHand.forEach(cardStr => {
+                const cardEl = createRealCardElement(cardStr);
+                cardEl.draggable = true;
+                cardEl.ondragstart = (e) => {
+                    e.dataTransfer.setData('text/plain', cardStr);
+                    cardEl.style.opacity = '0.5';
+                };
+                cardEl.ondragend = () => { cardEl.style.opacity = '1'; };
+                handEl.appendChild(cardEl);
+            });
+        }
+
+        function renderTable(table) {
+            const attacksEl = document.getElementById('durak-table-attacks');
+            const beatsEl = document.getElementById('durak-table-beats');
+            if (!attacksEl || !beatsEl) return;
+            attacksEl.innerHTML = ''; beatsEl.innerHTML = '';
+
+            // Drag & Drop support (basic)
+            attacksEl.ondragover = (e) => e.preventDefault();
+            attacksEl.ondrop = (e) => {
+                e.preventDefault();
+                const cardStr = e.dataTransfer.getData('text/plain');
+                if (cardStr && typeof onDurakCardClick === 'function') {
+                    onDurakCardClick(cardStr, (window.currentGameState && window.currentGameState.allowed_actions) || [], null);
+                }
+            };
+
+            beatsEl.ondragover = (e) => e.preventDefault();
+            beatsEl.ondrop = (e) => {
+                e.preventDefault();
+                const cardStr = e.dataTransfer.getData('text/plain');
+                if (cardStr && typeof onDurakCardClick === 'function') {
+                    onDurakCardClick(cardStr, (window.currentGameState && window.currentGameState.allowed_actions) || [], null);
+                }
+            };
+            table.forEach(pair => {
+                const atk = createRealCardElement(pair.attack);
+                attacksEl.appendChild(atk);
+                let bt;
+                if (pair.beat) {
+                    bt = createRealCardElement(pair.beat);
+                } else {
+                    bt = document.createElement('div');
+                    bt.className = 'real-durak-card';
+                    bt.style.opacity = '0.2';
+                    bt.style.border = '2px dashed #666';
+                }
+                beatsEl.appendChild(bt);
+            });
+        }
+
+        function renderDiscardPile(state) {
+            const pile = document.getElementById('durak-discard-pile');
+            if (!pile) return;
+            pile.innerHTML = '';
+            const count = state.discard_count || 0;
+            if (count > 0) {
+                const layers = Math.min(3, Math.max(1, Math.floor(count/3)+1));
+                for (let k=0; k<layers; k++) {
+                    const back = document.createElement('div');
+                    back.className = 'deck-back';
+                    back.style.position = 'absolute';
+                    back.style.left = (k*2)+'px';
+                    back.style.top = (k*1)+'px';
+                    back.style.width='42px'; back.style.height='58px';
+                    pile.appendChild(back);
+                }
+            }
+        }
+
+        function renderDurakActionButtons(allowed, state) {
+            const container = document.getElementById('durak-actions');
+            const takeBtn = document.getElementById('btn-take');
+            if (!container || !takeBtn) return;
+            container.innerHTML = '';
+            takeBtn.style.display = 'none';
+            if (allowed.includes('take_table')) {
+                takeBtn.style.display = 'block';
+                takeBtn.onclick = () => performDurakAction('take_table');
+            }
+            if (allowed.includes('finish_attack')) {
+                const b = document.createElement('button');
+                b.className = 'btn-dynamic primary';
+                b.textContent = 'БИТО';
+                b.onclick = () => performDurakAction('finish_attack');
+                container.appendChild(b);
+            }
+        }
+
+        function animateDeckDraw(toContainerId = 'durak-hand') {
+            const deckPile = document.getElementById('durak-deck-pile');
+            if (!deckPile) return;
+            const flying = document.createElement('div');
+            flying.style.position = 'fixed';
+            flying.style.width = '48px';
+            flying.style.height = '66px';
+            flying.style.background = 'linear-gradient(145deg, #2a2550, #1a1633)';
+            flying.style.border = '2px solid #4a4570';
+            flying.style.borderRadius = '6px';
+            flying.style.boxShadow = '0 4px 10px rgba(0,0,0,0.6)';
+            flying.style.zIndex = '9999';
+            flying.style.pointerEvents = 'none';
+            const rect = deckPile.getBoundingClientRect();
+            flying.style.left = (rect.left + 5) + 'px';
+            flying.style.top = (rect.top + 5) + 'px';
+            document.body.appendChild(flying);
+
+            setTimeout(() => {
+                const target = document.getElementById(toContainerId) || document.getElementById('durak-hand');
+                if (target) {
+                    const hrect = target.getBoundingClientRect();
+                    flying.style.transition = 'all 0.45s cubic-bezier(0.25,0.1,0.25,1)';
+                    flying.style.left = (hrect.left + Math.random()*30) + 'px';
+                    flying.style.top = (hrect.top + 5) + 'px';
+                }
+                setTimeout(() => {
+                    if (flying.parentNode) flying.parentNode.removeChild(flying);
+                }, 500);
+            }, 80);
+        }
+
+        function animateTrumpReveal() {
+            const trumpEl = document.getElementById('durak-trump-card');
+            if (!trumpEl) return;
+            trumpEl.style.transition = 'none';
+            trumpEl.style.transform = 'rotate(90deg) scale(0.5)';
+            trumpEl.style.opacity = '0';
+            setTimeout(() => {
+                trumpEl.style.transition = 'all 0.6s ease';
+                trumpEl.style.transform = 'rotate(18deg) scale(1)';
+                trumpEl.style.opacity = '1';
+            }, 50);
+        }
+
+        function animateInitialDeal(state) {
+            // Simple: draw several cards to hand and opponents
+            const numToDeal = Math.min(6, (state.hands && state.hands[window.currentUserId||0] ? state.hands[window.currentUserId||0].length : 0));
+            for (let i=0; i<numToDeal; i++) {
+                setTimeout(() => animateDeckDraw('durak-hand'), i * 120);
+            }
+            // Opponents
+            setTimeout(() => {
+                const opps = document.querySelectorAll('.opponents-top .opponent-deck, .opponents-left .opponent-deck, .opponents-right .opponent-deck');
+                opps.forEach((o, idx) => {
+                    setTimeout(() => {
+                        const flying = document.createElement('div');
+                        flying.style.position='fixed'; flying.style.width='40px'; flying.style.height='54px';
+                        flying.style.background='linear-gradient(145deg, #2a2550, #1a1633)'; flying.style.border='2px solid #4a4570'; flying.style.borderRadius='6px';
+                        flying.style.zIndex='9999'; flying.style.pointerEvents='none';
+                        const drect = document.getElementById('durak-deck-pile').getBoundingClientRect();
+                        flying.style.left = drect.left+'px'; flying.style.top = drect.top+'px';
+                        document.body.appendChild(flying);
+                        const orect = o.getBoundingClientRect();
+                        setTimeout(() => {
+                            flying.style.transition = 'all 0.4s ease';
+                            flying.style.left = orect.left + 'px';
+                            flying.style.top = orect.top + 'px';
+                            setTimeout(() => { if(flying.parentNode) flying.parentNode.removeChild(flying); }, 400);
+                        }, 50);
+                    }, idx*80);
+                });
+            }, 300);
+            // Reveal trump after deal
+            setTimeout(animateTrumpReveal, 800);
+        }
     </script>
 </body>
 </html>

@@ -192,6 +192,12 @@ def init_db():
     except Exception:
         pass
 
+    # Миграция: started_at для истории
+    try:
+        cur.execute("ALTER TABLE durak_lobbies ADD COLUMN IF NOT EXISTS started_at TIMESTAMP")
+    except Exception:
+        pass
+
     cur.execute('''
         CREATE TABLE IF NOT EXISTS durak_lobby_players (
             id         SERIAL PRIMARY KEY,
@@ -204,6 +210,31 @@ def init_db():
         )
     ''')
     cur.execute('CREATE INDEX IF NOT EXISTS idx_durak_players_lobby ON durak_lobby_players(lobby_id)')
+
+    # История игр Дурака
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS durak_game_history (
+            id            SERIAL PRIMARY KEY,
+            lobby_id      INTEGER,
+            winner_id     BIGINT,
+            pot           INTEGER DEFAULT 0,
+            players       JSONB,           -- [{"user_id": , "first_name": , "is_winner": }]
+            started_at    TIMESTAMP,
+            ended_at      TIMESTAMP DEFAULT NOW(),
+            duration_sec  INTEGER
+        )
+    ''')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_durak_history_winner ON durak_game_history(winner_id)')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_durak_history_ended ON durak_game_history(ended_at)')
+
+    # Баны для Дурака
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS durak_bans (
+            user_id BIGINT PRIMARY KEY,
+            banned_at TIMESTAMP DEFAULT NOW(),
+            reason TEXT
+        )
+    ''')
 
     _purge_test_players(cur)
 
@@ -1746,7 +1777,7 @@ def start_durak_game(lobby_id: int, creator_id: int) -> bool:
 
     cur.execute('''
         UPDATE durak_lobbies
-        SET status = 'playing', updated_at = NOW()
+        SET status = 'playing', updated_at = NOW(), started_at = NOW()
         WHERE id = %s
     ''', (lobby_id,))
 
@@ -1788,5 +1819,131 @@ def get_durak_lobby_by_id(lobby_id: int) -> Optional[Dict[str, Any]]:
         "bet_amount": row["bet_amount"] or 0,
         "pot": row.get("pot", 0) or 0,
         "status": row["status"],
-        "created_at": row["created_at"].isoformat() if row["created_at"] else None
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+        "started_at": row.get("started_at").isoformat() if row.get("started_at") else None
     }
+
+
+def save_durak_game_history(lobby_id: int, winner_id: Optional[int], pot: int, players: list, started_at: Optional[str] = None) -> bool:
+    """Сохраняет результат завершённой игры Дурака."""
+    conn = get_connection()
+    cur = _cursor(conn)
+    try:
+        # Получаем started_at если не передан
+        if not started_at:
+            cur.execute("SELECT started_at FROM durak_lobbies WHERE id = %s", (lobby_id,))
+            row = cur.fetchone()
+            started_at = row["started_at"] if row and row["started_at"] else None
+
+        ended_at = "NOW()"
+        duration = "NULL"
+        if started_at:
+            duration = "EXTRACT(EPOCH FROM (NOW() - %s))::int"  # but use param later
+
+        players_json = json.dumps(players) if players else '[]'
+
+        cur.execute(f'''
+            INSERT INTO durak_game_history (lobby_id, winner_id, pot, players, started_at, ended_at, duration_sec)
+            VALUES (%s, %s, %s, %s, %s, {ended_at}, 
+                    CASE WHEN %s IS NOT NULL THEN EXTRACT(EPOCH FROM (NOW() - %s))::int ELSE NULL END
+            )
+        ''', (lobby_id, winner_id, pot, players_json, started_at, started_at, started_at))
+
+        conn.commit()
+        return True
+    except Exception as e:
+        logger.exception(f"Failed to save durak history for lobby {lobby_id}")
+        return False
+    finally:
+        cur.close()
+        conn.close()
+
+
+def get_durak_history(user_id: Optional[int] = None, limit: int = 20) -> list[Dict[str, Any]]:
+    """История игр Дурака, опционально для конкретного игрока."""
+    conn = get_connection()
+    cur = _cursor(conn)
+    if user_id:
+        cur.execute('''
+            SELECT h.*, l.name as lobby_name
+            FROM durak_game_history h
+            LEFT JOIN durak_lobbies l ON l.id = h.lobby_id
+            WHERE h.players @> %s::jsonb   -- contains user
+            ORDER BY h.ended_at DESC
+            LIMIT %s
+        ''', (json.dumps([{"user_id": user_id}]), limit))
+    else:
+        cur.execute('''
+            SELECT h.*, l.name as lobby_name
+            FROM durak_game_history h
+            LEFT JOIN durak_lobbies l ON l.id = h.lobby_id
+            ORDER BY h.ended_at DESC
+            LIMIT %s
+        ''', (limit,))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    history = []
+    for row in rows:
+        try:
+            players = json.loads(row["players"]) if row["players"] else []
+        except:
+            players = []
+        history.append({
+            "id": row["id"],
+            "lobby_id": row["lobby_id"],
+            "lobby_name": row.get("lobby_name"),
+            "winner_id": row["winner_id"],
+            "pot": row["pot"] or 0,
+            "players": players,
+            "started_at": row["started_at"].isoformat() if row["started_at"] else None,
+            "ended_at": row["ended_at"].isoformat() if row["ended_at"] else None,
+            "duration_sec": row["duration_sec"]
+        })
+    return history
+
+
+def get_durak_ratings(limit: int = 20) -> list[Dict[str, Any]]:
+    """Простой рейтинг по победам (из истории)."""
+    conn = get_connection()
+    cur = _cursor(conn)
+    cur.execute('''
+        SELECT winner_id as user_id, COUNT(*) as wins
+        FROM durak_game_history
+        WHERE winner_id IS NOT NULL
+        GROUP BY winner_id
+        ORDER BY wins DESC
+        LIMIT %s
+    ''', (limit,))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return [{"user_id": r["user_id"], "wins": r["wins"], "games": r["wins"]} for r in rows]  # games approx = wins for simple
+
+
+def ban_durak_user(user_id: int, reason: str = "") -> bool:
+    conn = get_connection()
+    cur = _cursor(conn)
+    try:
+        cur.execute('''
+            INSERT INTO durak_bans (user_id, reason) VALUES (%s, %s)
+            ON CONFLICT (user_id) DO UPDATE SET banned_at=NOW(), reason=%s
+        ''', (user_id, reason, reason))
+        conn.commit()
+        return True
+    except:
+        return False
+    finally:
+        cur.close()
+        conn.close()
+
+
+def is_durak_banned(user_id: int) -> bool:
+    conn = get_connection()
+    cur = _cursor(conn)
+    cur.execute('SELECT 1 FROM durak_bans WHERE user_id = %s', (user_id,))
+    res = cur.fetchone() is not None
+    cur.close()
+    conn.close()
+    return res

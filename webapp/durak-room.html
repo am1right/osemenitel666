@@ -1033,164 +1033,6 @@
                 <!-- Сюда будет подставляться "Готовы: X / Y" -->
             </div>
 
-            <!-- ================== ИГРОВАЯ КОМНАТА (появляется после старта) ================== -->
-            <div id="game-room-section" style="display: none; margin-top: 20px;">
-                <div class="lobby-card" style="background: rgba(209, 34, 227, 0.08); border-color: #d122e3;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                        <h3 style="margin:0; color:#d122e3;">🎮 Игровая комната</h3>
-                        <span style="background:#003322; color:#d122e3; font-size:0.75rem; padding:2px 8px; border-radius:999px; border:1px solid #d122e3;">ИГРА ИДЁТ</span>
-                    </div>
-                    <div id="game-room-content">
-                        <!-- Real Durak game board (populated by JS) -->
-                        <div id="durak-game-board" class="durak-game-board" style="display:none; padding: 0; background: #0a0820; border: none;">
-
-                            <!-- Полноценный игровой стол -->
-                            <div class="durak-full-table">
-
-                                <!-- Верхняя часть: противники -->
-                                <div class="opponents-top" id="durak-opponents-top">
-                                    <!-- Динамически: колоды противников сверху -->
-                                </div>
-
-                                <!-- Центральная зона стола -->
-                                <div class="table-center">
-
-                                    <!-- Левая сторона: противники -->
-                                    <div class="opponents-left" id="durak-opponents-left"></div>
-
-                                    <!-- Центральное игровое поле -->
-                                    <div class="play-area">
-                                        
-                                        <!-- Колода + Козырь -->
-                                        <div class="deck-area">
-                                            <div class="deck-pile" id="durak-deck-pile">
-                                                <!-- Рубашки колоды -->
-                                                <div class="deck-stack"></div>
-                                                <!-- Козырь -->
-                                                <div class="trump-card" id="durak-trump-card"></div>
-                                            </div>
-                                            <div class="deck-label">Колода</div>
-                                        </div>
-
-                                        <!-- Зона игры (атака + отбой) -->
-                                        <div class="center-play-zone">
-                                            <div class="play-label">Атака</div>
-                                            <div id="durak-table-attacks" class="play-cards attack-cards"></div>
-                                            
-                                            <div class="play-label" style="margin-top: 12px;">Отбой</div>
-                                            <div id="durak-table-beats" class="play-cards beat-cards"></div>
-                                        </div>
-
-                                        <!-- Бито (сброс) -->
-                                        <div class="discard-area">
-                                            <div class="discard-pile" id="durak-discard-pile">
-                                                <!-- Карты в бито -->
-                                            </div>
-                                            <div class="discard-label">Бито</div>
-                                        </div>
-
-                                    </div>
-
-                                    <!-- Правая сторона: противники -->
-                                    <div class="opponents-right" id="durak-opponents-right"></div>
-
-                                </div>
-
-                                <!-- Нижняя часть: свой игрок -->
-                                <div class="player-bottom">
-                                    <div class="player-label">Вы</div>
-                                    <div id="durak-hand" class="player-hand"></div>
-                                </div>
-
-                            </div>
-
-                            <!-- Минимальная нижняя панель -->
-                            <div class="durak-minimal-bottom">
-                                <button id="btn-take" class="btn-take" style="display:none;">БЕРУ</button>
-                                
-                                <div class="minimal-actions">
-                                    <div id="durak-actions" class="dynamic-actions"></div>
-                                    
-                                    <!-- Только эмоции -->
-                                    <div class="action-icon" id="emotions-btn" title="Эмоции">😊</div>
-                                    
-                                    <div class="action-icon" title="Выйти" onclick="if(confirm('Выйти из игры?')) exitWaitingRoom();">🚪</div>
-                                </div>
-
-                                <!-- Emoji Picker -->
-                                <div id="emoji-picker" class="emoji-picker"></div>
-                            </div>
-
-                        </div>
-
-                        <!-- Fallback / loading state -->
-                        <div id="durak-game-loading" style="padding:12px; text-align:center; color:#888;">
-                            Загрузка игрового состояния...
-                        </div>
-
-                        <div id="game-room-lobby-info" style="font-size:0.75rem; color:#666; background:#0a0a0a; padding:5px 8px; border-radius:6px; margin-top:8px;">
-                            <!-- lobby meta -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ============================================================
-                 ПОСТОЯННАЯ DEV-ПАНЕЛЬ (всегда видна в лобби)
-                 ============================================================ -->
-            <div id="durak-dev-panel" style="
-                margin: 20px 0 12px;
-                padding: 12px;
-                background: #0f0f1f;
-                border: 1px solid #333;
-                border-radius: 10px;
-                font-size: 0.8rem;
-                position: sticky;
-                bottom: 8px;
-                z-index: 50;
-                box-shadow: 0 -4px 12px rgba(0,0,0,0.4);
-            ">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:#888;">
-                    <strong style="color:#d122e3;">🛠 Инструменты разработки</strong>
-                    <span id="socket-status" style="color:#d122e3; font-size:0.7rem;">Подключение...</span>
-                </div>
-
-                <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px;">
-                    <button onclick="simulateSocketEvent('player_ready_changed')" style="padding:3px 8px; font-size:0.75rem; background:#2a2a4a; border:1px solid #555; color:#ccc; border-radius:5px; cursor:pointer;">Смена готовности</button>
-                    <button onclick="simulateSocketEvent('lobby_updated')" style="padding:3px 8px; font-size:0.75rem; background:#2a2a4a; border:1px solid #555; color:#ccc; border-radius:5px; cursor:pointer;">Обновление лобби</button>
-                    <button onclick="simulateSocketEvent('player_joined')" style="padding:3px 8px; font-size:0.75rem; background:#2a2a4a; border:1px solid #555; color:#ccc; border-radius:5px; cursor:pointer;">Игрок зашёл</button>
-                    <button onclick="simulateSocketEvent('player_left')" style="padding:3px 8px; font-size:0.75rem; background:#2a2a4a; border:1px solid #555; color:#ccc; border-radius:5px; cursor:pointer;">Игрок вышел</button>
-                    <button onclick="simulateSocketEvent('game_started')" style="padding:3px 8px; font-size:0.75rem; background:#2a2a4a; border:1px solid #555; color:#ccc; border-radius:5px; cursor:pointer;">Игра началась</button>
-                    <button onclick="simulateSocketEvent('game_action')" style="padding:3px 8px; font-size:0.75rem; background:#3a2a1a; border:1px solid #aa8800; color:#ffcc66; border-radius:5px; cursor:pointer;">game_action</button>
-                    <button onclick="if(durakSocket) durakSocket.simulateSend('game_action', {test:true})" style="padding:3px 8px; font-size:0.7rem; background:#2a3a2a; border:1px solid #446655; color:#99ccaa; border-radius:5px; cursor:pointer; margin-left:6px;">test send()</button>
-
-                    <!-- Реальные эндпоинты игры (Этап 3 интеграция) -->
-                    <button onclick="if (typeof fetchAndRenderDurakState === 'function') fetchAndRenderDurakState()" 
-                            style="padding:3px 8px; font-size:0.7rem; background:#1a3a2a; border:1px solid #d122e3; color:#66ddaa; border-radius:5px; cursor:pointer;">Fetch real /state</button>
-                    <button onclick="if (typeof window.__durakShowRealGameBoard === 'function') window.__durakShowRealGameBoard()" 
-                            style="padding:3px 8px; font-size:0.7rem; background:#1a3a2a; border:1px solid #d122e3; color:#66ddaa; border-radius:5px; cursor:pointer;">Show game board</button>
-                </div>
-
-                <!-- Симуляция реакций от разных позиций -->
-                <div style="margin-top:8px;">
-                    <div style="font-size:0.65rem; color:#888; margin-bottom:4px;">Симуляция эмоций от игроков:</div>
-                    <div style="display:flex; flex-wrap:wrap; gap:4px;">
-                        <button onclick="showFlyingReaction('like', 'self')" style="padding:2px 6px; font-size:0.65rem; background:#2a3a2a; border:1px solid #446655; color:#99ccaa; border-radius:4px; cursor:pointer;">Self</button>
-                        <button onclick="showFlyingReaction('wow', 'top')" style="padding:2px 6px; font-size:0.65rem; background:#2a3a2a; border:1px solid #446655; color:#99ccaa; border-radius:4px; cursor:pointer;">Top</button>
-                        <button onclick="showFlyingReaction('angry', 'left')" style="padding:2px 6px; font-size:0.65rem; background:#2a3a2a; border:1px solid #446655; color:#99ccaa; border-radius:4px; cursor:pointer;">Left</button>
-                        <button onclick="showFlyingReaction('troll', 'right')" style="padding:2px 6px; font-size:0.65rem; background:#2a3a2a; border:1px solid #446655; color:#99ccaa; border-radius:4px; cursor:pointer;">Right</button>
-                    </div>
-                </div>
-
-                <div style="margin-top:6px;">
-                    <div style="font-size:0.7rem; color:#666; margin-bottom:3px;">Лог событий:</div>
-                    <div id="event-log" style="font-size:0.65rem; color:#666; background:#0a0a0a; padding:5px; border-radius:4px; max-height:70px; overflow-y:auto; line-height:1.2;">
-                        <!-- события -->
-                    </div>
-                </div>
-            </div>
-            <!-- ============================================================ -->
-
             <h3 style="margin: 0 0 10px;">Игроки в лобби</h3>
             <div id="players-list" class="lobby-list">
                 <!-- Список игроков -->
@@ -1753,8 +1595,21 @@
             loadLobbyInfo().then(() => {
                 // Если уже playing — сразу показываем игровую комнату и инициализируем сокет
                 if (currentLobbyData && currentLobbyData.status === 'playing') {
-                    // Полноэкранный игровой экран
-                    window.location.href = `durak-game.html?lobby=${currentLobbyId}`;
+                    // Check game over
+                    (async () => {
+                        try {
+                            const res = await fetch(`/api/durak/lobbies/${currentLobbyId}/state?user_id=${currentUserId||0}`);
+                            const data = await res.json();
+                            if (data.state && data.state.game_over) {
+                                const info = document.getElementById('lobby-info');
+                                if (info) info.innerHTML = `<strong>Игра окончена!</strong> Победитель #${data.state.winner||'?'}`;
+                            } else {
+                                window.location.href = `durak-game.html?lobby=${currentLobbyId}`;
+                            }
+                        } catch(e) {
+                            window.location.href = `durak-game.html?lobby=${currentLobbyId}`;
+                        }
+                    })();
                     return;
 
                     // Скрываем заголовок "Игровая комната", чтобы поле занимало место
@@ -1765,13 +1620,6 @@
                         gCard.style.background = 'transparent';
                         gCard.style.border = 'none';
                         gCard.style.padding = '0';
-                    }
-
-                    // Показываем индикатор playing в dev-панели
-                    const devPanel = document.getElementById('durak-dev-panel');
-                    if (devPanel) {
-                        const header = devPanel.querySelector('strong');
-                        if (header) header.innerHTML = '🛠 Инструменты разработки <span style="color:#ffaa00; font-size:0.7rem;">[PLAYING]</span>';
                     }
 
                     if (!durakSocket && currentUserId) {
@@ -1894,13 +1742,6 @@
                         gCard.style.background = 'transparent';
                         gCard.style.border = 'none';
                         gCard.style.padding = '0';
-                    }
-
-                    // Обновляем dev панель
-                    const devPanel = document.getElementById('durak-dev-panel');
-                    if (devPanel) {
-                        const header = devPanel.querySelector('strong');
-                        if (header) header.innerHTML = '🛠 Инструменты разработки <span style="color:#ffaa00; font-size:0.7rem;">[PLAYING]</span>';
                     }
 
                     // Заполняем инфо
@@ -2505,12 +2346,7 @@
                             const msg = JSON.parse(event.data);
                             const eventType = msg.type || msg.event;
                             if (eventType) {
-                                // Для совместимости с существующими обработчиками
                                 this._trigger(eventType, msg);
-                                // Также логируем
-                                if (typeof logSocketEvent === 'function') {
-                                    logSocketEvent(`← ${eventType}`, msg);
-                                }
                             }
                         } catch (e) {
                             console.warn('[DurakSocket] Failed to parse WS message', e);
@@ -2553,32 +2389,13 @@
                     data
                 };
 
-                console.log('[DurakSocket] → send:', payload);
-
-                if (typeof logSocketEvent === 'function') {
-                    logSocketEvent(`→ send ${action}`, data);
-                }
-
                 if (this.socket && this.socket.readyState === WebSocket.OPEN) {
                     this.socket.send(JSON.stringify(payload));
                 } else {
                     if (!this.connected) {
                         console.warn('[DurakSocket] Попытка отправить без подключения');
                     }
-                    // Для dev: если нет реального сокета, всё равно логируем (симуляция)
                 }
-            }
-
-            /**
-             * Вспомогательный метод для разработки.
-             * Позволяет симулировать отправку действия (будет видно в логе).
-             */
-            simulateSend(action, data = {}) {
-                console.log(`[DurakSocket] Симуляция отправки: ${action}`, data);
-                if (typeof logSocketEvent === 'function') {
-                    logSocketEvent(`→ simulate-send ${action}`, data);
-                }
-                // В будущем здесь можно будет также триггерить серверную обработку
             }
 
             on(event, callback) {
@@ -2604,32 +2421,20 @@
                     });
                 }
             }
-
-            /**
-             * Вспомогательный метод для разработки.
-             * Позволяет эмулировать получение сообщения от сервера.
-             * В реальной версии это будет приходить через onmessage.
-             */
-            simulateIncomingMessage(event, data = {}) {
-                console.log(`[DurakSocket] Симуляция входящего события: ${event}`, data);
-                logSocketEvent(`← ${event}`, data);
-                this._trigger(event, data);
-            }
         }
 
-        // Список событий, которые мы планируем использовать (для документации)
         // ============================================================
-        // КОНТРАКТ СОБЫТИЙ (Event Contract) — актуально на этапе лобби
+        // КОНТРАКТ СОБЫТИЙ (Event Contract)
         // ============================================================
-        // Клиент → Сервер (будет отправляться через durakSocket.send):
+        // Клиент → Сервер (через durakSocket.send):
         //   - 'ready'                 { user_id, is_ready }
         //   - 'game_action'           { user_id, action, payload }
         //   - 'leave'                 { user_id }
         //
-        // Сервер → Клиент (приходит через onmessage / simulateIncomingMessage):
+        // Сервер → Клиент (приходит через WS onmessage):
         //   - 'connected'             {}
         //   - 'disconnected'          {}
-        //   - 'lobby_updated'         { ...fields of lobby }
+        //   - 'lobby_updated'         { ... }
         //   - 'player_joined'         { user_id, first_name, is_ready, ... }
         //   - 'player_left'           { user_id, first_name }
         //   - 'player_ready_changed'  { user_id, is_ready }
@@ -2637,9 +2442,7 @@
         //   - 'game_action'           { user_id, action, payload, ... }
         //   - 'game_ended'            { winner_id, final_state, payouts? }
         //
-        // Реальный WebSocket бэкенд реализован.
-        // События приходят по WS (см. /api/durak/ws/{lobby_id}).
-        // simulateIncomingMessage оставлен для dev-панели и тестов.
+        // Реальный WebSocket: /api/durak/ws/{lobby_id}
         // ============================================================
 
         const DURAK_EVENTS = {
@@ -2667,12 +2470,7 @@
             // События теперь реально драйвят UI (для симуляции и будущих WS)
             durakSocket.on('player_ready_changed', (data) => {
                 console.log('[Durak] Получено событие player_ready_changed', data);
-                if (data && typeof data.is_ready === 'boolean') {
-                    // Лёгкое обновление из данных события (симуляция без лишнего запроса)
-                    applySimulatedReadyChange(data);
-                } else {
-                    loadPlayers();
-                }
+                loadPlayers();
             });
 
             durakSocket.on('lobby_updated', (data) => {
@@ -2701,26 +2499,21 @@
                 loadPlayers();
             });
 
-            // Новое: игра стартовала — показываем реальную доску Дурака
+            // Игра стартовала — переходим на чистый игровой экран (полный экран, отдельная страница)
             durakSocket.on('game_started', (data) => {
                 console.log('[Durak] Игра запущена (socket)!', data);
                 showLobbyNotification('Игра официально началась!', 'success');
-
-                // Показываем настоящую игровую доску + начинаем опрос state
-                if (typeof window.__durakShowRealGameBoard === 'function') {
-                    window.__durakShowRealGameBoard();
-                } else {
-                    const section = document.getElementById('game-room-section');
-                    if (section) section.style.display = 'block';
-                    fetchAndRenderDurakState();
-                    startDurakGamePolling();
-                }
+                // Редирект на durak-game.html (полноэкранное поле без хрома)
+                setTimeout(() => {
+                    if (currentLobbyId) {
+                        window.location.href = `durak-game.html?lobby=${currentLobbyId}`;
+                    }
+                }, 400);
             });
 
-            // Пример обработки игрового действия (пока просто логируем)
+            // Пример обработки игрового действия (просто логируем)
             durakSocket.on('game_action', (data) => {
                 console.log('[Durak] Получено игровое действие по WS', data);
-                logSocketEvent('← game_action', data);
                 // Реальное обновление состояния без лишнего polling
                 if (data && data.state) {
                     currentGameState = data.state;
@@ -2735,119 +2528,20 @@
 
             durakSocket.on('game_ended', (data) => {
                 console.log('[Durak] Игра завершена по WS', data);
-                logSocketEvent('← game_ended', data);
-                if (typeof fetchAndRenderDurakState === 'function') {
-                    fetchAndRenderDurakState().then(() => {
-                        // TODO: показать красивый экран окончания игры
-                        showLobbyNotification(`Игра окончена! Победитель: ${data.winner_id || 'неизвестно'}`, 'success');
-                    });
-                }
+                showLobbyNotification(`Игра окончена! Победитель: ${data.winner_id || 'неизвестно'}`, 'success');
+                // Возврат в лобби/список (полный цикл обрабатывается на game странице)
+                setTimeout(() => {
+                    if (currentLobbyId) {
+                        window.location.href = `durak-room.html?lobby=${currentLobbyId}`;
+                    } else {
+                        window.location.reload();
+                    }
+                }, 1500);
             });
         }
 
-        // Вспомогательная функция для разработки (будет удалена позже)
-        function simulateSocketEvent(eventType) {
-            if (!currentLobbyId) {
-                alert('Сначала зайдите в лобби, чтобы использовать инструменты разработки.');
-                return;
-            }
-
-            let payload = {};
-
-            // Если сокет ещё не создан — работаем в "лёгком" режиме симуляции
-            // (полезно для тестирования UI комнаты ожидания)
-            const hasSocket = !!durakSocket;
-
-            if (eventType === 'player_ready_changed') {
-                const currentReady = document.getElementById('ready-btn')?.textContent.includes('Отменить');
-                payload = {
-                    user_id: currentUserId,
-                    is_ready: !currentReady
-                };
-
-                if (hasSocket) {
-                    durakSocket.simulateIncomingMessage('player_ready_changed', payload);
-                } else {
-                    // Прямой вызов обновления UI
-                    applySimulatedReadyChange(payload);
-                }
-            }
-
-            if (eventType === 'lobby_updated') {
-                payload = { message: 'Настройки лобби были изменены' };
-                if (hasSocket) {
-                    durakSocket.simulateIncomingMessage('lobby_updated', payload);
-                }
-                // В любом случае обновляем данные лобби
-                setTimeout(() => loadLobbyInfo(), 50);
-            }
-
-            if (eventType === 'player_joined') {
-                payload = {
-                    user_id: 999999,
-                    first_name: 'ТестовыйИгрок',
-                    is_ready: false
-                };
-                if (hasSocket) {
-                    durakSocket.simulateIncomingMessage('player_joined', payload);
-                }
-                setTimeout(() => loadPlayers(), 50);
-            }
-
-            if (eventType === 'player_left') {
-                payload = { user_id: 999999, first_name: 'ТестовыйИгрок' };
-                if (hasSocket) {
-                    durakSocket.simulateIncomingMessage('player_left', payload);
-                }
-                setTimeout(() => loadPlayers(), 50);
-            }
-
-            if (eventType === 'game_started') {
-                payload = { started_by: currentUserId, timestamp: Date.now() };
-                if (hasSocket) {
-                    durakSocket.simulateIncomingMessage('game_started', payload);
-                } else {
-                    showLobbyNotification('Игра запущена! (симуляция)', 'success');
-                }
-            }
-
-            if (eventType === 'game_action') {
-                payload = {
-                    user_id: currentUserId,
-                    action: 'play_card',
-                    payload: { card: 'example' }
-                };
-                if (hasSocket) {
-                    durakSocket.simulateIncomingMessage('game_action', payload);
-                    durakSocket.send('game_action', payload);
-                } else {
-                    logSocketEvent(`→ simulate-send game_action`, payload);
-                }
-            }
-
-            logSocketEvent(`→ simulate ${eventType}`, payload);
-        }
-
-        function logSocketEvent(event, data) {
-            const logEl = document.getElementById('event-log');
-            if (!logEl) return;
-
-            const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            const entry = document.createElement('div');
-            entry.style.marginBottom = '2px';
-            entry.innerHTML = `<span style="color:#555;">[${time}]</span> <strong>${event}</strong> ${JSON.stringify(data)}`;
-
-            logEl.appendChild(entry);
-            logEl.scrollTop = logEl.scrollHeight;
-
-            // Ограничиваем количество записей
-            while (logEl.children.length > 8) {
-                logEl.removeChild(logEl.firstChild);
-            }
-        }
-
         /**
-         * Показывает красивое уведомление внутри лобби (замена многим alert'ам).
+         * Показывает красивое уведомление внутри лобби.
          * Используется для player_joined, player_left, owner change и т.д.
          */
         function showLobbyNotification(message, type = 'info') {
@@ -2886,62 +2580,6 @@
             setTimeout(() => {
                 if (div.parentNode) div.parentNode.removeChild(div);
             }, 6000);
-        }
-
-        /**
-         * Лёгкое обновление UI напрямую из данных simulated события.
-         * Используется в dev-режиме, чтобы клик по кнопке симуляции реально менял список/счётчики/заголовок
-         * без лишнего запроса к серверу (демо "реального времени").
-         */
-        function applySimulatedReadyChange(data) {
-            const container = document.getElementById('players-list');
-            if (!container || !data) return;
-
-            const cards = container.querySelectorAll('.lobby-card');
-            let updated = false;
-
-            cards.forEach(card => {
-                // Ищем карточку текущего пользователя (в разметке есть "(Вы)")
-                if (card.innerHTML.includes('(Вы)')) {
-                    const readyDiv = card.querySelector('div[style*="font-size:0.85rem"]');
-                    if (readyDiv) {
-                        const isReady = !!data.is_ready;
-                        readyDiv.style.color = isReady ? '#d122e3' : '#ffaa00';
-                        readyDiv.textContent = isReady ? '✅ Готов' : '⏳ Не готов';
-                        updated = true;
-                    }
-                }
-            });
-
-            // Пересчитываем счётчик готовых по текущему DOM (как в loadPlayers)
-            let readyCount = 0;
-            cards.forEach(card => {
-                if (card.innerHTML.includes('✅ Готов')) readyCount++;
-            });
-
-            const readyStatusEl = document.getElementById('ready-status');
-            if (readyStatusEl) {
-                readyStatusEl.innerHTML = `<strong>Готовы:</strong> ${readyCount} / ${cards.length}`;
-            }
-
-            // Обновляем кнопку "Готов" локально
-            const readyBtn = document.getElementById('ready-btn');
-            if (readyBtn && data.user_id === currentUserId) {
-                readyBtn.textContent = data.is_ready ? 'Отменить готовность' : 'Я готов!';
-                readyBtn.style.background = data.is_ready ? '#ff4466' : '#d122e3';
-                readyBtn.style.color = data.is_ready ? '#fff' : '#000';
-            }
-
-            // Пробуем обновить заголовок комнаты (готовы X/Y) — упрощённо
-            const header = document.querySelector('#waiting-room-view .header h1');
-            if (header && header.dataset.original) {
-                // Если заголовок уже был модифицирован loadPlayers — оставляем как есть или можно доработать
-            }
-
-            if (!updated) {
-                // На всякий случай — если не нашли (Вы), делаем полный ресинхрон
-                loadPlayers();
-            }
         }
 
         // === Редактирование настроек лобби (только для создателя) ===
@@ -3642,15 +3280,9 @@
                 if (!res.ok || !data.success) {
                     const msg = data.detail || data.message || 'Недопустимый ход';
                     console.error('[Durak Action Error]', msg, data);
-                    // Более заметное сообщение для тестирования
-                    const statusLine = document.getElementById('durak-status-line');
-                    if (statusLine) {
-                        statusLine.innerHTML = `<span style="color:#ff6666; font-weight:600;">Ошибка: ${msg}</span>`;
-                    } else {
-                        showLobbyNotification(msg, 'error');
-                    }
+                    showLobbyNotification(msg, 'error');
                     // Refresh state anyway
-                    await fetchAndRenderDurakState();
+                    if (typeof fetchAndRenderDurakState === 'function') await fetchAndRenderDurakState();
                     return;
                 }
 
@@ -3806,20 +3438,8 @@
                 startDurakGamePolling();
             });
 
-            // Тестовая подсказка (можно удалить позже)
-            setTimeout(() => {
-                const status = document.getElementById('durak-status-line');
-                if (status && !status.textContent.includes('Ошибка') && status.textContent.includes('Ожидание')) {
-                    status.innerHTML = 'Тестовый режим. Для игры нужно ≥2 игроков в лобби. Используй dev-кнопки и «Обновить состояние».';
-                }
-            }, 1200);
-
-            // Обновляем dev-панель
-            const devHeader = document.querySelector('#durak-dev-panel strong');
-            if (devHeader) devHeader.innerHTML = '🛠 Инструменты разработки <span style="color:#ffaa00">[В ИГРЕ]</span>';
-
             // Инициализируем эмоции
-            initDurakEmotions();
+            if (typeof initDurakEmotions === 'function') initDurakEmotions();
         }
 
         // ================== СИСТЕМА ЭМОЦИЙ / РЕАКЦИЙ ==================
