@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Дурак — Игра</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            background: linear-gradient(180deg, #0d081a 0%, #120b2e 100%);
+            color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .durak-container {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 16px;
+            padding-top: 90px; /* базовый отступ, JS подкрутит под safe area */
+            padding-bottom: 100px;
+            overflow-x: hidden;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8rem;
+            margin: 0;
+            background: linear-gradient(90deg, #d122e3, #a31bb8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .create-btn {
+            background: linear-gradient(90deg, #d122e3, #a31bb8);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 999px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+
+        .lobby-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .lobby-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(209, 34, 227, 0.25);
+            border-radius: 14px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .lobby-info h3 {
+            margin: 0 0 4px;
+            font-size: 1.1rem;
+        }
+
+        .lobby-meta {
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.6);
+        }
+
+        .join-btn {
+            background: rgba(209, 34, 227, 0.15);
+            color: #d122e3;
+            border: 1px solid #d122e3;
+            padding: 8px 18px;
+            border-radius: 999px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255,255,255,0.5);
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 6px 14px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 999px;
+            font-size: 0.85rem;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        .filter-btn.active {
+            background: rgba(209, 34, 227, 0.2);
+            border-color: #d122e3;
+            color: #d122e3;
+        }
+
+        /* ========== DURAK GAME UI - ЗОНЫ ИНТЕРФЕЙСА ========== */
+        .durak-game-board {
+            background: #0f0c24;
+            border: 2px solid #2a2550;
+            border-radius: 16px;
+            padding: 4px;
+            margin: 0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+        }
+
+        /* 1. Верхняя панель (Header) */
+        .durak-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #1a1633;
+            border-radius: 12px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border: 1px solid #3a3560;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .player-balance {
+            background: #2a2550;
+            color: #ffdd55;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .opponent-avatars {
+            display: flex;
+            gap: 6px;
+        }
+
+        .opponent-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #3a3560;
+            border: 2px solid #d122e3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+            overflow: hidden;
+        }
+
+        .opponent-avatar.defending {
+            border-color: #3a9cff;
+            box-shadow: 0 0 0 3px rgba(58, 156, 255, 0.3);
+        }
+
+        .opponent-avatar.attacking {
+            border-color: #ff4466;
+            box-shadow: 0 0 0 3px rgba(255, 68, 102, 0.3);
+        }
+
+        .turn-indicator {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: #2a2550;
+            color: #aaa;
+            white-space: nowrap;
+        }
+
+        /* 2. Игровое поле (Table) */
+        .durak-table-area {
+            background: #16133a;
+            border: 3px solid #3a3560;
+            border-radius: 14px;
+            min-height: 160px;
+            padding: 12px;
+            margin-bottom: 8px;
+            position: relative;
+        }
+
+        .table-label {
+            position: absolute;
+            top: -9px;
+            left: 16px;
+            background: #0f0c24;
+            padding: 0 8px;
+            font-size: 0.7rem;
+            color: #d122e3;
+            font-weight: 600;
+        }
+
+        /* Противник - карты рубашкой */
+        .opponent-cards {
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            margin-bottom: 10px;
+            min-height: 42px;
+        }
+
+        .card-back {
+            width: 32px;
+            height: 44px;
+            background: linear-gradient(145deg, #2a2550, #1a1633);
+            border: 2px solid #4a4570;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #665f9e;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        /* Центральная зона стола - 2 ряда */
+        .play-zone {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-height: 90px;
+        }
+
+        .play-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+            min-height: 42px;
+        }
+
+        .play-row-label {
+            font-size: 0.65rem;
+            color: #665f9e;
+            width: 100%;
+            text-align: center;
+            margin-bottom: 2px;
+        }
+
+        /* Улучшенные карты */
+        .durak-card {
+            width: 42px;
+            height: 58px;
+            background: linear-gradient(145deg, #f4e9d8 0%, #e8d9b8 100%);
+            border: 2px solid #3a2a1a;
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: system-ui, -apple-system, sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: #1a1208;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.7);
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.1s ease, box-shadow 0.1s;
+            position: relative;
+        }
+        .durak-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 5px 10px rgba(0,0,0,0.5);
+        }
+        .durak-card.selected {
+            border-color: #d122e3;
+            box-shadow: 0 0 0 3px rgba(0,255,136,0.6);
+            transform: translateY(-5px);
+        }
+        .durak-card.attack {
+            border-color: #ff4466;
+            box-shadow: 0 0 0 3px rgba(255,68,102,0.35);
+        }
+        .durak-card.beat {
+            border-color: #3a9cff;
+            box-shadow: 0 0 0 3px rgba(58,156,255,0.35);
+        }
+        .durak-card .rank {
+            font-size: 15px;
+            line-height: 1;
+            font-weight: 800;
+        }
+        .durak-card .suit {
+            font-size: 16px;
+            line-height: 1;
+            margin-top: -2px;
+        }
+        .durak-card.red { color: #c62828; }
+        .durak-card.black { color: #1f1f1f; }
+
+        /* 4. Карты игрока */
+        .player-hand-zone {
+            background: #1a1633;
+            border-radius: 12px;
+            padding: 8px;
+            margin-bottom: 8px;
+        }
+
+        .player-hand-label {
+            font-size: 0.7rem;
+            color: #665f9e;
+            margin-bottom: 4px;
+            text-align: center;
+        }
+
+        .player-hand {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            justify-content: center;
+            min-height: 64px;
+        }
+
+        /* 5. Нижняя панель действий */
+        .durak-bottom-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #1a1633;
+            border-radius: 12px;
+            padding: 6px 10px;
+            gap: 8px;
+        }
+
+        .btn-take {
+            flex: 1;
+            background: #c62828;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 999px;
+            font-weight: 800;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 3px 8px rgba(198, 40, 40, 0.4);
+        }
+
+        .btn-take:active {
+            transform: scale(0.96);
+        }
+
+        .action-right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .action-icon {
+            width: 32px;
+            height: 32px;
+            background: #2a2550;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            cursor: pointer;
+            border: 1px solid #3a3560;
+            transition: transform 0.1s;
+        }
+        .action-icon:hover {
+            transform: scale(1.1);
+            background: #3a3560;
+        }
+
+        /* Emoji Picker */
+        .emoji-picker {
+            position: absolute;
+            bottom: 52px;
+            right: 10px;
+            background: #1a1633;
+            border: 1px solid #4a4570;
+            border-radius: 12px;
+            padding: 8px;
+            display: none;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+            z-index: 200;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+        }
+        .emoji-picker.show {
+            display: grid;
+        }
+        .emoji-item {
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.1s;
+        }
+        .emoji-item:hover {
+            background: #2a2550;
+            transform: scale(1.15);
+        }
+        .emoji-item img {
+            width: 32px;
+            height: 32px;
+            image-rendering: pixelated;
+        }
+
+        /* Flying Reaction Animation */
+        .flying-reaction {
+            position: absolute;
+            z-index: 300;
+            pointer-events: none;
+            animation: flyUp 1.9s forwards;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
+        }
+        .flying-reaction img {
+            width: 52px;
+            height: 52px;
+            transition: transform 0.2s ease;
+        }
+
+        @keyframes flyUp {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            12% {
+                opacity: 1;
+                transform: scale(1.15);
+            }
+            65% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-95px) scale(0.65);
+                opacity: 0;
+            }
+        }
+
+        .dynamic-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-dynamic {
+            background: #2a2550;
+            color: #ddd;
+            border: 1px solid #4a4570;
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-dynamic.primary {
+            background: #a31bb8;
+            color: #000;
+            border-color: #d122e3;
+        }
+
+        /* ========== НОВЫЙ ПОЛНОЭКРАННЫЙ СТОЛ ДУРАКА ========== */
+        .durak-full-table {
+            width: 100%;
+            height: 100%;
+            min-height: 480px;
+            display: flex;
+            flex-direction: column;
+            background: #0c0a1f;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* На телефонах даём чуть больше места столу */
+        @media (max-width: 480px) {
+            .durak-full-table {
+                min-height: 420px;
+            }
+            .player-hand {
+                min-height: 78px;
+            }
+        }
+
+        /* Верх: противники */
+        .opponents-top {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            padding: 12px;
+            min-height: 68px;
+            background: #13112b;
+        }
+
+        .opponent-deck {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .opponent-deck .deck-back {
+            width: 38px;
+            height: 52px;
+            background: linear-gradient(145deg, #2a2550, #1a1633);
+            border: 2px solid #4a4570;
+            border-radius: 6px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        .opponent-deck .deck-back::after {
+            content: '';
+            position: absolute;
+            inset: 4px;
+            background: repeating-linear-gradient(
+                45deg,
+                #3a3560 0,
+                #3a3560 2px,
+                transparent 2px,
+                transparent 6px
+            );
+            border-radius: 3px;
+        }
+
+        .opponent-deck .player-name {
+            font-size: 11px;
+            color: #8a84b8;
+            margin-top: 2px;
+        }
+
+        /* Центральная зона */
+        .table-center {
+            flex: 1;
+            display: flex;
+            padding: 8px 12px;
+            gap: 12px;
+            min-height: 220px;
+        }
+
+        .opponents-left, .opponents-right {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            justify-content: center;
+            width: 52px;
+        }
+
+        /* Центральный контейнер игрового поля (дек + зона атаки/отбоя) */
+        .play-area {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Центральное поле */
+        .center-play-zone {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #16133a;
+            border: 3px solid #3a3560;
+            border-radius: 16px;
+            padding: 12px;
+            position: relative;
+            box-shadow: inset 0 0 25px rgba(0,0,0,0.5);
+        }
+
+        .play-label {
+            font-size: 11px;
+            color: #665f9e;
+            margin-bottom: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        .play-cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0;
+            min-height: 68px;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 0 8px; /* чтобы крайние карты не обрезались */
+        }
+
+        /* Перекрытие теперь управляется через JavaScript (динамическое) */
+
+        /* Колода + Козырь */
+        .deck-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .deck-pile {
+            position: relative;
+            width: 52px;
+            height: 70px;
+        }
+
+        .deck-stack {
+            width: 52px;
+            height: 70px;
+            background: linear-gradient(145deg, #2a2550, #1a1633);
+            border: 2px solid #4a4570;
+            border-radius: 6px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+        }
+
+        .trump-card {
+            position: absolute;
+            bottom: -8px;
+            left: 12px;
+            transform: rotate(18deg);
+            z-index: 2;
+        }
+
+        .deck-label {
+            font-size: 10px;
+            color: #665f9e;
+            margin-top: 6px;
+        }
+
+        /* Бито */
+        .discard-area {
+            position: absolute;
+            right: 16px;
+            top: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .discard-pile {
+            width: 48px;
+            height: 64px;
+            background: #1f1c3a;
+            border: 2px dashed #4a4570;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #665f9e;
+        }
+
+        .discard-label {
+            font-size: 10px;
+            color: #665f9e;
+            margin-top: 4px;
+        }
+
+        /* Нижняя рука игрока */
+        .player-bottom {
+            background: #13112b;
+            padding: 10px 12px;
+            border-top: 2px solid #3a3560;
+        }
+
+        .player-label {
+            text-align: center;
+            font-size: 11px;
+            color: #8a84b8;
+            margin-bottom: 4px;
+        }
+
+        .player-hand {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            justify-content: center;
+            min-height: 86px;
+        }
+
+        /* Унифицируем размер карт в руке под размер на столе */
+        .player-hand .real-durak-card {
+            width: 54px;
+            height: 76px;
+        }
+
+        /* Минимальная нижняя панель */
+        .durak-minimal-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #13112b;
+            padding: 8px 12px;
+            border-top: 1px solid #3a3560;
+        }
+
+        .minimal-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Улучшенные карты на столе */
+        .attack-cards .real-durak-card,
+        .beat-cards .real-durak-card {
+            width: 54px;
+            height: 76px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.55);
+            transition: margin-left 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        /* Дополнительный объём при перекрытии */
+        .play-cards .real-durak-card:not(:first-child) {
+            box-shadow: 0 6px 14px rgba(0,0,0,0.65);
+        }
+
+        /* === Анимация броска карт === */
+        .flying-card {
+            position: fixed;
+            z-index: 9999;
+            pointer-events: none;
+            transition: transform 0.55s cubic-bezier(0.25, 0.1, 0.25, 1),
+                        opacity 0.3s ease;
+            /* размер задаётся динамически в JS под размер исходной карты */
+            will-change: transform;
+            overflow: visible;
+        }
+
+        /* Поддержка настоящих композитных карт в полёте (и старых) */
+        .flying-card .real-durak-card,
+        .flying-card > .real-durak-card {
+            width: 100% !important;
+            height: 100% !important;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .flying-card .durak-card {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+        }
+
+        /* ========== Реалистичные карты из ассетов ========== */
+        .real-durak-card {
+            position: relative;
+            width: 62px;
+            height: 88px;
+            user-select: none;
+            cursor: pointer;
+            /* Фоллбэк на случай проблем с загрузкой картинки — чтобы карта была видна */
+            background: #f4e9d8;
+            border: 1px solid #3a2a1a;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+        }
+
+        .real-durak-card .card-base {
+            width: 100%;
+            height: 100%;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+            display: block;
+        }
+
+        .real-durak-card .card-corner {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1;
+            font-family: 'Orbitron', system-ui, sans-serif;
+            font-weight: 700;
+            color: inherit;
+        }
+
+        .real-durak-card .card-corner.top-left {
+            top: 3px;
+            left: 4px;
+            font-size: 12px;
+        }
+
+        .real-durak-card .card-corner.bottom-right {
+            bottom: 3px;
+            right: 4px;
+            font-size: 12px;
+            transform: rotate(180deg);
+        }
+
+        .real-durak-card .rank-text {
+            font-size: 14px;
+            line-height: 0.9;
+            font-weight: 800;
+        }
+
+        .real-durak-card .suit-small {
+            width: 13px;
+            height: 13px;
+            margin-top: -2px;
+        }
+
+        .real-durak-card .card-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 82%;
+            height: 68%;
+        }
+
+        .real-durak-card .suit-big {
+            width: 26px;
+            height: 26px;
+        }
+
+        .real-durak-card .ace-image,
+        .real-durak-card .court-image {
+            width: 100%;
+            height: 100%;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(1px 2px 3px rgba(0,0,0,0.45));
+        }
+
+        /* Сделать придворные (В, Д, К) крупнее и визуально ровными */
+        .real-durak-card .court-image {
+            width: 105%;
+            height: 105%;
+            max-width: 105%;
+            max-height: 105%;
+        }
+
+        .real-durak-card .number-image {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.4));
+        }
+
+        .real-durak-card .suit-medium {
+            width: 18px;
+            height: 18px;
+            margin-top: 2px;
+            object-fit: contain;
+            filter: drop-shadow(0.5px 0.5px 1px rgba(0,0,0,0.35));
+        }
+
+        /* Улучшения для модалов на маленьких экранах телефонов */
+        @media (max-width: 380px) {
+            #create-modal > div,
+            #edit-settings-modal > div,
+            #confirm-modal > div {
+                padding: 14px !important;
+                width: 94vw !important;
+            }
+            
+            #create-modal input,
+            #create-modal select,
+            #edit-settings-modal input,
+            #edit-settings-modal select {
+                padding: 6px 8px !important;
+                font-size: 15px;
+            }
+        }
+
+        /* Мобильные улучшения для комнаты ожидания */
+        @media (max-width: 400px) {
+            #waiting-room-view .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            
+            #waiting-room-view .header h1 {
+                font-size: 1.4rem;
+            }
+            
+            #waiting-room-view .lobby-card {
+                padding: 10px 12px;
+                font-size: 0.9rem;
+            }
+            
+            #invite-section button {
+                font-size: 0.9rem !important;
+                padding: 8px 14px !important;
+            }
+            
+            #waiting-room-view {
+                padding-bottom: 20px;
+                overflow-x: hidden;
+            }
+            
+            .durak-container {
+                overflow-x: hidden;
+            }
+        }
+
+        /* Пипсы (масти) для 2-10 */
+        .real-durak-card .pips-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .real-durak-card .pip {
+            position: absolute;
+            width: 17px;
+            height: 17px;
+            object-fit: contain;
+            transform: translate(-50%, -50%);
+        }
+
+        .real-durak-card.red { color: #c62828; }
+        .real-durak-card.black { color: #1a1a1a; }
+    </style>
+</head>
+<body style="margin:0; padding:0; background:#0a0820; overflow:hidden;">
+    <!-- Полноэкранный игровой экран Дурака -->
+    <!-- Весь экран = игровое поле -->
+
+    <div id="durak-game-board" class="durak-game-board" style="display:block; padding:0; margin:0; height:100vh; width:100vw; background:#0a0820; border:none; box-shadow:none; border-radius:0;">
+
+        <!-- Полноэкранный игровой стол -->
+        <div class="durak-full-table" style="height:100vh; width:100vw; border-radius:0;">
+
+                                <!-- Верхняя часть: противники -->
+                                <div class="opponents-top" id="durak-opponents-top">
+                                    <!-- Динамически: колоды противников сверху -->
+                                </div>
+
+                                <!-- Центральная зона стола -->
+                                <div class="table-center">
+
+                                    <!-- Левая сторона: противники -->
+                                    <div class="opponents-left" id="durak-opponents-left"></div>
+
+                                    <!-- Центральное игровое поле -->
+                                    <div class="play-area">
+                                        
+                                        <!-- Колода + Козырь -->
+                                        <div class="deck-area">
+                                            <div class="deck-pile" id="durak-deck-pile">
+                                                <!-- Рубашки колоды -->
+                                                <div class="deck-stack"></div>
+                                                <!-- Козырь -->
+                                                <div class="trump-card" id="durak-trump-card"></div>
+                                            </div>
+                                            <div class="deck-label">Колода</div>
+                                        </div>
+
+                                        <!-- Зона игры (атака + отбой) -->
+                                        <div class="center-play-zone">
+                                            <div class="play-label">Атака</div>
+                                            <div id="durak-table-attacks" class="play-cards attack-cards"></div>
+                                            
+                                            <div class="play-label" style="margin-top: 12px;">Отбой</div>
+                                            <div id="durak-table-beats" class="play-cards beat-cards"></div>
+                                        </div>
+
+                                        <!-- Бито (сброс) -->
+                                        <div class="discard-area">
+                                            <div class="discard-pile" id="durak-discard-pile">
+                                                <!-- Карты в бито -->
+                                            </div>
+                                            <div class="discard-label">Бито</div>
+                                        </div>
+
+                                    </div>
+
+                                    <!-- Правая сторона: противники -->
+                                    <div class="opponents-right" id="durak-opponents-right"></div>
+
+                                </div>
+
+                                <!-- Нижняя часть: свой игрок -->
+                                <div class="player-bottom">
+                                    <div class="player-label">Вы</div>
+                                    <div id="durak-hand" class="player-hand"></div>
+                                </div>
+
+                            </div>
+
+                            <!-- Минимальная нижняя панель -->
+                            <div class="durak-minimal-bottom">
+                                <button id="btn-take" class="btn-take" style="display:none;">БЕРУ</button>
+                                
+                                <div class="minimal-actions">
+                                    <div id="durak-actions" class="dynamic-actions"></div>
+                                    
+                                    <!-- Только эмоции -->
+                                    <div class="action-icon" id="emotions-btn" title="Эмоции">😊</div>
+                                    
+                                    <div class="action-icon" title="Выйти" onclick="if(confirm('Выйти из игры?')) exitWaitingRoom();">🚪</div>
+                                </div>
+
+                                <!-- Emoji Picker -->
+                                <div id="emoji-picker" class="emoji-picker"></div>
+                            </div>
+
+                        </div>
+
+                        <!-- Fallback / loading state -->
+                        <div id="durak-game-loading" style="padding:12px; text-align:center; color:#888;">
+                            Загрузка игрового состояния...
+                        </div>
+
+                        <div id="game-room-lobby-info" style="font-size:0.75rem; color:#666; background:#0a0a0a; padding:5px 8px; border-radius:6px; margin-top:8px;">
+                            <!-- lobby meta -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Конец полноэкранного стола -->
+        </div>
+    </div>
+
+    <!-- Минимальная нижняя панель действий (уже вставлена в структуре выше, но для чистоты) -->
+    <!-- Если дублируется, скрипт скроет -->
+
+    <script>
+        // Минимальный init для игрового экрана
+        document.addEventListener('DOMContentLoaded', () => {
+            const tg = window.Telegram?.WebApp;
+            if (tg) {
+                tg.ready();
+                tg.expand();
+            }
+
+            // Parse params
+            const params = new URLSearchParams(window.location.search);
+            const lobbyId = params.get('lobby') || params.get('lobby_id');
+            if (lobbyId) {
+                window.currentLobbyId = parseInt(lobbyId);
+            }
+
+            const user = tg && tg.initDataUnsafe ? tg.initDataUnsafe.user : null;
+            if (user) {
+                window.currentUserId = user.id;
+            }
+
+            // Show the game board
+            const board = document.getElementById('durak-game-board');
+            if (board) board.style.display = 'block';
+
+            // Load initial state and start polling/WS
+            if (window.currentLobbyId && typeof fetchAndRenderDurakState === 'function') {
+                fetchAndRenderDurakState().then(() => {
+                    if (typeof startDurakGamePolling === 'function') startDurakGamePolling();
+                    if (typeof initDurakEmotions === 'function') initDurakEmotions();
+
+                    // Connect real WS if available
+                    if (typeof DurakSocket === 'function' && !window.durakSocket) {
+                        window.durakSocket = new DurakSocket(window.currentLobbyId, window.currentUserId);
+                        window.durakSocket.connect();
+                        if (typeof setupDurakSocketListeners === 'function') setupDurakSocketListeners();
+                    }
+                });
+            }
+
+            // Back button to exit game
+            if (tg && tg.BackButton) {
+                tg.BackButton.show();
+                tg.BackButton.onClick(() => {
+                    // Go back to room or list
+                    const backUrl = window.currentLobbyId ? `durak-room.html?lobby=${window.currentLobbyId}` : 'durak.html';
+                    window.location.href = backUrl;
+                });
+            }
+
+            console.log('[Durak Game] Full screen game page initialized for lobby', window.currentLobbyId);
+        });
+    </script>
+</body>
+</html>
