@@ -124,8 +124,8 @@
             background: #0f0c24;
             border: 2px solid #2a2550;
             border-radius: 16px;
-            padding: 8px;
-            margin-bottom: 8px;
+            padding: 4px;
+            margin: 0;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
         }
 
@@ -492,13 +492,23 @@
         .durak-full-table {
             width: 100%;
             height: 100%;
-            min-height: 520px;
+            min-height: 480px;
             display: flex;
             flex-direction: column;
             background: #0c0a1f;
             border-radius: 12px;
             overflow: hidden;
             position: relative;
+        }
+
+        /* На телефонах даём чуть больше места столу */
+        @media (max-width: 480px) {
+            .durak-full-table {
+                min-height: 420px;
+            }
+            .player-hand {
+                min-height: 78px;
+            }
         }
 
         /* Верх: противники */
@@ -563,6 +573,16 @@
             gap: 12px;
             justify-content: center;
             width: 52px;
+        }
+
+        /* Центральный контейнер игрового поля (дек + зона атаки/отбоя) */
+        .play-area {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
         }
 
         /* Центральное поле */
@@ -687,6 +707,12 @@
             min-height: 86px;
         }
 
+        /* Унифицируем размер карт в руке под размер на столе */
+        .player-hand .real-durak-card {
+            width: 54px;
+            height: 76px;
+        }
+
         /* Минимальная нижняя панель */
         .durak-minimal-bottom {
             display: flex;
@@ -743,6 +769,11 @@
             height: 88px;
             user-select: none;
             cursor: pointer;
+            /* Фоллбэк на случай проблем с загрузкой картинки — чтобы карта была видна */
+            background: #f4e9d8;
+            border: 1px solid #3a2a1a;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.35);
         }
 
         .real-durak-card .card-base {
@@ -1685,6 +1716,10 @@
             document.getElementById('lobby-list-view').style.display = 'none';
             document.getElementById('waiting-room-view').style.display = 'block';
 
+            // Убедимся что шапка видна (могла быть спрятана в предыдущей игре)
+            const wH = document.querySelector('#waiting-room-view .header');
+            if (wH) wH.style.display = '';
+
             // Останавливаем авто-обновление списка (теперь обновляем только данные конкретного лобби)
             stopLobbyListPolling();
 
@@ -1694,6 +1729,16 @@
                 if (currentLobbyData && currentLobbyData.status === 'playing') {
                     const gameRoom = document.getElementById('game-room-section');
                     if (gameRoom) gameRoom.style.display = 'block';
+
+                    // Скрываем заголовок "Игровая комната", чтобы поле занимало место
+                    const gCard = gameRoom ? gameRoom.querySelector('.lobby-card') : null;
+                    if (gCard) {
+                        const hRow = gCard.querySelector('div:first-child');
+                        if (hRow) hRow.style.display = 'none';
+                        gCard.style.background = 'transparent';
+                        gCard.style.border = 'none';
+                        gCard.style.padding = '0';
+                    }
 
                     // Показываем индикатор playing в dev-панели
                     const devPanel = document.getElementById('durak-dev-panel');
@@ -1813,6 +1858,16 @@
                     // Показываем реальную игровую доску Дурака
                     const gameRoom = document.getElementById('game-room-section');
                     if (gameRoom) gameRoom.style.display = 'block';
+
+                    // Прячем "ИГРА ИДЁТ" заголовок, чтобы стол занял пространство
+                    const gCard = gameRoom ? gameRoom.querySelector('.lobby-card') : null;
+                    if (gCard) {
+                        const hRow = gCard.querySelector('div:first-child');
+                        if (hRow) hRow.style.display = 'none';
+                        gCard.style.background = 'transparent';
+                        gCard.style.border = 'none';
+                        gCard.style.padding = '0';
+                    }
 
                     // Обновляем dev панель
                     const devPanel = document.getElementById('durak-dev-panel');
@@ -2311,6 +2366,10 @@
 
             document.getElementById('waiting-room-view').style.display = 'none';
             document.getElementById('lobby-list-view').style.display = 'block';
+
+            // Восстанавливаем шапку на случай если прятали в игре
+            const wHeaderRestore = document.querySelector('#waiting-room-view .header');
+            if (wHeaderRestore) wHeaderRestore.style.display = '';
 
             // Не прячем BackButton здесь!
             loadLobbies();
@@ -3092,6 +3151,14 @@
             const board = document.getElementById('durak-game-board');
             if (board) board.style.display = 'block';
 
+            // Прячем загрузку
+            const loading = document.getElementById('durak-game-loading');
+            if (loading) loading.style.display = 'none';
+
+            // Прячем мелкую мета-инфу под столом (чтобы не отнимала место)
+            const meta = document.getElementById('game-room-lobby-info');
+            if (meta) meta.style.display = 'none';
+
             // Рендерим колоды противников (рубашкой)
             renderOpponentDecks(state);
 
@@ -3106,6 +3173,9 @@
 
             // Бито
             renderDiscardPile(state);
+
+            // Кол-во в колоде
+            updateDeckVisual(state);
 
             currentLegalBeats = state.legal_beats || [];
 
@@ -3122,19 +3192,20 @@
             beatsEl.innerHTML = '';
 
             table.forEach(pair => {
-                const atk = document.createElement('div');
-                atk.className = 'durak-card attack';
-                atk.innerHTML = cardToHtml(pair.attack);
+                // Используем настоящие композитные карты напрямую (без legacy wrapper)
+                const atk = createRealCardElement(pair.attack);
+                atk.classList.add('attack');
                 atk.onclick = () => onTableAttackClick(pair.attack);
                 attacksEl.appendChild(atk);
 
-                const bt = document.createElement('div');
+                let bt;
                 if (pair.beat) {
-                    bt.className = 'durak-card beat';
-                    bt.innerHTML = cardToHtml(pair.beat);
+                    bt = createRealCardElement(pair.beat);
+                    bt.classList.add('beat');
                 } else {
-                    bt.className = 'durak-card';
+                    bt = createRealCardElement(pair.attack); // placeholder, will be dimmed
                     bt.style.opacity = '0.15';
+                    bt.style.filter = 'grayscale(0.6)';
                 }
                 beatsEl.appendChild(bt);
             });
@@ -3142,6 +3213,168 @@
             // Динамическое перекрытие (оба варианта)
             updateCardOverlap(attacksEl);
             updateCardOverlap(beatsEl);
+        }
+
+        /**
+         * Рендер колод оппонентов (рубашками + кол-во карт).
+         * Простое распределение по 3 слотам (top / left / right).
+         */
+        function renderOpponentDecks(state) {
+            const top = document.getElementById('durak-opponents-top');
+            const left = document.getElementById('durak-opponents-left');
+            const right = document.getElementById('durak-opponents-right');
+            if (!top || !left || !right || !state || !state.players || !state.hands) return;
+
+            top.innerHTML = '';
+            left.innerHTML = '';
+            right.innerHTML = '';
+
+            const others = (state.players || []).filter(p => String(p) !== String(currentUserId));
+            if (others.length === 0) return;
+
+            const slots = [top, left, right];
+
+            others.slice(0, 3).forEach((pid, i) => {
+                const slot = slots[i];
+                const num = typeof state.hands[pid] === 'number' ? state.hands[pid] : (Array.isArray(state.hands[pid]) ? state.hands[pid].length : 0);
+
+                const deck = document.createElement('div');
+                deck.className = 'opponent-deck';
+
+                // Визуальная стопка рубашек (3 слоя)
+                const stackWrap = document.createElement('div');
+                stackWrap.style.position = 'relative';
+                stackWrap.style.width = '40px';
+                stackWrap.style.height = '54px';
+
+                const layers = Math.max(1, Math.min(3, num || 1));
+                for (let k = 0; k < layers; k++) {
+                    const back = document.createElement('div');
+                    back.className = 'deck-back';
+                    back.style.position = 'absolute';
+                    back.style.left = (k * 2) + 'px';
+                    back.style.top = (k * 1.5) + 'px';
+                    back.style.zIndex = String(20 - k);
+                    back.style.width = '40px';
+                    back.style.height = '54px';
+                    stackWrap.appendChild(back);
+                }
+
+                const count = document.createElement('div');
+                count.className = 'player-name';
+                count.textContent = num > 0 ? `${num} карт` : '—';
+
+                deck.appendChild(stackWrap);
+                deck.appendChild(count);
+
+                slot.appendChild(deck);
+            });
+        }
+
+        /**
+         * Рендер своей руки внизу.
+         */
+        function renderPlayerHand(state) {
+            const handEl = document.getElementById('durak-hand');
+            if (!handEl) return;
+            handEl.innerHTML = '';
+
+            const myHand = state && state.hands ? state.hands[currentUserId] : null;
+            if (!myHand || !Array.isArray(myHand) || myHand.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.fontSize = '12px';
+                empty.style.color = '#665f9e';
+                empty.textContent = 'Нет карт';
+                handEl.appendChild(empty);
+                return;
+            }
+
+            const allowed = state.allowed_actions || [];
+            const legalAttacks = state.legal_attacks || [];
+            const legalBeats = state.legal_beats || [];
+
+            myHand.forEach(cardStr => {
+                const cardEl = createRealCardElement(cardStr);
+
+                // Подсветка легальных ходов
+                let isLegal = false;
+                if (allowed.includes('attack') || allowed.includes('throw_in')) {
+                    if (legalAttacks.includes(cardStr)) isLegal = true;
+                } else if (allowed.includes('beat') || allowed.includes('take_table')) {
+                    if (legalBeats.some(lb => lb.beat === cardStr)) isLegal = true;
+                }
+                if (isLegal) {
+                    cardEl.style.boxShadow = '0 0 0 3px #d122e3, 0 4px 12px rgba(0,0,0,0.5)';
+                }
+
+                cardEl.onclick = () => onDurakCardClick(cardStr, allowed, cardEl);
+                handEl.appendChild(cardEl);
+            });
+        }
+
+        /**
+         * Рендер козыря (маленькая повёрнутая карта под колодой).
+         */
+        function renderTrumpCard(state) {
+            const el = document.getElementById('durak-trump-card');
+            if (!el) return;
+            el.innerHTML = '';
+
+            const suit = state && state.trump_suit;
+            if (!suit) return;
+
+            // Используем туза той масти как визуал козыря (большой символ масти)
+            const trumpEl = createRealCardElement('A' + suit);
+            trumpEl.style.width = '36px';
+            trumpEl.style.height = '50px';
+            trumpEl.style.transform = 'rotate(18deg)';
+            trumpEl.style.boxShadow = '0 2px 6px rgba(0,0,0,0.5)';
+
+            el.appendChild(trumpEl);
+        }
+
+        /**
+         * Рендер бито (сброс).
+         */
+        function renderDiscardPile(state) {
+            const pile = document.getElementById('durak-discard-pile');
+            if (!pile) return;
+            pile.innerHTML = '';
+
+            const count = (state && state.discard_count) || 0;
+            if (count > 0) {
+                // Показываем несколько рубашек как стопку бито
+                const layers = Math.min(4, Math.max(1, Math.floor(count / 3) + 1));
+                for (let k = 0; k < layers; k++) {
+                    const back = document.createElement('div');
+                    back.className = 'deck-back';
+                    back.style.position = 'absolute';
+                    back.style.left = (k * 1.5) + 'px';
+                    back.style.top = (k * 1) + 'px';
+                    back.style.width = '42px';
+                    back.style.height = '58px';
+                    back.style.zIndex = String(10 + k);
+                    pile.appendChild(back);
+                }
+                // Число
+                const num = document.createElement('div');
+                num.style.position = 'absolute';
+                num.style.fontSize = '9px';
+                num.style.color = '#665f9e';
+                num.style.bottom = '-14px';
+                num.textContent = count;
+                pile.style.position = 'relative';
+                pile.appendChild(num);
+            } else {
+                pile.innerHTML = '<div style="font-size:9px; color:#665f9e; text-align:center;">пусто</div>';
+            }
+        }
+
+        function updateDeckVisual(state) {
+            const stack = document.querySelector('#durak-deck-pile .deck-stack');
+            if (!stack || !state) return;
+            const rem = state.deck_remaining != null ? state.deck_remaining : '?';
+            stack.innerHTML = `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:10px; color:#8a84b8; font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,0.6);">${rem}</div>`;
         }
 
         /**
@@ -3342,7 +3575,7 @@
                     }
 
                     selectedBeatAttackCard = null;
-                    document.querySelectorAll('#durak-table-attacks .durak-card').forEach(el => el.classList.remove('selected'));
+                    document.querySelectorAll('#durak-table-attacks .real-durak-card').forEach(el => el.classList.remove('selected'));
                     return;
                 }
 
@@ -3364,7 +3597,7 @@
                         });
                     }
                     selectedBeatAttackCard = null;
-                    document.querySelectorAll('#durak-table-attacks .durak-card').forEach(el => el.classList.remove('selected'));
+                    document.querySelectorAll('#durak-table-attacks .real-durak-card').forEach(el => el.classList.remove('selected'));
                     return;
                 }
 
@@ -3387,9 +3620,10 @@
             selectedBeatAttackCard = attackCardStr;
 
             // Визуальное выделение
-            document.querySelectorAll('#durak-table-attacks .durak-card').forEach(el => {
+            document.querySelectorAll('#durak-table-attacks .real-durak-card').forEach(el => {
                 el.classList.remove('selected');
-                if (el.textContent.includes(attackCardStr.slice(0,-1)) && el.textContent.includes(attackCardStr.slice(-1))) {
+                if ((el.dataset.card && el.dataset.card === attackCardStr) ||
+                    (el.textContent && el.textContent.includes(attackCardStr.slice(0,-1)) && el.textContent.includes(attackCardStr.slice(-1)))) {
                     el.classList.add('selected');
                 }
             });
@@ -3400,6 +3634,25 @@
         function showDurakGameBoard() {
             const section = document.getElementById('game-room-section');
             if (section) section.style.display = 'block';
+
+            // Прячем заголовок "Игровая комната / ИГРА ИДЁТ", чтобы игровое поле занимало максимум места
+            const card = section.querySelector('.lobby-card');
+            if (card) {
+                const headerRow = card.querySelector('div:first-child');
+                if (headerRow) headerRow.style.display = 'none';
+                // Делаем карточку "прозрачной", чтобы стол был на первом плане без лишней рамки
+                card.style.background = 'transparent';
+                card.style.border = 'none';
+                card.style.padding = '0';
+                card.style.boxShadow = 'none';
+                // Убираем лишние отступы у контента
+                const content = document.getElementById('game-room-content');
+                if (content) content.style.paddingTop = '4px';
+            }
+
+            // Скрываем шапку "Комната ожидания", чтобы игровой стол занял максимум экрана
+            const wHeader = document.querySelector('#waiting-room-view .header');
+            if (wHeader) wHeader.style.display = 'none';
 
             const board = document.getElementById('durak-game-board');
             const loading = document.getElementById('durak-game-loading');
