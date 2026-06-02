@@ -148,6 +148,13 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        /* Allow scrolling the start menu (incl. full leaderboard) like in Flappy Chin */
+        #start-screen.game-container {
+            max-height:calc(100vh - 70px - env(safe-area-inset-bottom, 0px));
+            overflow-y:auto; -webkit-overflow-scrolling:touch; touch-action:pan-y!important;
+            padding-bottom: 20px;
+        }
+
         h1 {
             font-family: 'Orbitron', sans-serif;
             font-size: 28px;
@@ -437,7 +444,12 @@
         }
 
         // Блокируем любой touchmove на document — окно Mini App не закроется свайпом
+        // Но разрешаем скролл в меню старта (для полного лидерборда, как во Flappy Chin)
         document.addEventListener('touchmove', e => {
+            const startScreen = document.getElementById('start-screen');
+            if (startScreen && startScreen.contains(e.target)) {
+                return;
+            }
             e.preventDefault();
         }, { passive: false });
 

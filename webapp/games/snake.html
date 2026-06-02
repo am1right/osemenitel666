@@ -41,6 +41,13 @@
         }
         @keyframes slideUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
 
+        /* Allow scrolling the start menu (incl. full leaderboard) like in Flappy Chin */
+        #start-screen.game-container {
+            max-height:calc(100vh - 70px - env(safe-area-inset-bottom, 0px));
+            overflow-y:auto; -webkit-overflow-scrolling:touch; touch-action:pan-y!important;
+            padding-bottom: 20px;
+        }
+
         h1 { font-family:'Orbitron',sans-serif; font-size:28px; margin:0 0 10px 0; color:#fff; text-shadow:0 0 10px var(--neon-pink); }
 
         .game-board {
@@ -164,6 +171,15 @@
         document.body.style.overscrollBehavior = 'none';
         document.body.style.touchAction = 'none';
         document.body.style.overflow = 'hidden';
+
+        // Разрешаем скролл только внутри стартового меню (для полного лидерборда, как во Flappy)
+        document.addEventListener('touchmove', e => {
+            const startScreen = document.getElementById('start-screen');
+            if (startScreen && startScreen.contains(e.target)) {
+                return;
+            }
+            e.preventDefault();
+        }, { passive: false });
 
         let boardSize = 15;
         let snake = [{x:7,y:7}];

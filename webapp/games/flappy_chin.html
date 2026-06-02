@@ -61,6 +61,7 @@
         #start-screen.game-container {
             max-height:calc(100vh - 70px - env(safe-area-inset-bottom, 0px));
             overflow-y:auto; -webkit-overflow-scrolling:touch; touch-action:pan-y!important;
+            padding-bottom: 20px;
         }
         @keyframes slideUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
 
@@ -219,6 +220,15 @@
         document.body.style.overscrollBehavior = 'none';
         document.body.style.touchAction = 'none';
         document.body.style.overflow = 'hidden';
+
+        // Разрешаем скролл только внутри стартового меню (для полного лидерборда)
+        document.addEventListener('touchmove', e => {
+            const startScreen = document.getElementById('start-screen');
+            if (startScreen && startScreen.contains(e.target)) {
+                return;
+            }
+            e.preventDefault();
+        }, { passive: false });
 
         function applyTopPadding() {
             const tgTop = tg?.contentSafeAreaInsets?.top ?? 0;
