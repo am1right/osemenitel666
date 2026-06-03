@@ -116,6 +116,7 @@
       const img = document.createElement('img');
       img.src = `icons/durak/${file}`;
       img.className = 'rdcard-court';
+      if (file === 'jack.png') img.className += ' rdcard-jack';
       img.draggable = false;
       center.appendChild(img);
     } else if (isAce) {

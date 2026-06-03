@@ -52,7 +52,7 @@
     font-family: 'Orbitron', system-ui, sans-serif;
     font-weight: 800;
     /* cqh = % от высоты карты → цифра масштабируется под любой размер карты */
-    font-size: 48cqh;
+    font-size: 38cqh;
     letter-spacing: -0.05em;   /* чтобы "10" не вылезала за края */
     line-height: 1;
     color: inherit;
@@ -64,6 +64,10 @@
     width: 124%; height: 124%;
     object-fit: contain;
     filter: drop-shadow(1px 2px 3px rgba(0,0,0,0.4));
+}
+/* Валет — на 4% крупнее остальных фигур */
+.rdcard-jack {
+    width: 129%; height: 129%;
 }
 
 /* Тузы — крупная масть-картинка */
