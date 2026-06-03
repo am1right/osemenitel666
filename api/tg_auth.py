@@ -26,6 +26,10 @@ from fastapi import Depends, Header, HTTPException, Request
 
 BOT_TOKEN: str = os.getenv("BOT_TOKEN", "")
 INTERNAL_SECRET: str = os.getenv("INTERNAL_SECRET", "")
+# Фоллбэк: если INTERNAL_SECRET не задан, выводим его детерминированно из BOT_TOKEN.
+# Бот делает то же самое (та же строка) → секреты совпадают без отдельной env-переменной.
+if not INTERNAL_SECRET and BOT_TOKEN:
+    INTERNAL_SECRET = hashlib.sha256(("chin-internal:" + BOT_TOKEN).encode()).hexdigest()
 
 # Окно валидности initData — 1 час. Telegram рекомендует не больше суток,
 # мы берём 1 час: достаточно для сессии, слишком мало для реплея.

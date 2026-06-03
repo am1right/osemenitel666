@@ -34,6 +34,11 @@ INLINE_IMAGE_URL = f"{BASE_STATIC}/icons/inline.png"  # используется
 # ID владельца бота для уведомлений о подозрительной активности
 ADMIN_ID          = int(os.getenv("ADMIN_ID", "0"))
 INTERNAL_SECRET   = os.getenv("INTERNAL_SECRET", "")
+# Тот же фоллбэк, что и в api/tg_auth.py — выводим секрет из BOT_TOKEN,
+# чтобы bot↔API совпадали без отдельной env-переменной.
+if not INTERNAL_SECRET and BOT_TOKEN:
+    import hashlib
+    INTERNAL_SECRET = hashlib.sha256(("chin-internal:" + BOT_TOKEN).encode()).hexdigest()
 
 
 def _internal_headers() -> dict:
