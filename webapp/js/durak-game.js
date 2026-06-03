@@ -605,15 +605,18 @@
     const subEl = document.getElementById('dg-go-sub');
 
     const me = DG.userId;
-    let title = 'Игра окончена';
-    if (state.winner != null) {
-      title = (state.winner === me) ? 'Вы победили! 🎉' : 'Вы проиграли';
-    }
-    if (state.durak != null) {
-      const isMeDurak = state.durak === me;
-      title = isMeDurak ? 'Вы — дурак 🤡' : 'Вы не дурак! 🎉';
-    }
+    const isDurak = state.durak != null && state.durak === me;
+    let title;
+    if (isDurak) title = 'Вы — дурак';
+    else if (state.winner === me) title = 'Вы победили!';
+    else title = 'Вы не дурак!';
     if (titleEl) titleEl.textContent = title;
+
+    const emojiEl = document.getElementById('dg-go-emoji');
+    if (emojiEl) {
+      emojiEl.src = isDurak ? 'icons/emoji/durak.png' : 'icons/emoji/durak_win.png';
+      emojiEl.style.display = 'block';
+    }
 
     const pot = (window.currentLobbyData && window.currentLobbyData.pot) || 0;
     if (subEl) {
