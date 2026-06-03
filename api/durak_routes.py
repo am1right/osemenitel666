@@ -157,6 +157,13 @@ async def create_lobby(req: CreateLobbyRequest, tg_user: dict = Depends(require_
         raise HTTPException(status_code=400, detail="max_players must be between 2 and 6")
     if req.deck_size not in (24, 36, 52):
         raise HTTPException(status_code=400, detail="Invalid deck_size")
+    # В колоде должно хватать карт на раздачу по 6 каждому
+    _deck_max_players = {24: 4, 36: 6, 52: 6}
+    if req.max_players > _deck_max_players.get(req.deck_size, 6):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Колода на {req.deck_size} карт рассчитана максимум на {_deck_max_players[req.deck_size]} игроков",
+        )
     if req.game_type not in ("podkidnoy", "perevodnoy"):
         raise HTTPException(status_code=400, detail="Invalid game_type")
     if req.bet_amount < 0:
@@ -601,26 +608,49 @@ def _get_game(lobby_id: int):
 
 
 def _finalize_game(lobby_id: int, game) -> None:
-    """Завершение партии: выплата победителю, история, статус лобби, очистка памяти."""
-    winner = game.winner
+    """Завершение партии: банк делится ПРОГРЕССИВНО по порядку выхода
+    (раньше вышел — больше доля), дурак не получает ничего."""
     pot = 0
+    durak = getattr(game, "durak", None)
+    all_players = list(getattr(game, "all_player_ids", []) or [])
+    finished = list(getattr(game, "finished", []) or [])
+    # Победители в порядке выхода: сначала вышедшие (по очереди), затем прочие не-дураки
+    if durak is not None and all_players:
+        winners = [p for p in finished if p != durak]
+        for p in all_players:
+            if p != durak and p not in winners:
+                winners.append(p)
+    elif game.winner:
+        winners = [game.winner]
+    else:
+        winners = []
+    primary_winner = winners[0] if winners else game.winner
     try:
         lobby = db.get_durak_lobby_by_id(lobby_id) or {}
         pot = lobby.get('pot', 0) or 0
-        if winner and pot > 0:
+        if winners and pot > 0:
             commission = int(pot * DURAK_COMMISSION_RATE)
-            award = pot - commission
-            db.topup_wallet(winner, '', award, f"Победа в дураке (лобби #{lobby_id})")
-            logger.info(f"[DURAK PAYOUT] {award} to {winner} (comm {commission}) from pot {pot}")
+            prize = pot - commission
+            n = len(winners)
+            # Прогрессивные веса: [n, n-1, ..., 1] — первый вышедший получает больше всех
+            weights = [n - i for i in range(n)]
+            total_w = sum(weights)
+            amounts = [prize * w // total_w for w in weights]
+            amounts[0] += prize - sum(amounts)   # остаток округления — первому
+            for w, amount in zip(winners, amounts):
+                if amount > 0:
+                    db.topup_wallet(w, '', amount, f"Выигрыш в дураке (лобби #{lobby_id})")
+            logger.info(f"[DURAK PAYOUT] pot {pot} → {amounts} (comm {commission})")
     except Exception:
         logger.exception("Payout error")
     try:
         players = db.get_lobby_players(lobby_id) or []
+        winset = set(winners)
         players_data = [
-            {"user_id": p["user_id"], "first_name": p.get("first_name"), "is_winner": p["user_id"] == winner}
+            {"user_id": p["user_id"], "first_name": p.get("first_name"), "is_winner": p["user_id"] in winset}
             for p in players
         ]
-        db.save_durak_game_history(lobby_id, winner, pot, players_data)
+        db.save_durak_game_history(lobby_id, primary_winner, pot, players_data)
         db.finish_durak_lobby(lobby_id)
     except Exception:
         logger.exception("History save error")

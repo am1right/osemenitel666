@@ -90,8 +90,8 @@ class Deck:
             ranks = list(Rank)
         elif self.size == 36:
             ranks = [r for r in Rank if r.value >= 6]
-        else:  # 24
-            ranks = [r for r in Rank if r.value >= 10]
+        else:  # 24 = 9,10,В,Д,К,Т (6 рангов × 4 масти)
+            ranks = [r for r in Rank if r.value >= 9]
 
         deck = [Card(rank=r, suit=s) for s in Suit for r in ranks]
         return deck
@@ -115,9 +115,9 @@ class Deck:
 
         hands: List[List[Card]] = [[] for _ in range(num_players)]
 
-        # В настоящем Дураке карты раздаются по одной, начиная с игрока слева от сдающего.
-        # Для простоты и детерминированности пока используем циклическую раздачу.
-        cards_to_deal = 6 * num_players
+        # Циклическая раздача по одной карте. Защита от переполнения колоды:
+        # больше, чем есть, не раздаём (валидация числа игроков — на уровне лобби).
+        cards_to_deal = min(6 * num_players, len(self.cards))
 
         for i in range(cards_to_deal):
             player_index = i % num_players
