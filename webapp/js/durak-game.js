@@ -222,6 +222,7 @@
     others.forEach((pid) => {
       const tile = document.createElement('div');
       tile.className = 'dg-opp';
+      tile.dataset.uid = pid;   // для привязки летящих реакций
       if (pid === state.attacker) tile.classList.add('is-attacker');
       if (pid === state.defender) tile.classList.add('is-defender');
       // Офлайн-индикатор: connected приходит в state (из /state и бродкастов)
@@ -231,16 +232,17 @@
         ? state.hands[pid]
         : (Array.isArray(state.hands[pid]) ? state.hands[pid].length : 0);
 
-      // Карты «в руках» соперника — веер рубашек перед иконкой
+      // Веер рубашек = РЕАЛЬНОЕ число карт соперника (с уплотнением)
       const fan = document.createElement('div');
       fan.className = 'dg-opp-fan';
-      const fanCount = Math.min(5, Math.max(1, count));
-      for (let k = 0; k < fanCount; k++) {
+      const shown = Math.min(Math.max(count, 0), 18);   // кап для адекватной ширины
+      const step = shown > 1 ? Math.min(7, 54 / (shown - 1)) : 0;
+      const totalW = step * (shown - 1);
+      for (let k = 0; k < shown; k++) {
         const b = createBack();
-        const o = k - (fanCount - 1) / 2;
-        b.style.left = '50%';
-        b.style.marginLeft = (o * 9 - 12) + 'px';
-        b.style.transform = `rotate(${o * 11}deg)`;
+        b.style.left = `calc(50% + ${(k * step) - totalW / 2}px)`;
+        b.style.marginLeft = '-11px';
+        b.style.transform = `rotate(${(k - (shown - 1) / 2) * 4}deg)`;
         fan.appendChild(b);
       }
 
@@ -380,9 +382,26 @@
     });
 
     const total = sorted.length;
+
+    // Динамическое уплотнение: чем больше карт, тем плотнее, но угол
+    // (номинал + масть, ~22px слева) никогда не перекрывается.
+    const CARD_W = 66;
+    const MIN_VISIBLE = 24;                 // минимум видимой левой полосы карты
+    const MAX_OVERLAP = CARD_W - MIN_VISIBLE;
+    const containerW = handEl.clientWidth || (window.innerWidth - 20);
+    let overlap = 0;
+    if (total > 1) {
+      const needed = total * CARD_W;
+      if (needed > containerW) {
+        overlap = Math.ceil((needed - containerW) / (total - 1));
+      }
+      overlap = Math.max(0, Math.min(overlap, MAX_OVERLAP));
+    }
+
     sorted.forEach((cardStr, i) => {
       const card = createCard(cardStr);
       card.classList.add('dg-hand-card');
+      card.style.marginLeft = i === 0 ? '0' : `-${overlap}px`;
 
       // веер-дуга: крайние карты чуть ниже (translateY в экранных координатах)
       const mid = (total - 1) / 2;
@@ -585,7 +604,7 @@
           if (msg.final_state) render(msg.final_state);
           else loadState();
         } else if (type === 'reaction' && msg.emojiName) {
-          showFlyingReaction(msg.emojiName, msg.position || 'self');
+          showFlyingReaction(msg.emojiName, msg.user_id);
         } else if (type === 'presence') {
           if (DG.state) { DG.state.connected = msg.connected || []; render(DG.state); }
         }
@@ -678,26 +697,44 @@
   window.initDurakEmotions = initEmotions;
 
   function sendReaction(name) {
-    showFlyingReaction(name, 'self');
+    showFlyingReaction(name, DG.userId);
     if (DG.socket && DG.socket.readyState === WebSocket.OPEN) {
       DG.socket.send(JSON.stringify({
         action: 'reaction',
         lobby_id: DG.lobbyId,
         user_id: DG.userId,
-        data: { emojiName: name, position: 'self' },
+        data: { emojiName: name },
       }));
     }
   }
 
-  function showFlyingReaction(name, position) {
-    const host = document.getElementById('durak-board') || document.body;
+  /** Показывает летящий эмодзи возле игрока-отправителя. */
+  function showFlyingReaction(name, fromUserId) {
+    // Куда привязать: своя реакция — к кнопке эмоций (низ), чужая — к плитке соперника
+    let anchor = null;
+    if (fromUserId && String(fromUserId) !== String(DG.userId)) {
+      anchor = document.querySelector(`.dg-opp[data-uid="${fromUserId}"]`);
+    }
+    if (!anchor) anchor = document.getElementById('dg-emoji-btn');
+
     const el = document.createElement('div');
     el.className = 'dg-flying-reaction';
     el.innerHTML = `<img src="icons/emoji/${name}.png" draggable="false">`;
-    const left = position === 'self' ? '50%' : (30 + Math.random() * 40) + '%';
-    el.style.left = left;
-    el.style.bottom = position === 'self' ? '140px' : '60%';
-    host.appendChild(el);
+
+    let cx, cy;
+    if (anchor) {
+      const r = anchor.getBoundingClientRect();
+      cx = r.left + r.width / 2;
+      cy = r.top + r.height / 2;
+    } else {
+      cx = window.innerWidth / 2;
+      cy = window.innerHeight - 150;
+    }
+    el.style.left = cx + 'px';
+    el.style.top = cy + 'px';
+
+    // В body с position:fixed — не влияет на раскладку поля (карты не дёргаются)
+    document.body.appendChild(el);
     setTimeout(() => el.remove(), 1900);
   }
   window.showFlyingReaction = showFlyingReaction;

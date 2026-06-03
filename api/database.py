@@ -86,6 +86,12 @@ from api.db.admin import (
     admin_set_blocked,
     admin_set_ref_disabled,
     admin_get_summary_stats,
+    admin_reset_player_scores,
+    admin_reset_all_scores,
+    admin_set_energy,
+    admin_set_all_energy,
+    admin_zero_wallet,
+    admin_zero_all_wallets,
 )
 
 from api.db.durak import (
@@ -108,6 +114,8 @@ from api.db.durak import (
     get_durak_history,
     get_durak_ratings,
     get_durak_user_stats,
+    admin_reset_durak_all,
+    admin_reset_durak_player,
     ban_durak_user,
     is_durak_banned,
 )
@@ -142,6 +150,9 @@ __all__ = [
     "admin_ensure_self", "admin_get_player", "admin_adjust_wallet",
     "admin_adjust_score", "admin_set_blocked", "admin_set_ref_disabled",
     "admin_get_summary_stats",
+    "admin_reset_player_scores", "admin_reset_all_scores",
+    "admin_set_energy", "admin_set_all_energy",
+    "admin_zero_wallet", "admin_zero_all_wallets",
     # durak
     "create_durak_lobby", "get_active_durak_lobbies", "join_durak_lobby",
     "get_lobby_players", "finish_durak_lobby",
@@ -150,5 +161,7 @@ __all__ = [
     "leave_durak_lobby", "update_lobby_settings",
     "set_player_ready", "is_user_in_active_lobby", "start_durak_game",
     "get_durak_lobby_by_id", "save_durak_game_history", "get_durak_history",
-    "get_durak_ratings", "get_durak_user_stats", "ban_durak_user", "is_durak_banned",
+    "get_durak_ratings", "get_durak_user_stats",
+    "admin_reset_durak_all", "admin_reset_durak_player",
+    "ban_durak_user", "is_durak_banned",
 ]

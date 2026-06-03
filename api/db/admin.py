@@ -1,6 +1,70 @@
+import time
 from typing import Dict, Any, List, Optional
 
 from api.db.connection import get_connection, _cursor, _delete_player
+
+
+# ── Админские сбросы (персональные и массовые) ─────────────────────
+
+def admin_reset_player_scores(user_id: int) -> Dict[str, Any]:
+    """Обнуляет очки игрока во всех играх (score/last_score → 0)."""
+    conn = get_connection(); cur = _cursor(conn)
+    cur.execute("UPDATE scores SET score = 0, last_score = 0, updated_at = NOW() WHERE user_id = %s", (user_id,))
+    affected = cur.rowcount
+    conn.commit(); cur.close(); conn.close()
+    return {"ok": True, "affected": affected}
+
+
+def admin_reset_all_scores() -> Dict[str, Any]:
+    """Обнуляет очки во всех играх у всех игроков."""
+    conn = get_connection(); cur = _cursor(conn)
+    cur.execute("UPDATE scores SET score = 0, last_score = 0, updated_at = NOW()")
+    affected = cur.rowcount
+    conn.commit(); cur.close(); conn.close()
+    return {"ok": True, "affected": affected}
+
+
+def admin_set_energy(user_id: int, amount: int = 8) -> Dict[str, Any]:
+    """Устанавливает энергию игрока в абсолютное значение (по умолчанию 8)."""
+    conn = get_connection(); cur = _cursor(conn)
+    now_ms = int(time.time() * 1000)
+    cur.execute(
+        """
+        INSERT INTO energy (user_id, amount, last_regen, updated_at)
+        VALUES (%s, %s, %s, NOW())
+        ON CONFLICT (user_id) DO UPDATE SET amount = EXCLUDED.amount, updated_at = NOW()
+        """,
+        (user_id, amount, now_ms),
+    )
+    conn.commit(); cur.close(); conn.close()
+    return {"ok": True, "amount": amount}
+
+
+def admin_set_all_energy(amount: int = 8) -> Dict[str, Any]:
+    """Устанавливает энергию у всех игроков (по умолчанию 8)."""
+    conn = get_connection(); cur = _cursor(conn)
+    cur.execute("UPDATE energy SET amount = %s, updated_at = NOW()", (amount,))
+    affected = cur.rowcount
+    conn.commit(); cur.close(); conn.close()
+    return {"ok": True, "amount": amount, "affected": affected}
+
+
+def admin_zero_wallet(user_id: int) -> Dict[str, Any]:
+    """Обнуляет баланс Stars игрока."""
+    conn = get_connection(); cur = _cursor(conn)
+    cur.execute("UPDATE wallet SET balance = 0, updated_at = NOW() WHERE user_id = %s", (user_id,))
+    affected = cur.rowcount
+    conn.commit(); cur.close(); conn.close()
+    return {"ok": True, "affected": affected}
+
+
+def admin_zero_all_wallets() -> Dict[str, Any]:
+    """Обнуляет балансы Stars у всех игроков."""
+    conn = get_connection(); cur = _cursor(conn)
+    cur.execute("UPDATE wallet SET balance = 0, updated_at = NOW()")
+    affected = cur.rowcount
+    conn.commit(); cur.close(); conn.close()
+    return {"ok": True, "affected": affected}
 
 
 def get_user_flags(user_id: int) -> Dict[str, Any]:

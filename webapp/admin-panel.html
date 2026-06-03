@@ -108,6 +108,8 @@
         .wallet-btn:active { transform:scale(0.96); }
         .wallet-btn--add { background:rgba(0,255,100,0.15);color:#00ff64;border:1px solid rgba(0,255,100,0.35); }
         .wallet-btn--remove { background:rgba(255,68,102,0.12);color:#ff4466;border:1px solid rgba(255,68,102,0.3); }
+        .bulk-reset-btn { padding:11px 8px;border-radius:10px;font-family:'Orbitron',sans-serif;font-size:9.5px;font-weight:700;letter-spacing:0.3px;cursor:pointer;border:1px solid rgba(255,170,68,0.4);background:rgba(255,170,68,0.1);color:#ffaa44;transition:all 0.15s; }
+        .bulk-reset-btn:active { transform:scale(0.96); }
 
         /* Danger zone */
         .danger-zone { background:rgba(20,0,5,0.6);border:1px solid rgba(255,68,102,0.25);border-radius:14px;padding:14px;margin-bottom:16px; }
@@ -182,6 +184,15 @@
         <div class="stats-grid" id="summary-grid">
             <div class="stat-box"><div class="loading-spinner" style="width:20px;height:20px;margin:4px auto;"></div></div>
             <div class="stat-box"><div class="loading-spinner" style="width:20px;height:20px;margin:4px auto;"></div></div>
+        </div>
+
+        <!-- Массовые сбросы (для всех игроков) -->
+        <div class="section-title" style="color:rgba(255,68,102,0.7);">⚠️ Массовые сбросы (для ВСЕХ игроков)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <button type="button" onclick="globalReset('scores')" class="bulk-reset-btn">🎮 Обнулить очки</button>
+            <button type="button" onclick="globalReset('durak')" class="bulk-reset-btn">🃏 Сброс рейтинга Дурака</button>
+            <button type="button" onclick="globalReset('energy')" class="bulk-reset-btn">⚡ Энергия = 8</button>
+            <button type="button" onclick="globalReset('wallets')" class="bulk-reset-btn">⭐ Обнулить балансы</button>
         </div>
 
         <!-- Search -->
@@ -551,6 +562,15 @@
                 <div class="section-sep"><img src="icons/cup.png" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;"> Соревнования</div>
                 ${contestsHtml}
 
+                <!-- Quick resets (этот игрок) -->
+                <div class="section-sep">🧹 Быстрые сбросы (этот игрок)</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    <button type="button" onclick="quickReset(${p.user_id},'scores')" class="bulk-reset-btn">🎮 Обнулить очки</button>
+                    <button type="button" onclick="quickReset(${p.user_id},'durak')" class="bulk-reset-btn">🃏 Сброс Дурака</button>
+                    <button type="button" onclick="quickReset(${p.user_id},'energy')" class="bulk-reset-btn">⚡ Энергия = 8</button>
+                    <button type="button" onclick="quickReset(${p.user_id},'wallet')" class="bulk-reset-btn">⭐ Обнулить баланс</button>
+                </div>
+
                 <!-- Danger zone -->
                 <div class="section-sep" style="color:rgba(255,68,102,0.6);">⚠️ Управление аккаунтом</div>
                 <div class="danger-zone">
@@ -696,6 +716,52 @@
                 loadPlayers(true);
                 loadSummaryStats();
             } catch(e) { showToast('Ошибка очистки: ' + (e.message || ''), 'error'); }
+        }
+
+        // ── Быстрые сбросы (персональные / массовые) ──────────────
+        async function quickReset(userId, kind) {
+            const labels = {
+                scores: 'обнулить очки во всех играх',
+                durak: 'сбросить рейтинг Дурака',
+                energy: 'установить энергию 8',
+                wallet: 'обнулить баланс Stars',
+            };
+            if (!confirm(`Игрок ${userId}: ${labels[kind]}?`)) return;
+            const ep = { scores: 'reset_scores', durak: 'reset_durak', energy: 'reset_energy', wallet: 'reset_wallet' }[kind];
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api(`${API}/api/admin/player/${userId}/${ep}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user.username }),
+                });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(d.detail || `HTTP ${res.status}`);
+                showToast('Готово', 'success');
+                await openPlayerModal(userId);
+                loadPlayers(true);
+            } catch(e) { showToast('Ошибка: ' + (e.message || ''), 'error'); }
+        }
+
+        async function globalReset(kind) {
+            const labels = {
+                scores: 'ОБНУЛИТЬ очки во всех играх у ВСЕХ игроков',
+                durak: 'СБРОСИТЬ рейтинг Дурака у ВСЕХ',
+                energy: 'установить энергию 8 ВСЕМ игрокам',
+                wallets: 'ОБНУЛИТЬ балансы Stars у ВСЕХ',
+            };
+            if (!confirm(`⚠️ ${labels[kind]}?\nДействие необратимо.`)) return;
+            if (!confirm('Подтверди ещё раз: применить ко ВСЕМ игрокам?')) return;
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api(`${API}/api/admin/reset_all/${kind}?username=${encodeURIComponent(user.username)}`, { method: 'POST' });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(d.detail || `HTTP ${res.status}`);
+                const extra = (d.affected != null) ? `: затронуто ${d.affected}` : (d.deleted != null ? `: удалено ${d.deleted}` : '');
+                showToast('Готово' + extra, 'success');
+                loadPlayers(true);
+                loadSummaryStats();
+            } catch(e) { showToast('Ошибка: ' + (e.message || ''), 'error'); }
         }
 
         // ── Block toggle ──────────────────────────────────────────

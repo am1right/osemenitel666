@@ -362,19 +362,19 @@
         .dg-emoji-item:active { background: rgba(255,255,255,0.12); }
         .dg-emoji-item img { width: 34px; height: 34px; }
         .dg-flying-reaction {
-            position: absolute;
-            transform: translateX(-50%);
-            z-index: 200;
+            position: fixed;            /* в body, не влияет на раскладку поля */
+            transform: translate(-50%, -50%);
+            z-index: 9999;
             pointer-events: none;
             animation: dgFly 1.9s forwards;
         }
         .dg-flying-reaction img { width: 56px; height: 56px;
             filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5)); }
         @keyframes dgFly {
-            0%   { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
-            15%  { opacity: 1; transform: translate(-50%, -10px) scale(1.15); }
+            0%   { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
+            15%  { transform: translate(-50%, -70%) scale(1.15); opacity: 1; }
             70%  { opacity: 1; }
-            100% { transform: translate(-50%, -120px) scale(0.7); opacity: 0; }
+            100% { transform: translate(-50%, -200%) scale(0.7); opacity: 0; }
         }
 
         /* ══════════ GAME OVER ══════════ */

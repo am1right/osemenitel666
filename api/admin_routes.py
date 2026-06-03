@@ -155,6 +155,52 @@ try:
         result = db.admin_ensure_self(req.user_id, (req.first_name or req.username or "Игрок").strip())
         return {"status": "ok", **result}
 
+    # ── Быстрые сбросы ──────────────────────────────────────────
+    class AdminActionRequest(BaseModel):
+        username: str
+
+    # Персональные (для конкретного игрока)
+    @router.post("/player/{user_id}/reset_scores")
+    async def admin_reset_scores(user_id: int, req: AdminActionRequest):
+        _check_admin(req.username)
+        return db.admin_reset_player_scores(user_id)
+
+    @router.post("/player/{user_id}/reset_durak")
+    async def admin_reset_player_durak(user_id: int, req: AdminActionRequest):
+        _check_admin(req.username)
+        return db.admin_reset_durak_player(user_id)
+
+    @router.post("/player/{user_id}/reset_energy")
+    async def admin_reset_player_energy(user_id: int, req: AdminActionRequest):
+        _check_admin(req.username)
+        return db.admin_set_energy(user_id, 8)
+
+    @router.post("/player/{user_id}/reset_wallet")
+    async def admin_reset_player_wallet(user_id: int, req: AdminActionRequest):
+        _check_admin(req.username)
+        return db.admin_zero_wallet(user_id)
+
+    # Массовые (для всех игроков)
+    @router.post("/reset_all/scores")
+    async def admin_reset_all_scores_ep(username: str):
+        _check_admin(username)
+        return db.admin_reset_all_scores()
+
+    @router.post("/reset_all/durak")
+    async def admin_reset_all_durak_ep(username: str):
+        _check_admin(username)
+        return db.admin_reset_durak_all()
+
+    @router.post("/reset_all/energy")
+    async def admin_reset_all_energy_ep(username: str):
+        _check_admin(username)
+        return db.admin_set_all_energy(8)
+
+    @router.post("/reset_all/wallets")
+    async def admin_reset_all_wallets_ep(username: str):
+        _check_admin(username)
+        return db.admin_zero_all_wallets()
+
 except ImportError as e:
     router = None
     logger.error("[ADMIN_ROUTES] FastAPI не найден: %s", e)

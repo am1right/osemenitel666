@@ -592,6 +592,33 @@ def get_durak_ratings(limit: int = 20) -> List[Dict[str, Any]]:
     return result
 
 
+def admin_reset_durak_all() -> Dict[str, Any]:
+    """Полный сброс рейтинга Дурака: чистит историю игр (на ней строится рейтинг)."""
+    conn = get_connection()
+    cur = _cursor(conn)
+    cur.execute("DELETE FROM durak_game_history")
+    deleted = cur.rowcount
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"ok": True, "deleted": deleted}
+
+
+def admin_reset_durak_player(user_id: int) -> Dict[str, Any]:
+    """Сброс рейтинга Дурака у конкретного игрока (удаляет его записи истории)."""
+    conn = get_connection()
+    cur = _cursor(conn)
+    cur.execute(
+        "DELETE FROM durak_game_history WHERE players @> %s::jsonb",
+        (json.dumps([{"user_id": user_id}]),),
+    )
+    deleted = cur.rowcount
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"ok": True, "deleted": deleted}
+
+
 def ban_durak_user(user_id: int, reason: str = "") -> bool:
     conn = get_connection()
     cur = _cursor(conn)
