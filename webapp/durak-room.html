@@ -361,36 +361,6 @@
                         }
                     })();
                     return;
-
-                    // Скрываем заголовок "Игровая комната", чтобы поле занимало место
-                    const gCard = gameRoom ? gameRoom.querySelector('.lobby-card') : null;
-                    if (gCard) {
-                        const hRow = gCard.querySelector('div:first-child');
-                        if (hRow) hRow.style.display = 'none';
-                        gCard.style.background = 'transparent';
-                        gCard.style.border = 'none';
-                        gCard.style.padding = '0';
-                    }
-
-                    if (!durakSocket && currentUserId) {
-                        durakSocket = new DurakSocket(currentLobbyId, currentUserId);
-                        durakSocket.connect();
-                        setupDurakSocketListeners();
-                    }
-
-                    // Заполняем инфо
-                    const gInfo = document.getElementById('game-room-lobby-info');
-                    if (gInfo && currentLobbyData) {
-                        const b = currentLobbyData.bet_amount > 0 ? `${currentLobbyData.bet_amount} ⭐` : 'Без ставки';
-                        gInfo.innerHTML = `Дека: ${currentLobbyData.deck_size || 36} • Тип: ${currentLobbyData.game_type || 'podkidnoy'} • Ставка: ${b}`;
-                    }
-
-                    // Реальная игровая доска
-                    if (typeof window.__durakShowRealGameBoard === 'function') {
-                        window.__durakShowRealGameBoard();
-                    }
-
-                    return;
                 }
 
                 loadPlayers();
