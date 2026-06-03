@@ -367,20 +367,12 @@
             tg.BackButton.show();
 
             tg.BackButton.onClick(() => {
-                if (currentLobbyId && typeof leaveCurrentLobby === 'function') {
-                    // Находимся внутри лобби → выходим из него и возвращаемся к списку лобби Дурака
-                    // Кнопка "Назад" при этом остаётся (теперь она будет вести на главную)
-                    leaveCurrentLobby().finally(() => {
-                        if (tg.BackButton) tg.BackButton.show();
-                    });
-                } else {
-                    // Находимся на общем списке лобби Дурака → полностью выходим из раздела
-                    stopLobbyListPolling();
-                    if (tg.BackButton) tg.BackButton.hide();
-                    setTimeout(() => {
-                        window.location.href = 'index.html';
-                    }, 50);
-                }
+                // durak.html = меню Дурака. "Назад" → выход в общее меню игр.
+                stopLobbyListPolling();
+                if (tg.BackButton) tg.BackButton.hide();
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 50);
             });
         }
 
@@ -394,259 +386,6 @@
         
         
         
-        async function handleLobbyInvite(lobbyId) {
-            const listView = document.getElementById('lobby-list-view');
-            const waitingView = document.getElementById('waiting-room-view');
-
-            if (listView) listView.style.display = 'none';
-            if (waitingView) waitingView.style.display = 'block';
-
-            const infoEl = document.getElementById('lobby-info');
-            if (!infoEl) return;
-
-            // Показываем загрузку
-            infoEl.innerHTML = `<div style="text-align:center; padding:20px; color:#aaa;">Загружаем информацию о лобби...</div>`;
-
-            try {
-                const api = window.apiFetch || fetch;
-                const res = await api(`/api/durak/lobbies/${lobbyId}`);
-                const lobby = await res.json();
-
-                const lobbyName = lobby.name || `Лобби #${lobbyId}`;
-                const betText = lobby.bet_amount > 0 ? `⭐ Ставка: ${lobby.bet_amount}` : 'Без ставки';
-                const typeText = lobby.game_type === 'podkidnoy' ? 'Подкидной' : 'Переводной';
-
-                infoEl.innerHTML = `
-                    <div style="text-align: center; padding: 12px 8px;">
-                        <div style="font-size: 1.15rem; font-weight:700; margin-bottom: 6px; color:#d122e3;">
-                            🎉 Тебя пригласили!
-                        </div>
-                        <div style="font-size: 1.05rem; margin-bottom: 12px;">
-                            <strong>${lobbyName}</strong>
-                        </div>
-
-                        <div style="background:#1a1633; border-radius:10px; padding:10px; margin-bottom:16px; font-size:0.9rem; line-height:1.4;">
-                            👥 Игроков: <strong>${lobby.current_players || 0}/${lobby.max_players}</strong><br>
-                            ${betText}<br>
-                            🃏 ${lobby.deck_size} карт • ${typeText}
-                        </div>
-
-                        <button onclick="joinInvitedLobby(${lobbyId})" 
-                                style="background:#d122e3; color:#000; border:none; padding:14px 36px; 
-                                       border-radius:12px; font-weight:700; font-size:1rem; margin-bottom:10px; width:100%; max-width:260px;">
-                            Присоединиться к лобби
-                        </button>
-                        <br>
-                        <button onclick="cancelInviteAndShowList()" 
-                                style="background:transparent; color:#888; border:1px solid #555; 
-                                       padding:8px 24px; border-radius:8px; font-size:0.9rem;">
-                            Отмена
-                        </button>
-                    </div>
-                `;
-            } catch (e) {
-                infoEl.innerHTML = `
-                    <div style="text-align:center; padding:16px;">
-                        Не удалось загрузить лобби.<br>
-                        <button onclick="cancelInviteAndShowList()" style="margin-top:12px; padding:8px 20px; border-radius:8px;">
-                            Вернуться к списку
-                        </button>
-                    </div>
-                `;
-            }
-
-            const inviteSection = document.getElementById('invite-section');
-            if (inviteSection) inviteSection.style.display = 'none';
-
-            const readyStatus = document.getElementById('ready-status');
-            if (readyStatus) readyStatus.style.display = 'none';
-        }
-
-        async function joinInvitedLobby(lobbyId) {
-            try {
-                await joinLobby(lobbyId);
-            } catch (e) {
-                alert("Не удалось присоединиться к лобби. Возможно, оно уже заполнено или игра началась.");
-                cancelInviteAndShowList();
-            }
-        }
-
-        function cancelInviteAndShowList() {
-            const waitingView = document.getElementById('waiting-room-view');
-            const listView = document.getElementById('lobby-list-view');
-
-            if (waitingView) waitingView.style.display = 'none';
-            if (listView) listView.style.display = 'block';
-
-            loadLobbies();
-        }
-
-        async function leaveCurrentLobby() {
-            if (!currentLobbyId || !currentUserId) return;
-
-            const bet = currentLobbyData?.bet_amount || 0;
-            const pot = currentLobbyData?.pot || 0;
-
-            if (bet > 0) {
-                const confirmLeave = confirm(
-                    `⚠️ В этом лобби стоит ставка ${bet} ⭐.\n\n` +
-                    `Если ты выйдешь сейчас, твоя ставка уйдёт в общий банк лобби.\n` +
-                    `Ты не получишь её обратно.\n\n` +
-                    `Продолжить выход?`
-                );
-                if (!confirmLeave) return;
-            } else {
-                // Обычное подтверждение для без-ставочных лобби
-                if (!confirm("Ты уверены, что хочешь выйти из лобби?")) {
-                    return;
-                }
-            }
-
-            try {
-                const api = window.apiFetch || fetch;
-                await api(`/api/durak/lobbies/${currentLobbyId}/leave`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: currentUserId })
-                });
-            } catch (e) {
-                console.error("Leave error", e);
-            }
-
-            // Показываем уведомление, если была ставка
-            if (bet > 0) {
-                alert(`Твоя ставка ${bet} ⭐ ушла в банк лобби.`);
-            }
-
-            exitWaitingRoom();
-        }
-
-        // === Blacklist для названий лобби (клиент) ===
-        const FORBIDDEN_LOBBY_WORDS = [
-            "хуй", "хуи", "хуя", "хер", "пизд", "ебал", "ебан", "бля", "сук", "мудак",
-            "дроч", "пидор", "педик", "fuck", "shit", "cunt", "dick"
-        ];
-
-        function containsForbiddenWords(text) {
-            if (!text) return false;
-            const lower = text.toLowerCase();
-            return FORBIDDEN_LOBBY_WORDS.some(word => lower.includes(word));
-        }
-
-        /**
-         * Приглашение в текущее лобби через стандартный шэринг Telegram
-         */
-        async function inviteToCurrentLobby() {
-            if (!currentLobbyId || !currentLobbyData) {
-                alert("Сначала зайдите в лобби");
-                return;
-            }
-
-            const tg = window.Telegram?.WebApp;
-            if (!tg) {
-                alert("Эта функция доступна только внутри Telegram");
-                return;
-            }
-
-            const lobby = currentLobbyData;
-            const lobbyName = lobby.name || `Лобби #${currentLobbyId}`;
-
-            // Получаем актуальный юзернейм бота с сервера (чтобы всегда совпадал с BOT_USERNAME в env)
-            let botUsername = "chingamebot";
-            try {
-                if (!window.__durakBotUsername) {
-                    const api = window.apiFetch || fetch;
-                    const res = await api('/api/bot-username');
-                    if (res.ok) {
-                        const data = await res.json();
-                        window.__durakBotUsername = data.username || "chingamebot";
-                    }
-                }
-                botUsername = window.__durakBotUsername || "chingamebot";
-            } catch (e) {
-                console.warn('Failed to fetch bot username, using fallback', e);
-            }
-
-            const link = `https://t.me/${botUsername}?startapp=durak_lobby_${currentLobbyId}`;
-
-            // Собираем красивый текст приглашения с полной информацией
-            let text = `🎮 Присоединяйся в лобби "${lobbyName}"!\n\n`;
-            text += `👥 Игроков: ${lobby.current_players || 1}/${lobby.max_players}\n`;
-            if (lobby.bet_amount > 0) {
-                text += `⭐ Ставка: ${lobby.bet_amount}\n`;
-            }
-            text += `🃏 ${lobby.deck_size} карт • ${lobby.game_type === 'podkidnoy' ? 'Подкидной' : 'Переводной'}\n\n`;
-            text += `Нажимай кнопку ниже, чтобы зайти прямо в лобби!`;
-
-            try {
-                if (typeof tg.shareUrl === 'function') {
-                    tg.shareUrl(link, text);
-                } else {
-                    const shareLink = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
-                    tg.openTelegramLink(shareLink);
-                }
-            } catch (e) {
-                console.error(e);
-                window.open(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`, '_blank');
-            }
-        }
-
-        /**
-         * Красивое модальное подтверждение вместо нативного confirm()
-         * Возвращает Promise<boolean>
-         */
-        function showCustomConfirm(title, message) {
-            return new Promise((resolve) => {
-                const modal = document.getElementById('confirm-modal');
-                const titleEl = document.getElementById('confirm-title');
-                const messageEl = document.getElementById('confirm-message');
-                const cancelBtn = document.getElementById('confirm-cancel-btn');
-                const okBtn = document.getElementById('confirm-ok-btn');
-
-                if (!modal || !titleEl || !messageEl || !cancelBtn || !okBtn) {
-                    // Fallback на нативный confirm если модал не найден
-                    resolve(confirm(message));
-                    return;
-                }
-
-                titleEl.textContent = title;
-                messageEl.textContent = message;
-
-                // Показываем модал
-                modal.style.display = 'flex';
-
-                // Удаляем старые обработчики (на всякий случай)
-                const newCancel = cancelBtn.cloneNode(true);
-                const newOk = okBtn.cloneNode(true);
-                cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
-                okBtn.parentNode.replaceChild(newOk, okBtn);
-
-                const cleanup = () => {
-                    modal.style.display = 'none';
-                    newCancel.onclick = null;
-                    newOk.onclick = null;
-                };
-
-                newCancel.onclick = () => {
-                    cleanup();
-                    resolve(false);
-                };
-
-                newOk.onclick = () => {
-                    cleanup();
-                    resolve(true);
-                };
-
-                // Закрытие по клику на фон
-                modal.onclick = (e) => {
-                    if (e.target === modal) {
-                        cleanup();
-                        resolve(false);
-                    }
-                };
-            });
-        }
-
         async function toggleDurakHistory() {
             const el = document.getElementById('durak-history');
             if (!el) return;
@@ -798,14 +537,23 @@
                 .then(d => { if (d && d.username) window.__durakBotUsername = d.username; })
                 .catch(() => {});
 
-            // === Обработка приглашения в лобби через start_param ===
+            // === Приглашение в лобби через start_param (durak_lobby_ID) ===
+            // Показываем превью лобби; согласие → join → редирект в комнату.
             const startParam = tg.initDataUnsafe?.start_param;
             if (startParam && startParam.startsWith('durak_lobby_')) {
-                const lobbyId = parseInt(startParam.replace('durak_lobby_', ''));
+                const lobbyId = parseInt(startParam.replace('durak_lobby_', ''), 10);
                 if (lobbyId) {
-                    // Красивая обработка приглашения
-                    handleLobbyInvite(lobbyId);
-                    return; // не загружаем обычный список
+                    (window.apiFetch || fetch)(`/api/durak/lobbies/${lobbyId}`)
+                        .then(r => r.ok ? r.json() : null)
+                        .then(lobby => {
+                            if (lobby && lobby.id && typeof showLobbyPreview === 'function') {
+                                showLobbyPreview(lobby);   // confirm → joinLobby → durak-room.html
+                            } else {
+                                alert('Лобби не найдено или игра уже началась');
+                            }
+                        })
+                        .catch(() => alert('Не удалось загрузить лобби'));
+                    return; // не грузим список в этом сценарии
                 }
             }
 
