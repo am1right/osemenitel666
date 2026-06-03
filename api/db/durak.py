@@ -17,6 +17,7 @@ def create_durak_lobby(
     cheating_enabled: bool,
     bet_amount: int = 0,
     name: str = None,
+    photo_url: str = None,
 ) -> int:
     """Создаёт новое лобби Дурака и добавляет создателя как первого игрока."""
     conn = get_connection()
@@ -43,9 +44,9 @@ def create_durak_lobby(
     lobby_id = cur.fetchone()["id"]
 
     cur.execute('''
-        INSERT INTO durak_lobby_players (lobby_id, user_id, first_name, is_ready)
-        VALUES (%s, %s, %s, TRUE)
-    ''', (lobby_id, creator_id, creator_name))
+        INSERT INTO durak_lobby_players (lobby_id, user_id, first_name, is_ready, photo_url)
+        VALUES (%s, %s, %s, TRUE, %s)
+    ''', (lobby_id, creator_id, creator_name, photo_url))
 
     conn.commit()
     cur.close()
@@ -93,7 +94,7 @@ def get_active_durak_lobbies(limit: int = 50) -> List[Dict[str, Any]]:
     return result
 
 
-def join_durak_lobby(lobby_id: int, user_id: int, first_name: str) -> bool:
+def join_durak_lobby(lobby_id: int, user_id: int, first_name: str, photo_url: str = None) -> bool:
     """Присоединяет игрока к лобби. Возвращает True если успешно."""
     conn = get_connection()
     cur = _cursor(conn)
@@ -139,9 +140,9 @@ def join_durak_lobby(lobby_id: int, user_id: int, first_name: str) -> bool:
 
     try:
         cur.execute('''
-            INSERT INTO durak_lobby_players (lobby_id, user_id, first_name)
-            VALUES (%s, %s, %s)
-        ''', (lobby_id, user_id, first_name))
+            INSERT INTO durak_lobby_players (lobby_id, user_id, first_name, photo_url)
+            VALUES (%s, %s, %s, %s)
+        ''', (lobby_id, user_id, first_name, photo_url))
         conn.commit()
         success = True
     except Exception:
@@ -158,7 +159,7 @@ def get_lobby_players(lobby_id: int) -> List[Dict[str, Any]]:
     conn = get_connection()
     cur = _cursor(conn)
     cur.execute('''
-        SELECT user_id, first_name, is_ready, joined_at
+        SELECT user_id, first_name, is_ready, joined_at, photo_url
         FROM durak_lobby_players
         WHERE lobby_id = %s
         ORDER BY joined_at

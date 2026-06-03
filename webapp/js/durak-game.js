@@ -229,20 +229,30 @@
         ? state.hands[pid]
         : (Array.isArray(state.hands[pid]) ? state.hands[pid].length : 0);
 
-      // мини-веер рубашек под аватаром
+      // Карты «в руках» соперника — веер рубашек перед иконкой
       const fan = document.createElement('div');
       fan.className = 'dg-opp-fan';
       const fanCount = Math.min(5, Math.max(1, count));
       for (let k = 0; k < fanCount; k++) {
         const b = createBack();
-        b.style.left = (k * 6) + 'px';
-        b.style.transform = `rotate(${(k - (fanCount - 1) / 2) * 6}deg)`;
+        const o = k - (fanCount - 1) / 2;
+        b.style.left = '50%';
+        b.style.marginLeft = (o * 9 - 12) + 'px';
+        b.style.transform = `rotate(${o * 11}deg)`;
         fan.appendChild(b);
       }
 
       const av = document.createElement('div');
       av.className = 'dg-opp-avatar';
-      av.textContent = avatarLetter(pid);
+      const photo = window.durakPlayersById && window.durakPlayersById[pid] && window.durakPlayersById[pid].photo_url;
+      if (photo) {
+        const img = document.createElement('img');
+        img.src = photo;
+        img.draggable = false;
+        av.appendChild(img);
+      } else {
+        av.textContent = avatarLetter(pid);
+      }
 
       const badge = document.createElement('div');
       badge.className = 'dg-opp-badge';
@@ -362,17 +372,27 @@
     const beatable = new Set((state.legal_beats || []).map((b) => b.beat));
     const isDefender = state.role === 'defender';
 
-    const total = my.length;
-    my.forEach((cardStr, i) => {
+    // Сортировка: от младшей к старшей, козыри правее всех
+    const rankVal = (r) => ({ J: 11, Q: 12, K: 13, A: 14 }[r] || parseInt(r, 10));
+    const trump = state.trump_suit;
+    const isTrump = (c) => c.slice(-1) === trump;
+    const sorted = [...my].sort((a, b) => {
+      const ta = isTrump(a), tb = isTrump(b);
+      if (ta !== tb) return ta ? 1 : -1;
+      return rankVal(a.slice(0, -1)) - rankVal(b.slice(0, -1));
+    });
+
+    const total = sorted.length;
+    sorted.forEach((cardStr, i) => {
       const card = createCard(cardStr);
       card.classList.add('dg-hand-card');
 
-      // веер: лёгкий поворот и подъём по дуге
+      // веер-дуга: крайние карты чуть ниже (translateY в экранных координатах)
       const mid = (total - 1) / 2;
       const offset = i - mid;
       const rot = offset * Math.min(5, 40 / Math.max(total, 1));
-      const lift = Math.abs(offset) * 2;
-      card.style.transform = `rotate(${rot}deg) translateY(${lift}px)`;
+      const lift = offset * offset * 2.2;
+      card.style.transform = `translateY(${lift}px) rotate(${rot}deg)`;
       card.style.zIndex = String(10 + i);
 
       const playable = isDefender ? beatable.has(cardStr) : legalAttacks.has(cardStr);

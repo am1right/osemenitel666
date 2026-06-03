@@ -92,27 +92,27 @@
         }
         .dg-opp {
             position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            padding-top: 14px;
+            width: 76px; height: 96px;
         }
+        /* Карты «в руках» соперника — перед иконкой, перекрывают её низ */
         .dg-opp-fan {
             position: absolute;
-            top: 0; left: 50%;
+            top: 32px; left: 50%;
             transform: translateX(-50%);
-            width: 60px; height: 30px;
+            width: 72px; height: 40px;
+            z-index: 2;
+            pointer-events: none;
         }
         .dg-opp-fan .rdback {
             position: absolute;
-            top: 0; left: 50%;
-            margin-left: -11px;
-            width: 22px; height: 30px;
+            bottom: 0; left: 50%;
+            width: 24px; height: 38px;
             transform-origin: bottom center;
         }
         .dg-opp-avatar {
-            position: relative;
+            position: absolute;
+            top: 0; left: 50%;
+            transform: translateX(-50%);
             width: 54px; height: 54px;
             border-radius: 13px;
             background: linear-gradient(145deg, #3a4f5e, #243640);
@@ -122,6 +122,12 @@
             font-weight: 700; font-size: 22px;
             color: #fff;
             box-shadow: 0 4px 12px rgba(0,0,0,0.45);
+            overflow: hidden;
+            z-index: 1;
+        }
+        .dg-opp-avatar img {
+            width: 100%; height: 100%;
+            object-fit: cover; border-radius: 11px;
         }
         .dg-opp.is-attacker .dg-opp-avatar {
             border-color: #ff4d6d;
@@ -144,9 +150,13 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.5);
         }
         .dg-opp-name {
+            position: absolute;
+            bottom: 0; left: 50%;
+            transform: translateX(-50%);
+            z-index: 3;
             font-size: 11px;
             color: rgba(255,255,255,0.8);
-            max-width: 72px;
+            max-width: 76px;
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
 
@@ -395,16 +405,6 @@
     <div id="durak-board">
 
         <!-- Верхняя панель -->
-        <div class="dg-topbar">
-            <div class="dg-icon-btn" title="Сдаться / выйти"
-                 onclick="window.location.href='durak-room.html?lobby=' + (window.currentLobbyId||'');">🏳️</div>
-            <div class="dg-topbar-center">
-                <span>Козырь</span>
-                <div class="dg-trump-badge" id="dg-trump-badge"></div>
-            </div>
-            <div class="dg-balance"><span id="dg-balance-val">0</span> ⭐</div>
-        </div>
-
         <!-- Соперники -->
         <div class="dg-opponents" id="dg-opponents"></div>
 
@@ -436,7 +436,10 @@
             <div class="dg-phase" id="dg-phase">Загрузка…</div>
             <div class="dg-actions" id="dg-actions"></div>
             <div class="dg-side-actions">
+                <div class="dg-balance"><span id="dg-balance-val">0</span> ⭐</div>
                 <div class="dg-icon-btn" id="dg-emoji-btn" title="Эмоции">😊</div>
+                <div class="dg-icon-btn" title="Сдаться / выйти"
+                     onclick="window.location.href='durak-room.html?lobby=' + (window.currentLobbyId||'');">🏳️</div>
             </div>
         </div>
 

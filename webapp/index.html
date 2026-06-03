@@ -345,6 +345,16 @@
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready();
+
+        // Пригласительная ссылка (durak_lobby_X) → сразу в Дурака, минуя меню игр
+        (function () {
+            const sp = tg.initDataUnsafe && tg.initDataUnsafe.start_param;
+            if (sp && sp.indexOf('durak_lobby_') === 0) {
+                const id = parseInt(sp.replace('durak_lobby_', ''), 10);
+                if (id) { window.location.href = 'durak.html?join_lobby=' + id; return; }
+            }
+        })();
+
         // Полный экран только на телефоне
         if (typeof window.initTelegramFullscreen === 'function') {
           window.initTelegramFullscreen();

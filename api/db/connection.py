@@ -296,10 +296,15 @@ def init_db():
             first_name TEXT,
             joined_at  TIMESTAMP DEFAULT NOW(),
             is_ready   BOOLEAN DEFAULT FALSE,
+            photo_url  TEXT,
             UNIQUE(lobby_id, user_id)
         )
     ''')
     cur.execute('CREATE INDEX IF NOT EXISTS idx_durak_players_lobby ON durak_lobby_players(lobby_id)')
+    try:
+        cur.execute("ALTER TABLE durak_lobby_players ADD COLUMN IF NOT EXISTS photo_url TEXT")
+    except Exception:
+        pass
 
     cur.execute('''
         CREATE TABLE IF NOT EXISTS durak_game_history (

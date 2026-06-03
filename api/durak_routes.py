@@ -101,11 +101,13 @@ class CreateLobbyRequest(BaseModel):
     game_type: str = "podkidnoy"          # podkidnoy | perevodnoy
     cheating_enabled: bool = False
     bet_amount: int = 0
+    photo_url: str | None = None
 
 
 class JoinLobbyRequest(BaseModel):
     user_id: int
     first_name: str = ""
+    photo_url: str | None = None
 
 
 class LeaveLobbyRequest(BaseModel):
@@ -154,7 +156,8 @@ async def create_lobby(req: CreateLobbyRequest):
         deck_size=req.deck_size,
         game_type=req.game_type,
         cheating_enabled=req.cheating_enabled,
-        bet_amount=req.bet_amount
+        bet_amount=req.bet_amount,
+        photo_url=req.photo_url
     )
     logger.info(f"[DURAK] Lobby #{lobby_id} created by user {req.user_id}")
     return {"lobby_id": lobby_id}
@@ -195,7 +198,7 @@ async def join_lobby(lobby_id: int, req: JoinLobbyRequest):
     if existing and existing != lobby_id:
         raise HTTPException(status_code=400, detail="You are already in another active lobby")
 
-    success = db.join_durak_lobby(lobby_id, req.user_id, req.first_name)
+    success = db.join_durak_lobby(lobby_id, req.user_id, req.first_name, req.photo_url)
     if not success:
         raise HTTPException(status_code=400, detail="Cannot join lobby (full, already in another lobby, or not available)")
 

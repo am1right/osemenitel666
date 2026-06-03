@@ -222,6 +222,7 @@
     const settings = {
       user_id: user.id,
       first_name: user.first_name || '',
+      photo_url: user.photo_url || null,
       name: lobbyName,
       max_players: parseInt(document.getElementById('max-players').value, 10),
       deck_size: parseInt(document.getElementById('deck-size').value, 10),
@@ -274,7 +275,7 @@
       const res = await api(`/api/durak/lobbies/${lobbyId}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: user.id, first_name: user.first_name || '' }),
+        body: JSON.stringify({ user_id: user.id, first_name: user.first_name || '', photo_url: user.photo_url || null }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));

@@ -540,24 +540,18 @@
                 .then(d => { if (d && d.username) window.__durakBotUsername = d.username; })
                 .catch(() => {});
 
-            // === Приглашение в лобби через start_param (durak_lobby_ID) ===
-            // Показываем превью лобби; согласие → join → редирект в комнату.
+            // === Приглашение: ?join_lobby=ID (из index) или start_param durak_lobby_ID ===
+            // Сразу присоединяемся и уходим в комнату — без промежуточного превью.
+            const urlJoin = new URLSearchParams(window.location.search).get('join_lobby');
             const startParam = tg.initDataUnsafe?.start_param;
-            if (startParam && startParam.startsWith('durak_lobby_')) {
-                const lobbyId = parseInt(startParam.replace('durak_lobby_', ''), 10);
-                if (lobbyId) {
-                    (window.apiFetch || fetch)(`/api/durak/lobbies/${lobbyId}`)
-                        .then(r => r.ok ? r.json() : null)
-                        .then(lobby => {
-                            if (lobby && lobby.id && typeof showLobbyPreview === 'function') {
-                                showLobbyPreview(lobby);   // confirm → joinLobby → durak-room.html
-                            } else {
-                                alert('Лобби не найдено или игра уже началась');
-                            }
-                        })
-                        .catch(() => alert('Не удалось загрузить лобби'));
-                    return; // не грузим список в этом сценарии
-                }
+            let inviteLobbyId = 0;
+            if (urlJoin) inviteLobbyId = parseInt(urlJoin, 10);
+            else if (startParam && startParam.startsWith('durak_lobby_')) inviteLobbyId = parseInt(startParam.replace('durak_lobby_', ''), 10);
+
+            if (inviteLobbyId) {
+                if (typeof joinLobby === 'function') joinLobby(inviteLobbyId);
+                else window.location.href = `durak-room.html?lobby=${inviteLobbyId}`;
+                return; // не грузим список
             }
 
             // Загружаем список лобби (без авто-входа — кнопка "Создать" всегда доступна)
