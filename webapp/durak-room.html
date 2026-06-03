@@ -444,85 +444,17 @@
                     editBtn.style.display = canEdit ? 'inline-block' : 'none';
                 }
 
-                // === ИГРА УЖЕ ЗАПУЩЕНА ===
+                // === ИГРА ЗАПУЩЕНА → уходим на отдельный игровой экран ===
                 if (lobby.status === 'playing') {
-                    infoEl.innerHTML = `
-                        <strong>Лобби #${lobby.id}</strong><br>
-                        <span style="color:#d122e3; font-weight:600; font-size:1.05rem;">🎮 Игра запущена!</span>
-                    `;
-
-                    // Прячем все кнопки приглашения (нельзя присоединиться после старта)
-                    const inviteSection = document.getElementById('invite-section');
-                    if (inviteSection) inviteSection.style.display = 'none';
-
-                    const headerInviteBtn = document.querySelector('#waiting-room-view .header button[onclick*="inviteToCurrentLobby"]');
-                    if (headerInviteBtn) headerInviteBtn.style.display = 'none';
-
-                    // Прячем всё лишнее
-                    const editBtnEl = document.getElementById('edit-settings-btn');
-                    const readyBtn = document.getElementById('ready-btn');
-                    const startBtn = document.getElementById('start-btn');
-                    const playersHeading = document.querySelector('#waiting-room-view h3');
-
-                    if (editBtnEl) editBtnEl.style.display = 'none';
-                    if (readyBtn) readyBtn.style.display = 'none';
-                    if (startBtn) startBtn.style.display = 'none';
-                    if (playersHeading) playersHeading.style.display = 'none';
-
-                    const playersContainer = document.getElementById('players-list');
-                    if (playersContainer) {
-                        playersContainer.innerHTML = '<div style="color:#666; font-size:0.9rem; padding:8px 0;">Игроки в игре</div>';
-                    }
-
-                    const readyStatus = document.getElementById('ready-status');
-                    if (readyStatus) readyStatus.style.display = 'none';
-
-                    const notifs = document.getElementById('lobby-notifications');
-                    if (notifs) notifs.style.display = 'none';
-
-                    // Показываем реальную игровую доску Дурака
-                    const gameRoom = document.getElementById('game-room-section');
-                    if (gameRoom) gameRoom.style.display = 'block';
-
-                    // Прячем заголовок игровой комнаты (legacy)
-                    const gCard = gameRoom ? gameRoom.querySelector('.lobby-card') : null;
-                    if (gCard) {
-                        const hRow = gCard.querySelector('div:first-child');
-                        if (hRow) hRow.style.display = 'none';
-                        gCard.style.background = 'transparent';
-                        gCard.style.border = 'none';
-                        gCard.style.padding = '0';
-                    }
-
-                    // Заполняем инфо
-                    const gameInfo = document.getElementById('game-room-lobby-info');
-                    if (gameInfo) {
-                        const bet = lobby.bet_amount > 0 ? `${lobby.bet_amount} ⭐` : 'Без ставки';
-                        const pot = (lobby.pot && lobby.pot > 0) ? ` • Банк: ${lobby.pot}⭐` : '';
-                        gameInfo.innerHTML = `Дека: ${lobby.deck_size || 36} • Тип: ${lobby.game_type || 'podkidnoy'} • Ставка: ${bet}${pot}`;
-                    }
-
-                    // Показываем настоящую игровую доску + начинаем polling реального state
-                    if (typeof window.__durakShowRealGameBoard === 'function') {
-                        window.__durakShowRealGameBoard();
-                    } else {
-                        // fallback на старый блок (на случай если скрипт ещё не загрузился)
-                        const board = document.getElementById('durak-game-board');
-                        if (board) board.style.display = 'block';
-                    }
-
-                    // Инициализируем сокет если нужно
-                    if (!durakSocket && currentUserId) {
-                        durakSocket = new DurakSocket(currentLobbyId, currentUserId);
-                        durakSocket.connect();
-                        setupDurakSocketListeners();
-                    }
-
                     if (playersRefreshInterval) {
                         clearInterval(playersRefreshInterval);
                         playersRefreshInterval = null;
                     }
-
+                    infoEl.innerHTML = `
+                        <strong>Лобби #${lobby.id}</strong><br>
+                        <span style="color:#d122e3; font-weight:600; font-size:1.05rem;">🎮 Игра запущена! Загружаем поле…</span>
+                    `;
+                    window.location.href = `durak-game.html?lobby=${currentLobbyId}`;
                     return;
                 }
 
