@@ -6,8 +6,9 @@ durak_routes.py
 
 import json
 import time
+import asyncio
 import logging
-from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect, Query, Depends
 from pydantic import BaseModel
 from typing import Optional, Dict, List
 
@@ -16,9 +17,11 @@ logger = logging.getLogger(__name__)
 try:
     from api import database as db
     from api.durak_game import DurakGame, Card
+    from api.tg_auth import require_webapp_user
 except ImportError:
     import database as db
     from durak_game import DurakGame, Card
+    from tg_auth import require_webapp_user
 
 router = APIRouter(prefix="/api/durak", tags=["durak"])
 
@@ -30,12 +33,16 @@ class DurakConnectionManager:
     def __init__(self):
         # lobby_id -> list of {user_id: int, websocket: WebSocket}
         self.active_connections: Dict[int, List[Dict]] = {}
+        # lobby_id -> {user_id: timestamp отключения}
+        self.disconnect_times: Dict[int, Dict[int, float]] = {}
 
     async def connect(self, lobby_id: int, user_id: int, websocket: WebSocket):
         await websocket.accept()
         if lobby_id not in self.active_connections:
             self.active_connections[lobby_id] = []
         self.active_connections[lobby_id].append({"user_id": user_id, "websocket": websocket})
+        # игрок вернулся — снимаем отметку отключения
+        self.disconnect_times.get(lobby_id, {}).pop(user_id, None)
         logger.info(f"[DURAK WS] User {user_id} connected to lobby {lobby_id}")
 
     def disconnect(self, lobby_id: int, user_id: int):
@@ -45,6 +52,17 @@ class DurakConnectionManager:
                 if conn["user_id"] != user_id
             ]
             logger.info(f"[DURAK WS] User {user_id} disconnected from lobby {lobby_id}")
+        # фиксируем время отключения (для авто-форфейта по долгому отвалу)
+        self.disconnect_times.setdefault(lobby_id, {})[user_id] = time.time()
+
+    def connected_user_ids(self, lobby_id: int) -> List[int]:
+        return [c["user_id"] for c in self.active_connections.get(lobby_id, [])]
+
+    def disconnected_since(self, lobby_id: int, user_id: int):
+        """Время отключения игрока (если сейчас не подключён), иначе None."""
+        if user_id in self.connected_user_ids(lobby_id):
+            return None
+        return self.disconnect_times.get(lobby_id, {}).get(user_id)
 
     async def broadcast(self, lobby_id: int, message: dict):
         """Отправить сообщение всем подключённым в лобби."""
@@ -128,9 +146,12 @@ class UpdateSettingsRequest(BaseModel):
 # ── Эндпоинты ───────────────────────────────────────────────────
 
 @router.post("/lobbies")
-async def create_lobby(req: CreateLobbyRequest):
+async def create_lobby(req: CreateLobbyRequest, tg_user: dict = Depends(require_webapp_user)):
     """Создать новое лобби."""
-    if db.is_durak_banned(req.user_id):
+    uid = int(tg_user["id"])
+    first_name = tg_user.get("first_name") or req.first_name or ""
+    photo_url = tg_user.get("photo_url") or req.photo_url
+    if db.is_durak_banned(uid):
         raise HTTPException(status_code=403, detail="You are banned from Durak")
     if req.max_players < 2 or req.max_players > 6:
         raise HTTPException(status_code=400, detail="max_players must be between 2 and 6")
@@ -140,28 +161,45 @@ async def create_lobby(req: CreateLobbyRequest):
         raise HTTPException(status_code=400, detail="Invalid game_type")
     if req.bet_amount < 0:
         raise HTTPException(status_code=400, detail="bet_amount cannot be negative")
+    if req.bet_amount > 0 and (req.bet_amount < 5 or req.bet_amount > 100000):
+        raise HTTPException(status_code=400, detail="Ставка должна быть от 5 до 100000 ⭐")
+    # Создатель сразу вносит ставку — проверяем баланс кошелька
+    if req.bet_amount > 0:
+        wallet = db.get_wallet(uid)
+        if wallet["balance"] < req.bet_amount:
+            raise HTTPException(status_code=402, detail={
+                "reason": "insufficient_funds",
+                "need": req.bet_amount,
+                "balance": wallet["balance"],
+                "short": req.bet_amount - wallet["balance"],
+            })
 
     # Проверка на запрещённые слова в названии
     if req.name and not is_lobby_name_allowed(req.name):
         raise HTTPException(status_code=400, detail="Название лобби содержит недопустимые слова. Выберите другое название.")
 
     # Проверка: пользователь не должен уже быть в активном лобби
-    existing = db.is_user_in_active_lobby(req.user_id)
+    existing = db.is_user_in_active_lobby(uid)
     if existing:
         raise HTTPException(status_code=400, detail="You are already in another active lobby. Leave it first.")
 
-    lobby_id = db.create_durak_lobby(
-        creator_id=req.user_id,
-        creator_name=req.first_name,
-        name=req.name,
-        max_players=req.max_players,
-        deck_size=req.deck_size,
-        game_type=req.game_type,
-        cheating_enabled=req.cheating_enabled,
-        bet_amount=req.bet_amount,
-        photo_url=req.photo_url
-    )
-    logger.info(f"[DURAK] Lobby #{lobby_id} created by user {req.user_id}")
+    try:
+        lobby_id = db.create_durak_lobby(
+            creator_id=uid,
+            creator_name=first_name,
+            name=req.name,
+            max_players=req.max_players,
+            deck_size=req.deck_size,
+            game_type=req.game_type,
+            cheating_enabled=req.cheating_enabled,
+            bet_amount=req.bet_amount,
+            photo_url=photo_url
+        )
+    except Exception:
+        # Чаще всего — не хватило Stars на ставку (гонка после pre-check)
+        logger.exception(f"create_durak_lobby failed for user {uid}")
+        raise HTTPException(status_code=402, detail={"reason": "insufficient_funds", "need": req.bet_amount})
+    logger.info(f"[DURAK] Lobby #{lobby_id} created by user {uid}")
     return {"lobby_id": lobby_id}
 
 
@@ -192,36 +230,54 @@ async def get_lobby(lobby_id: int):
 
 
 @router.post("/lobbies/{lobby_id}/join")
-async def join_lobby(lobby_id: int, req: JoinLobbyRequest):
-    if db.is_durak_banned(req.user_id):
+async def join_lobby(lobby_id: int, req: JoinLobbyRequest, tg_user: dict = Depends(require_webapp_user)):
+    uid = int(tg_user["id"])
+    first_name = tg_user.get("first_name") or req.first_name or ""
+    photo_url = tg_user.get("photo_url") or req.photo_url
+    if db.is_durak_banned(uid):
         raise HTTPException(status_code=403, detail="You are banned from Durak")
     # Проверка: пользователь уже не в другом активном лобби
-    existing = db.is_user_in_active_lobby(req.user_id)
+    existing = db.is_user_in_active_lobby(uid)
     if existing and existing != lobby_id:
         raise HTTPException(status_code=400, detail="You are already in another active lobby")
 
-    success = db.join_durak_lobby(lobby_id, req.user_id, req.first_name, req.photo_url)
-    if not success:
-        raise HTTPException(status_code=400, detail="Cannot join lobby (full, already in another lobby, or not available)")
+    result = db.join_durak_lobby(lobby_id, uid, first_name, photo_url)
+    if not result.get("ok"):
+        reason = result.get("reason")
+        if reason == "insufficient_funds":
+            # 402 → клиент предложит пополнить кошелёк в магазине
+            raise HTTPException(status_code=402, detail={
+                "reason": "insufficient_funds",
+                "need": result.get("need"),
+                "balance": result.get("balance"),
+                "short": result.get("short"),
+            })
+        msgs = {
+            "already_in_lobby": "You are already in another active lobby",
+            "full": "Lobby is full",
+            "not_available": "Lobby not available",
+        }
+        raise HTTPException(status_code=400, detail=msgs.get(reason, "Cannot join lobby"))
 
     # Broadcast
     await durak_ws_manager.broadcast(lobby_id, {
         "type": "player_joined",
-        "user_id": req.user_id,
-        "first_name": req.first_name
+        "user_id": uid,
+        "first_name": first_name
     })
 
     return {"status": "joined"}
 
 
 @router.post("/lobbies/{lobby_id}/leave")
-async def leave_lobby(lobby_id: int, req: LeaveLobbyRequest):
-    db.leave_durak_lobby(lobby_id, req.user_id)
+async def leave_lobby(lobby_id: int, req: LeaveLobbyRequest, tg_user: dict = Depends(require_webapp_user)):
+    uid = int(tg_user["id"])
+    db.leave_durak_lobby(lobby_id, uid)
 
     # Broadcast
     await durak_ws_manager.broadcast(lobby_id, {
         "type": "player_left",
-        "user_id": req.user_id
+        "user_id": uid
     })
 
     return {"status": "left"}
@@ -234,8 +290,9 @@ async def get_lobby_players(lobby_id: int):
 
 
 @router.post("/lobbies/{lobby_id}/settings")
-async def update_settings(lobby_id: int, req: UpdateSettingsRequest):
+async def update_settings(lobby_id: int, req: UpdateSettingsRequest, tg_user: dict = Depends(require_webapp_user)):
     """Обновить настройки лобби (только создатель)."""
+    uid = int(tg_user["id"])
     updates = {}
     if req.max_players is not None:
         updates["max_players"] = req.max_players
@@ -248,7 +305,7 @@ async def update_settings(lobby_id: int, req: UpdateSettingsRequest):
     if req.bet_amount is not None:
         updates["bet_amount"] = req.bet_amount
 
-    success = db.update_lobby_settings(lobby_id, req.user_id, **updates)
+    success = db.update_lobby_settings(lobby_id, uid, **updates)
     if not success:
         raise HTTPException(status_code=403, detail="Not allowed or invalid settings")
 
@@ -267,16 +324,17 @@ class SetReadyRequest(BaseModel):
 
 
 @router.post("/lobbies/{lobby_id}/ready")
-async def set_ready(lobby_id: int, req: SetReadyRequest):
+async def set_ready(lobby_id: int, req: SetReadyRequest, tg_user: dict = Depends(require_webapp_user)):
     """Игрок отмечает себя готовым / не готовым."""
-    success = db.set_player_ready(lobby_id, req.user_id, req.is_ready)
+    uid = int(tg_user["id"])
+    success = db.set_player_ready(lobby_id, uid, req.is_ready)
     if not success:
         raise HTTPException(status_code=400, detail="Failed to update ready status")
 
     # Broadcast realtime
     await durak_ws_manager.broadcast(lobby_id, {
         "type": "player_ready_changed",
-        "user_id": req.user_id,
+        "user_id": uid,
         "is_ready": req.is_ready
     })
 
@@ -296,14 +354,15 @@ class GameActionRequest(BaseModel):
 
 
 @router.post("/lobbies/{lobby_id}/start")
-async def start_game(lobby_id: int, req: StartGameRequest):
+async def start_game(lobby_id: int, req: StartGameRequest, tg_user: dict = Depends(require_webapp_user)):
     """Создатель запускает игру. Создаёт авторитетный DurakGame."""
+    uid = int(tg_user["id"])
     # 1. Базовые проверки через DB helpers
     lobby = db.get_durak_lobby_by_id(lobby_id)
     if not lobby:
         raise HTTPException(status_code=404, detail="Lobby not found")
 
-    if lobby.get("creator_id") != req.user_id:
+    if lobby.get("creator_id") != uid:
         raise HTTPException(status_code=403, detail="Only the creator can start the game")
 
     if lobby.get("status") != "waiting":
@@ -319,7 +378,7 @@ async def start_game(lobby_id: int, req: StartGameRequest):
         raise HTTPException(status_code=400, detail="All players must be ready to start the game")
 
     # 2. Переводим лобби в playing (атомарно, с проверкой создателя)
-    started = db.start_durak_game(lobby_id, req.user_id)
+    started = db.start_durak_game(lobby_id, uid)
     if not started:
         raise HTTPException(status_code=400, detail="Failed to start game (state changed?)")
 
@@ -350,7 +409,7 @@ async def start_game(lobby_id: int, req: StartGameRequest):
     # Broadcast game started to all in lobby (real-time)
     await durak_ws_manager.broadcast(lobby_id, {
         "type": "game_started",
-        "started_by": req.user_id,
+        "started_by": uid,
         "initial_state": initial_state
     })
 
@@ -364,8 +423,9 @@ async def start_game(lobby_id: int, req: StartGameRequest):
 # ── Игровые эндпоинты ─────────────────
 
 @router.get("/lobbies/{lobby_id}/state")
-async def get_game_state(lobby_id: int, user_id: Optional[int] = None):
-    """Возвращает текущее состояние игры (если лобби в playing и игра создана)."""
+async def get_game_state(lobby_id: int, tg_user: dict = Depends(require_webapp_user)):
+    """Возвращает состояние игры. Руки видит только их владелец (viewer = проверенный id)."""
+    user_id = int(tg_user["id"])
     game = _get_game(lobby_id)
     if not game:
         # Попробуем проверить статус лобби
@@ -386,6 +446,7 @@ async def get_game_state(lobby_id: int, user_id: Optional[int] = None):
             await broadcast_game_state(lobby_id, game, "game_action", {"timeout": True})
 
     state = game.get_full_game_state(viewer_id=user_id)
+    state["connected"] = durak_ws_manager.connected_user_ids(lobby_id)
     return {"status": "ok", "state": state}
 
 
@@ -402,9 +463,11 @@ DURAK_COMMISSION_RATE = 0.05  # комиссия с банка при выпла
 TURN_TIMEOUT_SEC = 60         # таймаут хода: после него — авто-действие
 
 
-def _apply_turn_timeout(game):
-    """Если ход просрочен — авто-действие. Возвращает применённое действие или None."""
-    if game.game_over or (time.time() - game.last_action_at) < TURN_TIMEOUT_SEC:
+def _apply_turn_timeout(game, force: bool = False):
+    """Если ход просрочен — авто-действие. force=True игнорирует таймер (для свипера)."""
+    if game.game_over:
+        return None
+    if not force and (time.time() - game.last_action_at) < TURN_TIMEOUT_SEC:
         return None
     applied = None
     if game._get_unbeaten_count() > 0:
@@ -426,6 +489,90 @@ def _apply_turn_timeout(game):
     if applied:
         game.last_action_at = time.time()
     return applied
+
+
+# ── Фоновый sweeper брошенных игр ──────────────────────────────────
+DURAK_ABANDON_SEC = 120              # игра без ходов столько секунд считается брошенной
+DURAK_SWEEP_INTERVAL = 60            # как часто проверять
+DURAK_DISCONNECT_FORFEIT_SEC = 90    # отключён дольше — авто-форфейт (если соперник на связи)
+
+
+async def _sweep_abandoned_games():
+    """Авто-доигрывает/завершает игры, в которых давно никто не ходит."""
+    try:
+        lobby_ids = db.list_active_durak_game_lobbies()
+    except Exception:
+        logger.exception("sweeper: failed to list game states")
+        return
+    now = time.time()
+    for lobby_id in lobby_ids:
+        try:
+            game = _get_game(lobby_id)
+            if not game:
+                # снимок завершённой/битой игры — чистим
+                db.delete_durak_game_state(lobby_id)
+                continue
+            if game.game_over:
+                _finalize_game(lobby_id, game)
+                continue
+
+            # Авто-форфейт: 1×1, один игрок давно отвалился, соперник на связи
+            if len(game.player_ids) == 2:
+                connected = durak_ws_manager.connected_user_ids(lobby_id)
+                forfeited = None
+                for pid in list(game.player_ids):
+                    ds = durak_ws_manager.disconnected_since(lobby_id, pid)
+                    opponent_online = any(p in connected for p in game.player_ids if p != pid)
+                    if ds and (now - ds) > DURAK_DISCONNECT_FORFEIT_SEC and opponent_online:
+                        game.forfeit(pid)
+                        forfeited = pid
+                        break
+                if forfeited is not None:
+                    logger.info(f"[DURAK] Sweeper: forfeit disconnected {forfeited} in lobby {lobby_id}")
+                    await broadcast_game_state(lobby_id, game, "game_ended")
+                    _finalize_game(lobby_id, game)
+                    continue
+
+            if now - game.last_action_at < DURAK_ABANDON_SEC:
+                continue
+            logger.info(f"[DURAK] Sweeper: auto-finishing abandoned game lobby {lobby_id}")
+            steps = 0
+            while not game.game_over and steps < 300:
+                if not _apply_turn_timeout(game, force=True):
+                    break
+                steps += 1
+            if not game.game_over:
+                # не удалось доиграть — принудительно закрываем без победителя
+                game.game_over = True
+            await broadcast_game_state(lobby_id, game, "game_ended")
+            _finalize_game(lobby_id, game)
+        except Exception:
+            logger.exception(f"sweeper: error on lobby {lobby_id}")
+
+
+async def _durak_sweeper_loop():
+    logger.info("[DURAK] Sweeper started")
+    while True:
+        try:
+            await asyncio.sleep(DURAK_SWEEP_INTERVAL)
+            await _sweep_abandoned_games()
+        except asyncio.CancelledError:
+            break
+        except Exception:
+            logger.exception("durak sweeper loop error")
+
+
+_sweeper_task = None
+
+
+def start_durak_sweeper():
+    """Запускает фоновый sweeper (вызывать на старте приложения)."""
+    global _sweeper_task
+    if _sweeper_task is None:
+        try:
+            _sweeper_task = asyncio.create_task(_durak_sweeper_loop())
+        except RuntimeError:
+            logger.warning("[DURAK] No running loop to start sweeper")
 
 
 def _persist(lobby_id: int, game) -> None:
@@ -487,10 +634,12 @@ def _finalize_game(lobby_id: int, game) -> None:
 async def broadcast_game_state(lobby_id: int, game, msg_type: str, extra: dict = None):
     """Рассылает каждому подключённому игроку ЕГО состояние (чужие руки скрыты)."""
     conns = list(durak_ws_manager.active_connections.get(lobby_id, []))
+    connected = durak_ws_manager.connected_user_ids(lobby_id)
     dead = []
     for conn in conns:
         try:
             state = game.get_full_game_state(viewer_id=conn["user_id"])
+            state["connected"] = connected
             payload = {"type": msg_type, "state": state}
             if msg_type == "game_ended":
                 payload["final_state"] = state
@@ -504,12 +653,20 @@ async def broadcast_game_state(lobby_id: int, game, msg_type: str, extra: dict =
         durak_ws_manager.disconnect(lobby_id, c["user_id"])
 
 
+async def broadcast_presence(lobby_id: int):
+    """Рассылает список подключённых игроков (для индикатора онлайн/офлайн)."""
+    await durak_ws_manager.broadcast(lobby_id, {
+        "type": "presence",
+        "connected": durak_ws_manager.connected_user_ids(lobby_id),
+    })
+
+
 @router.post("/lobbies/{lobby_id}/action")
-async def perform_game_action(lobby_id: int, req: GameActionRequest):
+async def perform_game_action(lobby_id: int, req: GameActionRequest, tg_user: dict = Depends(require_webapp_user)):
     """
     Универсальный эндпоинт для совершения ходов.
     Клиент должен сначала запросить /state, чтобы получить allowed_actions и legal_*.
-    Серверная валидация — жёсткая.
+    Серверная валидация — жёсткая. Игрок берётся из проверенного initData.
     """
     game = _get_game(lobby_id)
     if not game:
@@ -517,7 +674,7 @@ async def perform_game_action(lobby_id: int, req: GameActionRequest):
     if game.game_over:
         raise HTTPException(status_code=400, detail="Game is already over")
 
-    pid = req.user_id
+    pid = int(tg_user["id"])
     if pid not in game.player_ids:
         raise HTTPException(status_code=403, detail="You are not a participant in this game")
 
@@ -593,8 +750,9 @@ async def perform_game_action(lobby_id: int, req: GameActionRequest):
 
 
 @router.post("/lobbies/{lobby_id}/forfeit")
-async def forfeit_game(lobby_id: int, req: StartGameRequest):
+async def forfeit_game(lobby_id: int, req: StartGameRequest, tg_user: dict = Depends(require_webapp_user)):
     """Игрок сдаётся: партия завершается, победа соперника (выплата/история/финиш)."""
+    pid = int(tg_user["id"])
     game = _get_game(lobby_id)
     if not game:
         # Игры нет в памяти (рестарт/уже завершена) — просто помечаем лобби завершённым
@@ -604,7 +762,6 @@ async def forfeit_game(lobby_id: int, req: StartGameRequest):
             logger.exception("forfeit finish (no game) error")
         return {"status": "ok", "game_instance": False}
 
-    pid = req.user_id
     if pid not in game.player_ids:
         raise HTTPException(status_code=403, detail="You are not a participant in this game")
 
@@ -663,8 +820,8 @@ def _require_durak_admin(user_id: int) -> None:
 
 
 @router.get("/admin/lobbies")
-async def admin_durak_lobbies(user_id: int):
-    _require_durak_admin(user_id)
+async def admin_durak_lobbies(tg_user: dict = Depends(require_webapp_user)):
+    _require_durak_admin(int(tg_user["id"]))
     try:
         lobbies = db.get_active_durak_lobbies(limit=100)
         return {"lobbies": lobbies}
@@ -674,8 +831,8 @@ async def admin_durak_lobbies(user_id: int):
 
 
 @router.post("/admin/lobbies/{lobby_id}/force-end")
-async def admin_force_end(lobby_id: int, user_id: int):
-    _require_durak_admin(user_id)
+async def admin_force_end(lobby_id: int, tg_user: dict = Depends(require_webapp_user)):
+    _require_durak_admin(int(tg_user["id"]))
     try:
         active_games.pop(lobby_id, None)
         db.finish_durak_lobby(lobby_id)
@@ -687,8 +844,8 @@ async def admin_force_end(lobby_id: int, user_id: int):
 
 
 @router.post("/admin/ban")
-async def admin_ban_durak(user_id: int, target_user: int, reason: str = ""):
-    _require_durak_admin(user_id)
+async def admin_ban_durak(target_user: int, reason: str = "", tg_user: dict = Depends(require_webapp_user)):
+    _require_durak_admin(int(tg_user["id"]))
     try:
         db.ban_durak_user(target_user, reason)
         return {"status": "banned"}
@@ -707,12 +864,13 @@ async def durak_websocket(websocket: WebSocket, lobby_id: int, user_id: int = Qu
     """
     await durak_ws_manager.connect(lobby_id, user_id, websocket)
     try:
-        # Отправляем подтверждение подключения
+        # Подтверждение подключения + уведомляем остальных об онлайне
         await websocket.send_json({
             "type": "connected",
             "lobby_id": lobby_id,
             "user_id": user_id
         })
+        await broadcast_presence(lobby_id)
 
         while True:
             try:
@@ -748,8 +906,11 @@ async def durak_websocket(websocket: WebSocket, lobby_id: int, user_id: int = Qu
                 })
             # 'ready' и прочее идёт через REST — игнорируем
 
-    except WebSocketDisconnect:
-        durak_ws_manager.disconnect(lobby_id, user_id)
     except Exception as e:
         logger.exception(f"[DURAK WS] error in lobby {lobby_id} user {user_id}: {e}")
+    finally:
         durak_ws_manager.disconnect(lobby_id, user_id)
+        try:
+            await broadcast_presence(lobby_id)
+        except Exception:
+            pass

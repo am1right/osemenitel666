@@ -249,7 +249,7 @@
 
             <div style="margin-bottom:20px;">
                 <label>Ставка (Stars)</label><br>
-                <input type="number" id="edit-bet-amount" min="0" max="10000" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #6655aa;">
+                <input type="number" id="edit-bet-amount" min="0" max="100000" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #6655aa;">
             </div>
 
             <div style="display:flex; gap:10px;">
@@ -332,7 +332,7 @@
                     // Check game over
                     (async () => {
                         try {
-                            const res = await fetch(`/api/durak/lobbies/${currentLobbyId}/state?user_id=${currentUserId||0}`);
+                            const res = await (window.apiFetch || fetch)(`/api/durak/lobbies/${currentLobbyId}/state?user_id=${currentUserId||0}`);
                             const data = await res.json();
                             if (data.state && data.state.game_over) {
                                 const info = document.getElementById('lobby-info');
@@ -423,7 +423,7 @@
 
                 let stakeWarning = '';
                 if (lobby.bet_amount > 0) {
-                    stakeWarning = `<br><span style="color:#ffaa66; font-size:0.8rem;">⚠️ При выходе ставка уходит в банк лобби</span>`;
+                    stakeWarning = `<br><span style="color:#88ddaa; font-size:0.8rem;">Ставка возвращается при выходе до старта игры</span>`;
                 }
 
                 infoEl.innerHTML = `
@@ -613,10 +613,9 @@
 
             if (bet > 0) {
                 const confirmLeave = confirm(
-                    `⚠️ В этом лобби стоит ставка ${bet} ⭐.\n\n` +
-                    `Если ты выйдешь сейчас, твоя ставка уйдёт в общий банк лобби.\n` +
-                    `Ты не получишь её обратно.\n\n` +
-                    `Продолжить выход?`
+                    `В этом лобби ставка ${bet} ⭐.\n\n` +
+                    `Игра ещё не началась — ставка вернётся на твой кошелёк.\n\n` +
+                    `Выйти из лобби?`
                 );
                 if (!confirmLeave) return;
             } else {
@@ -639,7 +638,7 @@
 
             // Показываем уведомление, если была ставка
             if (bet > 0) {
-                alert(`Твоя ставка ${bet} ⭐ ушла в банк лобби.`);
+                alert(`Ставка ${bet} ⭐ возвращена на кошелёк.`);
             }
 
             exitWaitingRoom();

@@ -224,6 +224,8 @@
       tile.className = 'dg-opp';
       if (pid === state.attacker) tile.classList.add('is-attacker');
       if (pid === state.defender) tile.classList.add('is-defender');
+      // Офлайн-индикатор: connected приходит в state (из /state и бродкастов)
+      if (state.connected && !state.connected.includes(pid)) tile.classList.add('offline');
 
       const count = typeof state.hands[pid] === 'number'
         ? state.hands[pid]
@@ -584,6 +586,8 @@
           else loadState();
         } else if (type === 'reaction' && msg.emojiName) {
           showFlyingReaction(msg.emojiName, msg.position || 'self');
+        } else if (type === 'presence') {
+          if (DG.state) { DG.state.connected = msg.connected || []; render(DG.state); }
         }
       };
       ws.onclose = () => { DG.socket = null; };

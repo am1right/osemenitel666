@@ -53,8 +53,9 @@ else:
     logger.error("❌ admin_router не инициализирован — проверь логи admin_routes.py")
 
 # ── Durak Online Routes ────────────────────────────────
+_start_durak_sweeper = None
 try:
-    from api.durak_routes import router as durak_router
+    from api.durak_routes import router as durak_router, start_durak_sweeper as _start_durak_sweeper
     if durak_router is not None:
         app.include_router(durak_router)
         logger.info("✅ Durak routes mounted at /api/durak")
@@ -62,6 +63,16 @@ try:
         logger.warning("⚠️ durak_routes router is None")
 except Exception as e:
     logger.error(f"❌ Не удалось подключить Durak routes: {e}")
+
+
+@app.on_event("startup")
+async def _start_background_tasks():
+    # Фоновый sweeper брошенных игр Дурака
+    if _start_durak_sweeper is not None:
+        try:
+            _start_durak_sweeper()
+        except Exception as e:
+            logger.error(f"❌ Не удалось запустить Durak sweeper: {e}")
 
 WEBAPP_URL    = os.getenv("WEBAPP_URL", "http://localhost:8000")
 BOT_TOKEN     = os.getenv("BOT_TOKEN", "")

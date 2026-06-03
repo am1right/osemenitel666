@@ -441,12 +441,22 @@ class DurakGame:
         return False
 
     def forfeit(self, player_id: int) -> bool:
-        """Игрок сдаётся: игра завершается. Для 2 игроков победитель — соперник."""
+        """Игрок сдаётся: игра завершается, сдавшийся — проигравший.
+        Победитель (для банка): первый вышедший; иначе единственный соперник;
+        иначе лидер (у кого меньше всего карт)."""
         if self.game_over or player_id not in self.player_ids:
             return False
         others = [p for p in self.player_ids if p != player_id]
         self.game_over = True
-        self.winner = others[0] if len(others) == 1 else None
+        self.durak = player_id
+        if self.finished:
+            self.winner = self.finished[0]
+        elif len(others) == 1:
+            self.winner = others[0]
+        elif others:
+            self.winner = min(others, key=lambda p: len(self.hands.get(p, [])))
+        else:
+            self.winner = None
         return True
 
     def take_table(self, player_id: int) -> bool:

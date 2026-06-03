@@ -49,6 +49,16 @@
     return window.Telegram?.WebApp?.initDataUnsafe?.user || null;
   }
 
+  /** Недостаточно Stars для ставки → предлагаем пополнить в магазине. */
+  function offerTopUp(detail) {
+    const short = detail && detail.short;
+    let msg = 'Недостаточно Stars для ставки.';
+    if (short) msg += ` Не хватает ${short} ⭐.`;
+    msg += '\nПерейти в магазин для пополнения?';
+    if (confirm(msg)) window.location.href = 'shop.html';
+  }
+  window.offerTopUp = offerTopUp;
+
   function typeLabel(t) {
     return t === 'podkidnoy' ? 'Подкидной' : 'Переводной';
   }
@@ -161,7 +171,7 @@
       `Шулерство: ${lobby.cheating_enabled ? 'Разрешено' : 'Запрещено'}\n` +
       `Ставка: ${betText}${potText}\n\n` +
       (lobby.bet_amount > 0
-        ? '⚠️ Если выйдешь после входа со ставкой — деньги уйдут в банк лобби.\n\n'
+        ? 'Ставка списывается при входе и возвращается, если выйдешь до старта игры.\n\n'
         : '') +
       'Зайти в это лобби?';
     if (confirm(message)) joinLobby(lobby.id, lobby);
@@ -240,7 +250,8 @@
         body: JSON.stringify(settings),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'Ошибка создания лобби');
+      if (res.status === 402) { closeCreateModal(); offerTopUp(data.detail); return; }
+      if (!res.ok) throw new Error((data.detail && data.detail.reason) ? 'Ошибка ставки' : (data.detail || 'Ошибка создания лобби'));
       if (!data.lobby_id) throw new Error('Сервер не вернул ID лобби');
 
       closeCreateModal();
@@ -277,9 +288,15 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: user.id, first_name: user.first_name || '', photo_url: user.photo_url || null }),
       });
+      if (res.status === 402) {
+        const d = await res.json().catch(() => ({}));
+        offerTopUp(d.detail);
+        return;
+      }
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || 'Не удалось войти в лобби');
+        const detail = (err.detail && typeof err.detail === 'string') ? err.detail : 'Не удалось войти в лобби';
+        throw new Error(detail);
       }
       goToLobby(lobbyId, lobbyData);
     } catch (e) {

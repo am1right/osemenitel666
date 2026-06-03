@@ -129,6 +129,10 @@
             width: 100%; height: 100%;
             object-fit: cover; border-radius: 11px;
         }
+        /* Офлайн: соперник отключился */
+        .dg-opp.offline { opacity: 0.5; filter: grayscale(0.7); }
+        .dg-opp.offline .dg-opp-avatar { border-color: rgba(255,255,255,0.2); box-shadow: none; }
+        .dg-opp.offline .dg-opp-name::after { content: ' • офлайн'; color: #ff8a8a; }
         .dg-opp.is-attacker .dg-opp-avatar {
             border-color: #ff4d6d;
             box-shadow: 0 0 0 3px rgba(255,77,109,0.35), 0 4px 12px rgba(0,0,0,0.45);
