@@ -23,7 +23,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / "config" / ".env")
+load_dotenv(BASE_DIR / "config" / ".env", override=True)
 
 BOT_TOKEN    = os.getenv("BOT_TOKEN")
 API_BASE         = os.getenv("API_BASE", "https://chin-games-bot.onrender.com")
