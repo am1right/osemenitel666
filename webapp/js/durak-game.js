@@ -254,15 +254,10 @@
         av.textContent = avatarLetter(pid);
       }
 
-      const badge = document.createElement('div');
-      badge.className = 'dg-opp-badge';
-      badge.textContent = count;
-
       const name = document.createElement('div');
       name.className = 'dg-opp-name';
       name.textContent = shortName(pid);
 
-      av.appendChild(badge);
       tile.appendChild(fan);
       tile.appendChild(av);
       tile.appendChild(name);

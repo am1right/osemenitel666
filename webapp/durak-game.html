@@ -470,6 +470,24 @@
                     }
                 }).catch(() => {});
         })();
+
+        // Верхний отступ под шапку Telegram (как в shop/profile) — чтобы соперник не обрезался
+        (function () {
+            const tg = window.Telegram?.WebApp;
+            if (!tg) return;
+            function applyTop() {
+                const a = tg.contentSafeAreaInsets?.top ?? 0;
+                const b = tg.safeAreaInsets?.top ?? 0;
+                const top = Math.max(a, b, 8);
+                const op = document.getElementById('dg-opponents');
+                if (op) op.style.paddingTop = top + 'px';
+            }
+            applyTop();
+            setTimeout(applyTop, 300);
+            tg.onEvent('safeAreaChanged', applyTop);
+            tg.onEvent('contentSafeAreaChanged', applyTop);
+            tg.onEvent('viewportChanged', applyTop);
+        })();
     </script>
 </body>
 </html>
