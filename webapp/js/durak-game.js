@@ -95,11 +95,13 @@
     el.appendChild(base);
 
     const dr = displayRank(rank);
+    const aceCard = ['A', '14', '1'].includes(rank);
     const corner = (cls) => {
       const c = document.createElement('div');
       c.className = `rdcard-corner ${cls} ${suitInfo.color}`;
+      // На тузах масть в углах не нужна — её показывает крупная картинка в центре
       c.innerHTML = `<span class="rdcard-rank">${dr}</span>` +
-                    `<img src="icons/durak/${suitInfo.name}.png" class="rdcard-suit-sm" draggable="false">`;
+                    (aceCard ? '' : `<img src="icons/durak/${suitInfo.name}.png" class="rdcard-suit-sm" draggable="false">`);
       return c;
     };
     el.appendChild(corner('tl'));
