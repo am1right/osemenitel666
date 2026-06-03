@@ -110,13 +110,15 @@
     const isCourt = ['J','Q','K','11','12','13'].includes(rank);
     const isAce = ['A','14','1'].includes(rank);
     if (isCourt) {
-      let file = 'jack.png';
-      if (rank === 'Q' || rank === '12') file = 'queen.png';
-      if (rank === 'K' || rank === '13') file = 'king.png';
+      let base = 'jack';
+      if (rank === 'Q' || rank === '12') base = 'queen';
+      if (rank === 'K' || rank === '13') base = 'king';
+      // Для красных мастей (червы/бубны) — красные версии фигур
+      const file = suitInfo.color === 'red' ? `${base}_red.png` : `${base}.png`;
       const img = document.createElement('img');
       img.src = `icons/durak/${file}`;
       img.className = 'rdcard-court';
-      if (file === 'jack.png') img.className += ' rdcard-jack';
+      if (base === 'jack') img.className += ' rdcard-jack';
       img.draggable = false;
       center.appendChild(img);
     } else if (isAce) {
