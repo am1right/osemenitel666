@@ -247,22 +247,6 @@
                 </select>
             </div>
 
-            <div style="margin-bottom:12px;">
-                <label>Тип игры</label><br>
-                <select id="edit-game-type" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #6655aa;">
-                    <option value="podkidnoy">Подкидной</option>
-                    <option value="perevodnoy">Переводной</option>
-                </select>
-            </div>
-
-            <div style="margin-bottom:12px;">
-                <label>Шулерство</label><br>
-                <select id="edit-cheating" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #6655aa;">
-                    <option value="false">Без шулерства</option>
-                    <option value="true">Разрешить шулерство</option>
-                </select>
-            </div>
-
             <div style="margin-bottom:20px;">
                 <label>Ставка (Stars)</label><br>
                 <input type="number" id="edit-bet-amount" min="0" max="10000" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #6655aa;">
@@ -1133,8 +1117,6 @@
             // Заполняем текущими значениями
             document.getElementById('edit-max-players').value = currentLobbyData.max_players || 4;
             document.getElementById('edit-deck-size').value = currentLobbyData.deck_size || 36;
-            document.getElementById('edit-game-type').value = currentLobbyData.game_type || 'podkidnoy';
-            document.getElementById('edit-cheating').value = currentLobbyData.cheating_enabled ? 'true' : 'false';
             document.getElementById('edit-bet-amount').value = currentLobbyData.bet_amount || 0;
 
             document.getElementById('edit-settings-modal').style.display = 'flex';
@@ -1151,8 +1133,6 @@
                 user_id: currentUserId,
                 max_players: parseInt(document.getElementById('edit-max-players').value),
                 deck_size: parseInt(document.getElementById('edit-deck-size').value),
-                game_type: document.getElementById('edit-game-type').value,
-                cheating_enabled: document.getElementById('edit-cheating').value === 'true',
                 bet_amount: parseInt(document.getElementById('edit-bet-amount').value) || 0
             };
 

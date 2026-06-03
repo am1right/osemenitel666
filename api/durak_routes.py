@@ -4,6 +4,8 @@ durak_routes.py
 Роуты для Durak Online (лобби + игра + WS + история + экономика).
 """
 
+import json
+import time
 import logging
 from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect, Query
 from pydantic import BaseModel
@@ -332,6 +334,7 @@ async def start_game(lobby_id: int, req: StartGameRequest):
             game = DurakGame(player_ids, deck_size=deck_size, game_type=game_type)
             active_games[lobby_id] = game
             game.start_game()
+            _persist(lobby_id, game)
             game_created = True
             logger.info(f"[DURAK] Game started for lobby #{lobby_id} with {len(player_ids)} players")
     except Exception as e:
@@ -363,13 +366,24 @@ async def start_game(lobby_id: int, req: StartGameRequest):
 @router.get("/lobbies/{lobby_id}/state")
 async def get_game_state(lobby_id: int, user_id: Optional[int] = None):
     """Возвращает текущее состояние игры (если лобби в playing и игра создана)."""
-    game = active_games.get(lobby_id)
+    game = _get_game(lobby_id)
     if not game:
         # Попробуем проверить статус лобби
         lobby = db.get_durak_lobby_by_id(lobby_id)
         if lobby and lobby.get("status") == "playing":
             return {"status": "playing", "game_instance": False, "message": "Game state not yet loaded on this node"}
         raise HTTPException(status_code=404, detail="No active game for this lobby")
+
+    # Таймаут хода: если игрок завис — авто-действие, затем рассылка остальным
+    applied = _apply_turn_timeout(game)
+    if applied:
+        logger.info(f"[DURAK] Turn timeout in lobby {lobby_id}: auto '{applied}'")
+        if game.game_over:
+            await broadcast_game_state(lobby_id, game, "game_ended")
+            _finalize_game(lobby_id, game)
+        else:
+            _persist(lobby_id, game)
+            await broadcast_game_state(lobby_id, game, "game_action", {"timeout": True})
 
     state = game.get_full_game_state(viewer_id=user_id)
     return {"status": "ok", "state": state}
@@ -385,6 +399,58 @@ def _parse_card(s: Optional[str]) -> Optional[Card]:
 
 
 DURAK_COMMISSION_RATE = 0.05  # комиссия с банка при выплате победителю
+TURN_TIMEOUT_SEC = 60         # таймаут хода: после него — авто-действие
+
+
+def _apply_turn_timeout(game):
+    """Если ход просрочен — авто-действие. Возвращает применённое действие или None."""
+    if game.game_over or (time.time() - game.last_action_at) < TURN_TIMEOUT_SEC:
+        return None
+    applied = None
+    if game._get_unbeaten_count() > 0:
+        # защитник не успел отбиться — берёт карты
+        if game.take_table(game.current_defender):
+            applied = "take_table"
+    elif len(game.table) > 0:
+        # всё отбито — атакующий не объявил «бито»
+        if game.finish_attack(caller_id=game.current_attacker):
+            applied = "finish_attack"
+    else:
+        # стол пуст — атакующий не начал; играем младшую легальную (не козырь по возможности)
+        legal = game.get_legal_attacks(game.current_attacker)
+        if legal:
+            def _rv(c):
+                return (100 if c.suit == game.trump_suit else 0) + c.rank.value
+            if game.attack(game.current_attacker, min(legal, key=_rv)):
+                applied = "attack"
+    if applied:
+        game.last_action_at = time.time()
+    return applied
+
+
+def _persist(lobby_id: int, game) -> None:
+    """Сохраняет снимок игры в БД (чтобы пережить рестарт сервера)."""
+    try:
+        db.save_durak_game_state(lobby_id, json.dumps(game.to_dict()))
+    except Exception:
+        logger.exception(f"Failed to persist game state for lobby {lobby_id}")
+
+
+def _get_game(lobby_id: int):
+    """Возвращает игру из памяти или восстанавливает из БД."""
+    game = active_games.get(lobby_id)
+    if game:
+        return game
+    try:
+        raw = db.load_durak_game_state(lobby_id)
+        if raw:
+            game = DurakGame.from_dict(json.loads(raw))
+            active_games[lobby_id] = game
+            logger.info(f"[DURAK] Restored game state for lobby {lobby_id} from DB")
+            return game
+    except Exception:
+        logger.exception(f"Failed to restore game state for lobby {lobby_id}")
+    return None
 
 
 def _finalize_game(lobby_id: int, game) -> None:
@@ -411,7 +477,31 @@ def _finalize_game(lobby_id: int, game) -> None:
         db.finish_durak_lobby(lobby_id)
     except Exception:
         logger.exception("History save error")
+    try:
+        db.delete_durak_game_state(lobby_id)
+    except Exception:
+        logger.exception("Delete game state error")
     active_games.pop(lobby_id, None)
+
+
+async def broadcast_game_state(lobby_id: int, game, msg_type: str, extra: dict = None):
+    """Рассылает каждому подключённому игроку ЕГО состояние (чужие руки скрыты)."""
+    conns = list(durak_ws_manager.active_connections.get(lobby_id, []))
+    dead = []
+    for conn in conns:
+        try:
+            state = game.get_full_game_state(viewer_id=conn["user_id"])
+            payload = {"type": msg_type, "state": state}
+            if msg_type == "game_ended":
+                payload["final_state"] = state
+                payload["winner_id"] = game.winner
+            if extra:
+                payload.update(extra)
+            await conn["websocket"].send_json(payload)
+        except Exception:
+            dead.append(conn)
+    for c in dead:
+        durak_ws_manager.disconnect(lobby_id, c["user_id"])
 
 
 @router.post("/lobbies/{lobby_id}/action")
@@ -421,7 +511,7 @@ async def perform_game_action(lobby_id: int, req: GameActionRequest):
     Клиент должен сначала запросить /state, чтобы получить allowed_actions и legal_*.
     Серверная валидация — жёсткая.
     """
-    game = active_games.get(lobby_id)
+    game = _get_game(lobby_id)
     if not game:
         raise HTTPException(status_code=404, detail="Game not found or not started")
     if game.game_over:
@@ -475,29 +565,24 @@ async def perform_game_action(lobby_id: int, req: GameActionRequest):
         logger.exception(f"Action {action} failed in lobby {lobby_id}: {e}")
         raise HTTPException(status_code=500, detail="Internal game error")
 
+    if success:
+        game.last_action_at = time.time()
+
     new_state = game.get_full_game_state(viewer_id=pid)
 
-    # Если игра закончилась — выплата/история/финиш лобби/очистка
+    # Если игра закончилась — выплата/история/финиш лобби/очистка; иначе сохраняем снимок
     if game.game_over and lobby_id in active_games:
         logger.info(f"[DURAK] Game over in lobby {lobby_id}, winner={game.winner}")
         _finalize_game(lobby_id, game)
+    elif success:
+        _persist(lobby_id, game)
 
-    # Broadcast update to all connected clients in the lobby
-    await durak_ws_manager.broadcast(lobby_id, {
-        "type": "game_action",
-        "user_id": pid,
-        "action": action,
-        "success": success,
-        "message": message,
-        "state": new_state
-    })
-
+    # Рассылаем обновление каждому игроку (своё состояние). Один broadcast — без гонки.
     if game.game_over:
-        await durak_ws_manager.broadcast(lobby_id, {
-            "type": "game_ended",
-            "winner_id": game.winner,
-            "final_state": new_state
-        })
+        await broadcast_game_state(lobby_id, game, "game_ended")
+    else:
+        await broadcast_game_state(lobby_id, game, "game_action",
+                                   {"user_id": pid, "action": action})
 
     return {
         "status": "ok" if success else "error",
@@ -510,7 +595,7 @@ async def perform_game_action(lobby_id: int, req: GameActionRequest):
 @router.post("/lobbies/{lobby_id}/forfeit")
 async def forfeit_game(lobby_id: int, req: StartGameRequest):
     """Игрок сдаётся: партия завершается, победа соперника (выплата/история/финиш)."""
-    game = active_games.get(lobby_id)
+    game = _get_game(lobby_id)
     if not game:
         # Игры нет в памяти (рестарт/уже завершена) — просто помечаем лобби завершённым
         try:
@@ -526,16 +611,9 @@ async def forfeit_game(lobby_id: int, req: StartGameRequest):
     if not game.game_over:
         game.forfeit(pid)
 
-    final_state = game.get_full_game_state()
     winner = game.winner
+    await broadcast_game_state(lobby_id, game, "game_ended", {"forfeited_by": pid})
     _finalize_game(lobby_id, game)
-
-    await durak_ws_manager.broadcast(lobby_id, {
-        "type": "game_ended",
-        "winner_id": winner,
-        "final_state": final_state,
-        "forfeited_by": pid,
-    })
     logger.info(f"[DURAK] Forfeit in lobby {lobby_id} by {pid}, winner={winner}")
     return {"status": "ok", "winner_id": winner}
 
@@ -562,45 +640,61 @@ async def get_durak_ratings(limit: int = 20):
         raise HTTPException(status_code=500, detail="Failed to load ratings")
 
 
-# --- Простая админка для Дурака (доступ по user_id, в реальном - проверка роли) ---
+@router.get("/stats/{user_id}")
+async def durak_user_stats(user_id: int):
+    """Личная статистика игрока по Дураку (партий/побед/винрейт)."""
+    try:
+        return db.get_durak_user_stats(user_id)
+    except Exception:
+        logger.exception("durak_user_stats error")
+        return {"games": 0, "wins": 0, "win_rate": 0}
+
+
+# --- Админка Дурака (доступ только для ADMIN_ID) ---
+
+def _require_durak_admin(user_id: int) -> None:
+    """Пропускает только админа (user_id из ADMIN_ID). Иначе 403."""
+    try:
+        admins = db.get_protected_user_ids()
+    except Exception:
+        admins = set()
+    if user_id not in admins:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
 
 @router.get("/admin/lobbies")
 async def admin_durak_lobbies(user_id: int):
-    # TODO: проверить что user_id админ
+    _require_durak_admin(user_id)
     try:
         lobbies = db.get_active_durak_lobbies(limit=100)
         return {"lobbies": lobbies}
-    except Exception as e:
+    except Exception:
+        logger.exception("admin lobbies error")
         raise HTTPException(500, "error")
 
 
 @router.post("/admin/lobbies/{lobby_id}/force-end")
 async def admin_force_end(lobby_id: int, user_id: int):
-    # TODO: admin check
+    _require_durak_admin(user_id)
     try:
-        if lobby_id in active_games:
-            del active_games[lobby_id]
-        db.leave_durak_lobby(lobby_id, 0)  # cleanup players? better direct
-        # mark finished
-        conn = db.get_connection()
-        cur = db._cursor(conn)
-        cur.execute("UPDATE durak_lobbies SET status='finished' WHERE id=%s", (lobby_id,))
-        conn.commit()
-        cur.close()
-        conn.close()
+        active_games.pop(lobby_id, None)
+        db.finish_durak_lobby(lobby_id)
+        db.delete_durak_game_state(lobby_id)
         return {"status": "ended"}
-    except Exception as e:
-        raise HTTPException(500, str(e))
+    except Exception:
+        logger.exception("force-end error")
+        raise HTTPException(500, "force-end failed")
 
 
 @router.post("/admin/ban")
 async def admin_ban_durak(user_id: int, target_user: int, reason: str = ""):
-    # TODO admin check
+    _require_durak_admin(user_id)
     try:
         db.ban_durak_user(target_user, reason)
         return {"status": "banned"}
-    except Exception as e:
-        raise HTTPException(500, str(e))
+    except Exception:
+        logger.exception("ban error")
+        raise HTTPException(500, "ban failed")
 
 
 
@@ -621,27 +715,38 @@ async def durak_websocket(websocket: WebSocket, lobby_id: int, user_id: int = Qu
         })
 
         while True:
-            # Принимаем сообщения от клиента (опционально для действий, но основные действия идут через REST)
             try:
                 data = await websocket.receive_json()
-                action = data.get("action")
-                payload = data.get("data", {})
-
-                if action == "ready":
-                    # Можно обработать ready через WS (для удобства), но пока просто лог
-                    logger.info(f"[DURAK WS] ready from {user_id} in {lobby_id}")
-                    # В реальности ready лучше через REST /ready, потом broadcast
-
-                elif action == "game_action":
-                    # Для будущего: действия тоже можно слать через WS, но validation в REST надёжнее
-                    logger.info(f"[DURAK WS] game_action from {user_id}: {payload}")
-
-                # Можно расширять
-
-            except Exception as recv_err:
-                # Если не JSON или ошибка — просто продолжаем слушать
-                logger.debug(f"[DURAK WS] receive error (ignored): {recv_err}")
+            except WebSocketDisconnect:
+                break
+            except Exception:
+                # не-JSON сообщение — игнорируем
                 continue
+
+            action = data.get("action")
+            payload = data.get("data", {}) or {}
+
+            if action == "reaction":
+                # Транслируем эмоцию остальным игрокам лобби (отправителю не дублируем)
+                for conn in list(durak_ws_manager.active_connections.get(lobby_id, [])):
+                    if conn["user_id"] == user_id:
+                        continue
+                    try:
+                        await conn["websocket"].send_json({
+                            "type": "reaction",
+                            "user_id": user_id,
+                            "emojiName": payload.get("emojiName"),
+                            "position": payload.get("position", "self"),
+                        })
+                    except Exception:
+                        pass
+            elif action == "game_action":
+                # Ходы принимаются только через REST (там жёсткая валидация)
+                await websocket.send_json({
+                    "type": "error",
+                    "message": "Use REST POST /action for game moves",
+                })
+            # 'ready' и прочее идёт через REST — игнорируем
 
     except WebSocketDisconnect:
         durak_ws_manager.disconnect(lobby_id, user_id)

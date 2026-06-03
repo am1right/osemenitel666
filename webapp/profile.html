@@ -30,6 +30,13 @@
         .stats-card__header { display:flex;align-items:center;gap:10px;margin-bottom:16px; }
         .stats-card__game-name { font-family:'Orbitron',sans-serif;font-size:14px;font-weight:700;color:#fff; }
         .stats-grid { display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px; }
+        .durak-toggle { flex:1;background:rgba(0,255,255,0.08);border:1px solid rgba(0,255,255,0.3);color:#7fe9ff;padding:9px 10px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Rajdhani',sans-serif; }
+        .durak-toggle.active { background:rgba(0,255,255,0.2);color:#fff; }
+        .durak-row { padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.08);font-size:12.5px;color:rgba(255,255,255,0.85);display:flex;justify-content:space-between;gap:8px; }
+        .durak-row:last-child { border-bottom:none; }
+        .durak-row--win { color:#7CFFB0; }
+        .durak-row--loss { color:#ff8a8a; }
+        .durak-box-empty { color:rgba(255,255,255,0.4);font-size:12.5px;padding:8px 0; }
         .stat-item { background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 8px;text-align:center; }
         .stat-item__value { font-family:'Orbitron',sans-serif;font-size:20px;font-weight:700;color:#00ffff;text-shadow:0 0 10px rgba(0,255,255,0.5);line-height:1.1;margin-bottom:4px; }
         .stat-item__label { font-size:10px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.5px;line-height:1.2; }
@@ -303,8 +310,8 @@
             </div>
         </div>
 
-        <!-- По играм -->
-        <div class="section-title">По играм</div>
+        <!-- По играм: офлайн -->
+        <div class="section-title">🎮 Офлайн-игры</div>
         <div class="stats-card">
             <div class="stats-card__header">
                 <img src="icons/math.png" alt="Math Master" style="width:26px;height:26px;object-fit:contain;">
@@ -332,6 +339,22 @@
                 <span class="stats-card__game-name">Flappy Chin</span>
             </div>
             <div id="flappy-stats"><div class="loading-spinner"></div></div>
+        </div>
+
+        <!-- По играм: онлайн -->
+        <div class="section-title">🌐 Онлайн-игры</div>
+        <div class="stats-card">
+            <div class="stats-card__header">
+                <img src="icons/durak.png" alt="Дурак Онлайн" style="width:26px;height:26px;object-fit:contain;">
+                <span class="stats-card__game-name">Дурак Онлайн</span>
+            </div>
+            <div id="durak-stats"><div class="loading-spinner"></div></div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+                <button onclick="toggleDurakBox('history')" class="durak-toggle" id="durak-history-btn">📜 История матчей</button>
+                <button onclick="toggleDurakBox('ratings')" class="durak-toggle" id="durak-ratings-btn">🏆 Рейтинг</button>
+            </div>
+            <div id="durak-history-box" style="display:none;margin-top:12px;"></div>
+            <div id="durak-ratings-box" style="display:none;margin-top:12px;"></div>
         </div>
     </div>
 
@@ -628,6 +651,86 @@
             }
         }
 
+        // ── Дурак Онлайн: личная стата + история + рейтинг ──
+        function renderDurakStats(d) {
+            const el = document.getElementById('durak-stats');
+            if (!el) return;
+            if (!d || !d.games) {
+                el.innerHTML = '<div class="no-data">Нет сыгранных партий</div>';
+                return;
+            }
+            el.innerHTML = `
+                <div class="stats-grid">
+                    <div class="stat-item"><div class="stat-item__value">${d.games}</div><div class="stat-item__label">Партий</div></div>
+                    <div class="stat-item stat-item--best"><div class="stat-item__value">${d.wins}</div><div class="stat-item__label">Побед</div></div>
+                    <div class="stat-item stat-item--last"><div class="stat-item__value">${d.win_rate}%</div><div class="stat-item__label">Винрейт</div></div>
+                </div>`;
+        }
+
+        async function loadDurakStats() {
+            if (!user) { renderDurakStats(null); return; }
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api(`${API}/api/durak/stats/${user.id}`);
+                renderDurakStats(res && res.ok ? await res.json() : null);
+            } catch (e) { renderDurakStats(null); }
+        }
+
+        let _durakBoxLoaded = { history: false, ratings: false };
+        function toggleDurakBox(kind) {
+            const box = document.getElementById(`durak-${kind}-box`);
+            const btn = document.getElementById(`durak-${kind}-btn`);
+            const other = kind === 'history' ? 'ratings' : 'history';
+            const otherBox = document.getElementById(`durak-${other}-box`);
+            const otherBtn = document.getElementById(`durak-${other}-btn`);
+            if (otherBox) otherBox.style.display = 'none';
+            if (otherBtn) otherBtn.classList.remove('active');
+            const open = box.style.display === 'none';
+            box.style.display = open ? 'block' : 'none';
+            btn.classList.toggle('active', open);
+            if (open && !_durakBoxLoaded[kind]) {
+                _durakBoxLoaded[kind] = true;
+                (kind === 'history' ? loadDurakHistory() : loadDurakRatings());
+            }
+        }
+
+        async function loadDurakHistory() {
+            const box = document.getElementById('durak-history-box');
+            box.innerHTML = '<div class="loading-spinner"></div>';
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api(`${API}/api/durak/history?user_id=${user.id}&limit=20`);
+                const data = res && res.ok ? await res.json() : { history: [] };
+                const list = data.history || [];
+                if (!list.length) { box.innerHTML = '<div class="durak-box-empty">Пока нет завершённых партий.</div>'; return; }
+                box.innerHTML = list.map(h => {
+                    const won = h.winner_id === user.id;
+                    const date = h.ended_at ? new Date(h.ended_at).toLocaleDateString('ru') : '';
+                    const pot = h.pot ? ` · ${h.pot}⭐` : '';
+                    return `<div class="durak-row ${won ? 'durak-row--win' : 'durak-row--loss'}">
+                        <span>${won ? '🏆 Победа' : '❌ Проигрыш'}${pot}</span><span>${date}</span></div>`;
+                }).join('');
+            } catch (e) { box.innerHTML = '<div class="durak-box-empty">Ошибка загрузки.</div>'; }
+        }
+
+        async function loadDurakRatings() {
+            const box = document.getElementById('durak-ratings-box');
+            box.innerHTML = '<div class="loading-spinner"></div>';
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api(`${API}/api/durak/ratings?limit=20`);
+                const data = res && res.ok ? await res.json() : { ratings: [] };
+                const list = data.ratings || [];
+                if (!list.length) { box.innerHTML = '<div class="durak-box-empty">Пока нет данных рейтинга.</div>'; return; }
+                box.innerHTML = list.map((r, i) => {
+                    const me = r.user_id === (user && user.id);
+                    const nm = r.first_name || ('Игрок #' + r.user_id);
+                    return `<div class="durak-row" ${me ? 'style="color:#7fe9ff;font-weight:700;"' : ''}>
+                        <span>${i + 1}. ${nm}</span><span>${r.wins}/${r.games} · ${r.win_rate}%</span></div>`;
+                }).join('');
+            } catch (e) { box.innerHTML = '<div class="durak-box-empty">Ошибка загрузки.</div>'; }
+        }
+
         function calcLevel(totalGames) {
             const MAX_LEVEL = 100;
             let level = 1, used = 0;
@@ -770,6 +873,7 @@
         loadReferralStats();
         loadContests();
         loadStats();
+        loadDurakStats();
 
         // Отключаем кнопку «Игры» в навигации, если пользователь забанен
         if (window.disableGamesNavIfBanned) {

@@ -12,6 +12,7 @@ from enum import Enum
 from dataclasses import dataclass
 from typing import List, Optional
 import random
+import time
 
 
 class Suit(Enum):
@@ -213,6 +214,7 @@ class DurakGame:
 
         self.game_over = False
         self.winner: Optional[int] = None
+        self.last_action_at: float = time.time()   # для таймаута хода
 
         # === Состояние текущей "волны атаки" ===
         self.attack_in_progress: bool = False
@@ -244,6 +246,67 @@ class DurakGame:
         self.attack_finished = False
         self.table = []
         self.players_who_threw_this_wave.clear()
+
+    # ====================== СЕРИАЛИЗАЦИЯ (персистентность) ======================
+
+    def to_dict(self) -> dict:
+        """Полный снимок состояния для сохранения в БД."""
+        return {
+            "player_ids": self.player_ids,
+            "all_player_ids": self.all_player_ids,
+            "num_players": self.num_players,
+            "finished": self.finished,
+            "durak": self.durak,
+            "game_type": self.game_type,
+            "deck_size": self.deck.size,
+            "deck_cards": [str(c) for c in self.deck.cards],
+            "trump_suit": self.trump_suit.value if self.trump_suit else None,
+            "hands": {str(pid): [str(c) for c in cards] for pid, cards in self.hands.items()},
+            "current_attacker": self.current_attacker,
+            "current_defender": self.current_defender,
+            "table": [[str(a), (str(b) if b else None)] for a, b in self.table],
+            "discard_pile": [str(c) for c in self.discard_pile],
+            "game_over": self.game_over,
+            "winner": self.winner,
+            "attack_in_progress": self.attack_in_progress,
+            "attack_finished": self.attack_finished,
+            "last_action_at": self.last_action_at,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "DurakGame":
+        """Восстанавливает игру из снимка (после рестарта сервера)."""
+        g = cls(
+            list(data["all_player_ids"]),
+            deck_size=int(data.get("deck_size", 36)),
+            game_type=data.get("game_type", "podkidnoy"),
+        )
+        g.player_ids = list(data["player_ids"])
+        g.all_player_ids = list(data["all_player_ids"])
+        g.num_players = int(data.get("num_players", len(g.all_player_ids)))
+        g.finished = list(data.get("finished", []))
+        g.durak = data.get("durak")
+        g.trump_suit = Suit(data["trump_suit"]) if data.get("trump_suit") else None
+        g.deck.size = int(data.get("deck_size", 36))
+        g.deck.cards = [Card.from_str(s) for s in data.get("deck_cards", [])]
+        g.deck.trump_suit = g.trump_suit
+        g.hands = {
+            int(pid): [Card.from_str(s) for s in cards]
+            for pid, cards in data.get("hands", {}).items()
+        }
+        g.current_attacker = data.get("current_attacker")
+        g.current_defender = data.get("current_defender")
+        g.table = [
+            (Card.from_str(a), (Card.from_str(b) if b else None))
+            for a, b in data.get("table", [])
+        ]
+        g.discard_pile = [Card.from_str(s) for s in data.get("discard_pile", [])]
+        g.game_over = bool(data.get("game_over", False))
+        g.winner = data.get("winner")
+        g.attack_in_progress = bool(data.get("attack_in_progress", False))
+        g.attack_finished = bool(data.get("attack_finished", False))
+        g.last_action_at = float(data.get("last_action_at", time.time()))
+        return g
 
     def get_hand(self, player_id: int) -> List[Card]:
         return self.hands.get(player_id, [])
@@ -505,17 +568,13 @@ class DurakGame:
 
     def can_finish_attack(self) -> bool:
         """
-        Можно ли завершить текущий кон?
-        Разрешаем закрыть атаку только когда:
-        - Все карты на столе отбиты, И
-        - Больше никто не может/хочет подкидывать (нет легальных бросков).
+        Можно ли завершить кон ('бито')?
+        Достаточно, чтобы все карты на столе были отбиты. Атакующий НЕ обязан
+        докидывать оставшиеся подходящие карты — он сам решает, объявить ли «бито».
         """
         if self.game_over:
             return False
         if self._get_unbeaten_count() > 0:
-            return False
-        # Если ещё есть игроки, которые могут подкинуть — лучше не закрывать волну
-        if len(self.get_players_who_can_throw()) > 0:
             return False
         return len(self.table) > 0
 
@@ -583,8 +642,8 @@ class DurakGame:
                 elif self.attack_in_progress:
                     actions.append("throw_in")
 
-        # 'Бито' — завершение атаки (обычно доступно атакующему/участникам, когда все отбиты)
-        if self.can_finish_attack():
+        # 'Бито' — объявляет только атакующий, когда все карты отбиты
+        if player_id == self.current_attacker and self.can_finish_attack():
             actions.append("finish_attack")
 
         # Дедуп

@@ -329,6 +329,15 @@ def init_db():
         )
     ''')
 
+    # Снимок состояния активной игры (восстановление после рестарта)
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS durak_game_state (
+            lobby_id   INTEGER PRIMARY KEY,
+            state_json TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT NOW()
+        )
+    ''')
+
     _purge_test_players(cur)
 
     conn.commit()

@@ -226,8 +226,8 @@
       name: lobbyName,
       max_players: parseInt(document.getElementById('max-players').value, 10),
       deck_size: parseInt(document.getElementById('deck-size').value, 10),
-      game_type: document.getElementById('game-type').value,
-      cheating_enabled: document.getElementById('cheating').value === 'true',
+      game_type: document.getElementById('game-type')?.value || 'podkidnoy',
+      cheating_enabled: document.getElementById('cheating')?.value === 'true',
       bet_amount: parseInt(document.getElementById('bet-amount').value, 10) || 0,
     };
 

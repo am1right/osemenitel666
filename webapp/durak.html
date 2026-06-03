@@ -222,22 +222,6 @@
                 </select>
             </div>
 
-            <div style="margin-bottom:12px;">
-                <label>Тип игры</label><br>
-                <select id="game-type" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #d122e3;">
-                    <option value="podkidnoy" selected>Подкидной</option>
-                    <option value="perevodnoy">Переводной</option>
-                </select>
-            </div>
-
-            <div style="margin-bottom:12px;">
-                <label>Шулерство</label><br>
-                <select id="cheating" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #d122e3;">
-                    <option value="false" selected>Без шулерства (честная игра)</option>
-                    <option value="true">Разрешить шулерство</option>
-                </select>
-            </div>
-
             <div style="margin-bottom:20px;">
                 <label>Ставка (Stars)</label><br>
                 <input type="number" id="bet-amount" value="0" min="0" max="10000" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #d122e3;">
@@ -442,7 +426,8 @@
                 }
                 let html = '';
                 data.ratings.forEach((r, i) => {
-                    html += `<div style="padding:4px 0;">${i+1}. Игрок #${r.user_id} — ${r.wins} побед</div>`;
+                    const nm = r.first_name || ('Игрок #' + r.user_id);
+                    html += `<div style="padding:4px 0;">${i+1}. ${nm} — ${r.wins}/${r.games} (${r.win_rate}%)</div>`;
                 });
                 el.innerHTML = html;
             } catch(e) {

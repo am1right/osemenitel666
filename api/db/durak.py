@@ -170,6 +170,42 @@ def get_lobby_players(lobby_id: int) -> List[Dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
+def save_durak_game_state(lobby_id: int, state_json: str) -> None:
+    """Сохраняет снимок состояния игры (для восстановления после рестарта)."""
+    conn = get_connection()
+    cur = _cursor(conn)
+    cur.execute('''
+        INSERT INTO durak_game_state (lobby_id, state_json, updated_at)
+        VALUES (%s, %s, NOW())
+        ON CONFLICT (lobby_id) DO UPDATE SET
+            state_json = EXCLUDED.state_json, updated_at = NOW()
+    ''', (lobby_id, state_json))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def load_durak_game_state(lobby_id: int) -> Optional[str]:
+    """Возвращает сохранённый снимок состояния игры (или None)."""
+    conn = get_connection()
+    cur = _cursor(conn)
+    cur.execute("SELECT state_json FROM durak_game_state WHERE lobby_id = %s", (lobby_id,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    return row["state_json"] if row else None
+
+
+def delete_durak_game_state(lobby_id: int) -> None:
+    """Удаляет снимок состояния (игра завершена)."""
+    conn = get_connection()
+    cur = _cursor(conn)
+    cur.execute("DELETE FROM durak_game_state WHERE lobby_id = %s", (lobby_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
 def finish_durak_lobby(lobby_id: int) -> None:
     """Помечает лобби завершённым (status='finished')."""
     conn = get_connection()
@@ -467,22 +503,62 @@ def get_durak_history(user_id: Optional[int] = None, limit: int = 20) -> List[Di
     return history
 
 
-def get_durak_ratings(limit: int = 20) -> List[Dict[str, Any]]:
-    """Простой рейтинг по победам."""
+def get_durak_user_stats(user_id: int) -> Dict[str, Any]:
+    """Личная статистика игрока по Дураку: партий / побед / win-rate."""
     conn = get_connection()
     cur = _cursor(conn)
     cur.execute('''
-        SELECT winner_id as user_id, COUNT(*) as wins
+        SELECT COUNT(*) AS games,
+               COUNT(*) FILTER (WHERE winner_id = %s) AS wins
         FROM durak_game_history
-        WHERE winner_id IS NOT NULL
-        GROUP BY winner_id
-        ORDER BY wins DESC
+        WHERE players @> %s::jsonb
+    ''', (user_id, json.dumps([{"user_id": user_id}])))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    games = (row["games"] if row else 0) or 0
+    wins = (row["wins"] if row else 0) or 0
+    return {"games": games, "wins": wins, "win_rate": round(wins / games * 100) if games else 0}
+
+
+def get_durak_ratings(limit: int = 20) -> List[Dict[str, Any]]:
+    """Рейтинг: сыграно / побед / win-rate по каждому участнику (из истории)."""
+    conn = get_connection()
+    cur = _cursor(conn)
+    cur.execute('''
+        WITH participants AS (
+            SELECT (p->>'user_id')::bigint AS user_id,
+                   p->>'first_name'        AS first_name,
+                   h.winner_id,
+                   h.ended_at
+            FROM durak_game_history h
+            CROSS JOIN LATERAL jsonb_array_elements(h.players) AS p
+        )
+        SELECT user_id,
+               (array_agg(first_name ORDER BY ended_at DESC))[1] AS first_name,
+               COUNT(*) AS games,
+               COUNT(*) FILTER (WHERE winner_id = user_id) AS wins
+        FROM participants
+        WHERE user_id IS NOT NULL
+        GROUP BY user_id
+        ORDER BY wins DESC, games DESC
         LIMIT %s
     ''', (limit,))
     rows = cur.fetchall()
     cur.close()
     conn.close()
-    return [{"user_id": r["user_id"], "wins": r["wins"], "games": r["wins"]} for r in rows]
+    result = []
+    for r in rows:
+        games = r["games"] or 0
+        wins = r["wins"] or 0
+        result.append({
+            "user_id": r["user_id"],
+            "first_name": r["first_name"],
+            "games": games,
+            "wins": wins,
+            "win_rate": round(wins / games * 100) if games else 0,
+        })
+    return result
 
 
 def ban_durak_user(user_id: int, reason: str = "") -> bool:
