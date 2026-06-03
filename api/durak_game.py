@@ -782,7 +782,10 @@ class DurakGame:
             "players": self.player_ids,
             "attacker": self.current_attacker,
             "defender": self.current_defender,
-            "trump_suit": str(self.trump_suit) if self.trump_suit else None,
+            # Масть козыря как символ ("♥"), а не "Suit.HEARTS" — клиент сравнивает с мастями карт
+            "trump_suit": self.trump_suit.value if self.trump_suit else None,
+            # Реальная козырная карта (нижняя в колоде), пока колода не пуста — для отрисовки стопки
+            "trump_card": str(self.deck.cards[-1]) if self.deck.cards else None,
             "game_type": self.game_type,
             "hands": hands,
             "table": table,

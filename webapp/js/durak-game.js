@@ -74,33 +74,6 @@
     return rank;
   }
 
-  function createPips(rank, suitInfo) {
-    const pips = [];
-    const src = `icons/durak/${suitInfo.name}.png`;
-    const mk = (top, left) => {
-      const img = document.createElement('img');
-      img.src = src;
-      img.className = `pip ${suitInfo.color}`;
-      img.style.top = top;
-      img.style.left = left;
-      return img;
-    };
-    const n = parseInt(rank, 10);
-    const layouts = {
-      2:  [['18%','50%'],['76%','50%']],
-      3:  [['15%','50%'],['48%','50%'],['81%','50%']],
-      4:  [['16%','28%'],['16%','72%'],['78%','28%'],['78%','72%']],
-      5:  [['14%','25%'],['14%','75%'],['48%','50%'],['82%','25%'],['82%','75%']],
-      6:  [['14%','25%'],['14%','75%'],['42%','25%'],['42%','75%'],['70%','25%'],['70%','75%']],
-      7:  [['12%','25%'],['12%','75%'],['36%','25%'],['36%','75%'],['55%','50%'],['68%','25%'],['68%','75%']],
-      8:  [['12%','25%'],['12%','75%'],['32%','25%'],['32%','75%'],['52%','25%'],['52%','75%'],['72%','25%'],['72%','75%']],
-      9:  [['10%','25%'],['10%','75%'],['30%','25%'],['30%','75%'],['50%','50%'],['65%','25%'],['65%','75%'],['85%','25%'],['85%','75%']],
-      10: [['8%','25%'],['8%','75%'],['26%','50%'],['38%','25%'],['38%','75%'],['58%','25%'],['58%','75%'],['70%','50%'],['82%','25%'],['82%','75%']],
-    };
-    (layouts[n] || []).forEach(([t, l]) => pips.push(mk(t, l)));
-    return pips;
-  }
-
   /** Создаёт DOM-элемент реальной карты по строке вида "10♥". */
   function createCard(cardStr) {
     const el = document.createElement('div');
@@ -152,11 +125,19 @@
       img.draggable = false;
       center.appendChild(img);
     } else {
-      createPips(rank, suitInfo).forEach((p) => center.appendChild(p));
+      // Числовые карты (2–10): крупная цифра номинала по центру
+      const big = document.createElement('div');
+      big.className = 'rdcard-bignum';
+      big.textContent = rank;
+      center.appendChild(big);
     }
     el.appendChild(center);
     return el;
   }
+
+  // Экспортируем рендер карт наружу (для страницы превью durak-cards.html)
+  window.createDurakCard = createCard;
+  window.createDurakBack = createBack;
 
   /** Карта-рубашка (для соперников / колоды / бито). */
   function createBack() {
@@ -275,22 +256,32 @@
   }
 
   function renderDeckAndTrump(state) {
+    const remaining = state.deck_remaining || 0;
+
     const countEl = document.getElementById('dg-deck-count');
-    if (countEl) countEl.textContent = state.deck_remaining ?? 0;
+    if (countEl) countEl.textContent = remaining;
 
-    const deckPile = document.getElementById('dg-deck');
-    if (deckPile) {
-      deckPile.style.visibility = (state.deck_remaining > 0) ? 'visible' : 'hidden';
-    }
-
+    // Реальная козырная карта торчит из-под колоды (пока колода не пуста)
     const trumpEl = document.getElementById('dg-trump-card');
     if (trumpEl) {
       trumpEl.innerHTML = '';
-      if (state.trump_suit) {
-        // показываем козырную масть тузом под колодой (декоративно)
-        const c = createCard('A' + state.trump_suit);
-        c.classList.add('dg-trump-visual');
-        trumpEl.appendChild(c);
+      if (remaining > 0 && state.trump_card) {
+        trumpEl.appendChild(createCard(state.trump_card));
+        trumpEl.style.display = '';
+      } else {
+        trumpEl.style.display = 'none';
+      }
+    }
+
+    // Стопка рубашек поверх козыря
+    const deckPile = document.getElementById('dg-deck');
+    if (deckPile) {
+      deckPile.innerHTML = '';
+      if (remaining > 0) {
+        deckPile.style.visibility = 'visible';
+        deckPile.appendChild(createBack());
+      } else {
+        deckPile.style.visibility = 'hidden';
       }
     }
   }

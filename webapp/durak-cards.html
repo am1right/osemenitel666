@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Дурак — Все карты</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="durak-card.css">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: radial-gradient(ellipse 120% 80% at 50% 30%, #1f5566 0%, #15414f 42%, #0e2d39 70%, #0a2029 100%);
+            color: #fff;
+            font-family: 'Rajdhani', system-ui, sans-serif;
+            padding: 16px;
+            padding-top: max(16px, env(safe-area-inset-top));
+            padding-bottom: max(24px, env(safe-area-inset-bottom));
+        }
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            margin: 0 0 4px;
+            background: linear-gradient(90deg, #d122e3, #34d0ff);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .sub { color: rgba(255,255,255,0.6); font-size: 0.9rem; margin-bottom: 16px; }
+        .suit-section { margin-bottom: 22px; }
+        .suit-title {
+            display: flex; align-items: center; gap: 8px;
+            font-weight: 700; font-size: 1.05rem;
+            margin-bottom: 10px;
+            color: #cfe9f2;
+        }
+        .suit-title img { width: 20px; height: 20px; }
+        .cards-row {
+            display: flex; flex-wrap: wrap; gap: 10px;
+        }
+        /* Размер карт в превью */
+        #cards .rdcard { width: 64px; height: 90px; }
+        .back-btn {
+            display: inline-block;
+            margin-bottom: 16px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 999px;
+            font-size: 0.9rem;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .deck-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+        .deck-tab {
+            padding: 6px 14px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 999px;
+            font-size: 0.85rem; color: #fff; cursor: pointer;
+        }
+        .deck-tab.active { background: rgba(209,34,227,0.25); border-color: #d122e3; color: #fff; }
+    </style>
+</head>
+<body>
+    <a class="back-btn" href="durak.html">← Назад в меню</a>
+    <h1>🃏 Все карты</h1>
+    <div class="sub">Предпросмотр визуала всех карт колоды</div>
+
+    <div class="deck-tabs" id="deck-tabs">
+        <div class="deck-tab" data-deck="24">24 карты</div>
+        <div class="deck-tab active" data-deck="36">36 карт</div>
+        <div class="deck-tab" data-deck="52">52 карты</div>
+    </div>
+
+    <div id="cards"></div>
+
+    <script src="js/api.js"></script>
+    <script src="js/durak-game.js"></script>
+    <script>
+        const SUITS = [
+            { sym: '♥', name: 'hearts',   label: 'Червы' },
+            { sym: '♦', name: 'diamonds', label: 'Бубны' },
+            { sym: '♣', name: 'clubs',    label: 'Трефы' },
+            { sym: '♠', name: 'spades',   label: 'Пики' },
+        ];
+
+        // Ранги в зависимости от размера колоды (минимальный номинал)
+        const DECK_RANKS = {
+            24: ['10','J','Q','K','A'],
+            36: ['6','7','8','9','10','J','Q','K','A'],
+            52: ['2','3','4','5','6','7','8','9','10','J','Q','K','A'],
+        };
+
+        function renderDeck(deckSize) {
+            const root = document.getElementById('cards');
+            root.innerHTML = '';
+            const ranks = DECK_RANKS[deckSize] || DECK_RANKS[36];
+            const make = window.createDurakCard;
+            if (typeof make !== 'function') {
+                root.innerHTML = '<div style="color:#ff8888;">Не удалось загрузить рендер карт (createDurakCard).</div>';
+                return;
+            }
+            SUITS.forEach(suit => {
+                const section = document.createElement('div');
+                section.className = 'suit-section';
+
+                const title = document.createElement('div');
+                title.className = 'suit-title';
+                title.innerHTML = `<img src="icons/durak/${suit.name}.png" alt=""> ${suit.label}`;
+                section.appendChild(title);
+
+                const row = document.createElement('div');
+                row.className = 'cards-row';
+                ranks.forEach(rank => {
+                    row.appendChild(make(rank + suit.sym));
+                });
+                section.appendChild(row);
+                root.appendChild(section);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const tg = window.Telegram?.WebApp;
+            if (tg) { tg.ready(); tg.expand(); if (tg.BackButton) { tg.BackButton.show(); tg.BackButton.onClick(() => window.location.href = 'durak.html'); } }
+
+            renderDeck(36);
+
+            document.querySelectorAll('.deck-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.deck-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    renderDeck(parseInt(tab.dataset.deck, 10));
+                });
+            });
+        });
+    </script>
+</body>
+</html>
