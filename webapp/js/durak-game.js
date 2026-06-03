@@ -626,9 +626,23 @@
   window.showGameOver = showGameOver;
 
   function returnToLobby() {
-    if (DG.lobbyId) location.href = `durak-room.html?lobby=${DG.lobbyId}`;
-    else location.href = 'durak.html';
+    // Возврат всегда в меню Дурака (комната при playing редиректит обратно в игру → петля)
+    location.href = 'durak.html';
   }
+
+  async function surrender() {
+    if (!confirm('Сдаться и выйти из игры?')) return;
+    stopPolling();
+    try {
+      await api(`/api/durak/lobbies/${DG.lobbyId}/forfeit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: DG.userId }),
+      });
+    } catch (e) { /* всё равно уходим в меню */ }
+    location.href = 'durak.html';
+  }
+  window.surrenderDurak = surrender;
   window.returnToLobby = returnToLobby;
 
   // ════════════════════════════════════════════════════════════

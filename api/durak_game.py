@@ -194,8 +194,11 @@ class DurakGame:
         if game_type not in ("podkidnoy", "perevodnoy"):
             game_type = "podkidnoy"
 
-        self.player_ids = player_ids
+        self.player_ids = list(player_ids)       # активные игроки (выбывшие удаляются)
+        self.all_player_ids = list(player_ids)    # исходный порядок рассадки (для ротации)
         self.num_players = len(player_ids)
+        self.finished: List[int] = []             # вышедшие из игры (в порядке выхода) = победители
+        self.durak: Optional[int] = None          # проигравший (остался с картами)
         self.game_type = game_type
 
         self.deck = Deck(deck_size)
@@ -245,11 +248,44 @@ class DurakGame:
     def get_hand(self, player_id: int) -> List[Card]:
         return self.hands.get(player_id, [])
 
+    def _active_order_from(self, first_pid: Optional[int]) -> List[int]:
+        """Активные игроки по кругу, начиная с first_pid (по исходной рассадке)."""
+        order = self.all_player_ids
+        n = len(order)
+        start = order.index(first_pid) if first_pid in order else 0
+        seq = [order[(start + i) % n] for i in range(n)]
+        return [p for p in seq if p in self.player_ids]
+
+    def _next_active_after(self, pid: int) -> Optional[int]:
+        """Следующий активный игрок после pid по кругу (pid может быть уже выбывшим)."""
+        order = self.all_player_ids
+        n = len(order)
+        start = order.index(pid) if pid in order else -1
+        for i in range(1, n + 1):
+            cand = order[(start + i) % n]
+            if cand in self.player_ids:
+                return cand
+        return None
+
     def draw_for_players(self):
-        """Все игроки добирают карты до 6 (если возможно)."""
-        for pid in self.player_ids:
+        """Добор карт до 6. Порядок: сначала атакующий, защитник — последним."""
+        order = self._active_order_from(self.current_attacker)
+        defender = self.current_defender
+        if defender in order:
+            order = [p for p in order if p != defender] + [defender]
+        for pid in order:
             if pid in self.hands:
                 self.deck.draw_cards(self.hands[pid])
+
+    def _eliminate_finished(self) -> None:
+        """Игроки с 0 карт при пустой колоде выходят из игры (в порядке выхода)."""
+        if self.deck.remaining_cards() > 0:
+            return
+        for pid in self._active_order_from(self.current_attacker):
+            if len(self.hands.get(pid, [])) == 0:
+                self.player_ids.remove(pid)
+                if pid not in self.finished:
+                    self.finished.append(pid)
 
     # ====================== ЛОГИКА ХОДОВ ======================
 
@@ -341,6 +377,15 @@ class DurakGame:
             return beat_card.rank.value > attack_card.rank.value
         return False
 
+    def forfeit(self, player_id: int) -> bool:
+        """Игрок сдаётся: игра завершается. Для 2 игроков победитель — соперник."""
+        if self.game_over or player_id not in self.player_ids:
+            return False
+        others = [p for p in self.player_ids if p != player_id]
+        self.game_over = True
+        self.winner = others[0] if len(others) == 1 else None
+        return True
+
     def take_table(self, player_id: int) -> bool:
         """Защищающийся забирает все карты со стола."""
         if player_id != self.current_defender:
@@ -358,29 +403,26 @@ class DurakGame:
         for c in cards_taken:
             self.hands[player_id].append(c)
 
-        # Ротация: после взятия следующий атакующий — игрок ПОСЛЕ защитника
-        defender_index = self.player_ids.index(self.current_defender)
-        new_attacker_index = (defender_index + 1) % self.num_players
-        new_defender_index = (new_attacker_index + 1) % self.num_players
+        defender = self.current_defender
 
-        self.current_attacker = self.player_ids[new_attacker_index]
-        self.current_defender = self.player_ids[new_defender_index]
-
-        # Общий сброс раунда (карты НЕ идут в сброс, а в руку)
+        # Сброс раунда: добор + выбывание (карты НЕ в сброс — они в руке защитника)
         self._cleanup_round(to_discard=None)
+        if self.game_over:
+            return True
 
-        # После "взял" сразу начинается новая атака от нового атакующего.
-        # Нельзя оставлять attack_finished=True — это блокирует is_legal_attack для следующего раунда.
-        self.attack_in_progress = False
-        self.attack_finished = False
-
+        # Защитник взял → он пропускает свою атаку; ходит следующий за ним
+        new_attacker = self._next_active_after(defender)
+        self.current_attacker = new_attacker
+        self.current_defender = self._next_active_after(new_attacker) if new_attacker is not None else None
         return True
 
-    def finish_attack(self) -> bool:
+    def finish_attack(self, caller_id: Optional[int] = None) -> bool:
         """
-        Завершает текущий кон (все карты успешно отбиты).
-        По правилам Дурака после успешной защиты следующий атакующий — бывший защитник.
+        Завершает кон ('бито') — все карты отбиты. Вызвать может только атакующий.
+        После успешной защиты следующий атакующий — бывший защитник.
         """
+        if caller_id is not None and caller_id != self.current_attacker:
+            return False
         if not self.can_finish_attack():
             return False
 
@@ -392,22 +434,17 @@ class DurakGame:
             if bt:
                 to_discard.append(bt)
 
-        # Ротация: после 'бито' бывший защитник становится атакующим
-        defender_index = self.player_ids.index(self.current_defender)
-        new_attacker_index = defender_index
-        new_defender_index = (defender_index + 1) % self.num_players
+        defender = self.current_defender
 
-        self.current_attacker = self.player_ids[new_attacker_index]
-        self.current_defender = self.player_ids[new_defender_index]
-
-        # Общий сброс раунда + перемещение в сброс
+        # Сброс раунда + перемещение в бито + добор + выбывание
         self._cleanup_round(to_discard=to_discard)
+        if self.game_over:
+            return True
 
-        # После успешного "бита" тоже сразу начинается новый раунд.
-        # Новый атакующий (бывший защитник) должен иметь возможность начать атаку.
-        self.attack_in_progress = False
-        self.attack_finished = False
-
+        # Успешная защита → бывший защитник атакует (если ещё в игре)
+        new_attacker = defender if defender in self.player_ids else self._next_active_after(defender)
+        self.current_attacker = new_attacker
+        self.current_defender = self._next_active_after(new_attacker) if new_attacker is not None else None
         return True
 
     def get_table(self) -> List[tuple[Card, Optional[Card]]]:
@@ -505,6 +542,7 @@ class DurakGame:
         self.table = []
         self._reset_wave_state()
         self.draw_for_players()
+        self._eliminate_finished()
         self._check_game_over()
 
     def get_role(self, player_id: int) -> str:
@@ -631,10 +669,6 @@ class DurakGame:
         if self.get_max_attack_cards_remaining() <= 0:
             return False
 
-        # Игрок уже бросал в этой волне?
-        if player_id in self.players_who_threw_this_wave:
-            return False
-
         # Если атака уже идёт — можно подкидывать любому (кроме защитника), у кого есть подходящая карта
         if self.attack_in_progress:
             if player_id == self.current_defender:
@@ -671,13 +705,8 @@ class DurakGame:
         return legal
 
     def can_player_throw_in(self, player_id: int) -> bool:
-        """
-        Может ли этот игрок в принципе подкидывать карты в текущий момент атаки?
-        Учитывает правило "один игрок — один бросок за волну".
-        """
+        """Может ли игрок сейчас подкидывать карты (в пределах лимита и по рангам)."""
         if self.game_over or self.attack_finished:
-            return False
-        if player_id in self.players_who_threw_this_wave:
             return False
         if not self.attack_in_progress:
             return player_id == self.current_attacker
@@ -711,15 +740,14 @@ class DurakGame:
         return sum(1 for _, bt in self.table if bt is None)
 
     def _check_game_over(self):
-        """Проверяет, не закончилась ли игра (у кого-то 0 карт после добора)."""
+        """Игра окончена, когда активным остался ≤1 игрок. Оставшийся — дурак."""
         if self.game_over:
             return
-
-        for pid in self.player_ids:
-            if len(self.hands.get(pid, [])) == 0:
-                self.game_over = True
-                self.winner = pid
-                return
+        if len(self.player_ids) <= 1:
+            self.game_over = True
+            self.durak = self.player_ids[0] if self.player_ids else None
+            # Победитель (для выплаты банка) — первый вышедший из игры
+            self.winner = self.finished[0] if self.finished else None
 
     def __repr__(self):
         return f"<DurakGame players={len(self.player_ids)} trump={self.trump_suit}>"
@@ -796,6 +824,8 @@ class DurakGame:
             "attack_finished": self.attack_finished,
             "game_over": self.game_over,
             "winner": self.winner,
+            "durak": self.durak,
+            "finished": list(self.finished),
             "role": role,
             "allowed_actions": allowed_actions,
             "legal_attacks": legal_attacks,

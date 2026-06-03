@@ -384,6 +384,36 @@ def _parse_card(s: Optional[str]) -> Optional[Card]:
         raise HTTPException(status_code=400, detail=f"Invalid card format: {s} ({e})")
 
 
+DURAK_COMMISSION_RATE = 0.05  # комиссия с банка при выплате победителю
+
+
+def _finalize_game(lobby_id: int, game) -> None:
+    """Завершение партии: выплата победителю, история, статус лобби, очистка памяти."""
+    winner = game.winner
+    pot = 0
+    try:
+        lobby = db.get_durak_lobby_by_id(lobby_id) or {}
+        pot = lobby.get('pot', 0) or 0
+        if winner and pot > 0:
+            commission = int(pot * DURAK_COMMISSION_RATE)
+            award = pot - commission
+            db.topup_wallet(winner, '', award, f"Победа в дураке (лобби #{lobby_id})")
+            logger.info(f"[DURAK PAYOUT] {award} to {winner} (comm {commission}) from pot {pot}")
+    except Exception:
+        logger.exception("Payout error")
+    try:
+        players = db.get_lobby_players(lobby_id) or []
+        players_data = [
+            {"user_id": p["user_id"], "first_name": p.get("first_name"), "is_winner": p["user_id"] == winner}
+            for p in players
+        ]
+        db.save_durak_game_history(lobby_id, winner, pot, players_data)
+        db.finish_durak_lobby(lobby_id)
+    except Exception:
+        logger.exception("History save error")
+    active_games.pop(lobby_id, None)
+
+
 @router.post("/lobbies/{lobby_id}/action")
 async def perform_game_action(lobby_id: int, req: GameActionRequest):
     """
@@ -432,10 +462,8 @@ async def perform_game_action(lobby_id: int, req: GameActionRequest):
             message = "took table" if success else "cannot take table now"
 
         elif action in ("finish_attack", "finish", "bito"):
-            if pid not in (game.current_attacker, game.current_defender):
-                # Разрешаем финиш только участникам атаки (на практике — attacker)
-                pass
-            success = game.finish_attack()
+            # "Бито" может объявить только атакующий
+            success = game.finish_attack(caller_id=pid)
             message = "attack finished" if success else "cannot finish attack now"
 
         else:
@@ -449,43 +477,10 @@ async def perform_game_action(lobby_id: int, req: GameActionRequest):
 
     new_state = game.get_full_game_state(viewer_id=pid)
 
-    # Если игра закончилась — можно почистить active_games (опционально, для MVP оставляем)
+    # Если игра закончилась — выплата/история/финиш лобби/очистка
     if game.game_over and lobby_id in active_games:
         logger.info(f"[DURAK] Game over in lobby {lobby_id}, winner={game.winner}")
-        winner = game.winner
-        try:
-            lobby = db.get_durak_lobby_by_id(lobby_id) or {}
-            pot = lobby.get('pot', 0) or 0
-            if winner and pot > 0:
-                commission = int(pot * 0.05)
-                award = pot - commission
-                db.topup_wallet(winner, '', award, f"Победа в дураке (лобби #{lobby_id})")
-                logger.info(f"[DURAK PAYOUT] {award} to {winner} (comm {commission}) from pot {pot}")
-            # mark finished
-            # db can use update or direct, for now log
-        except Exception as e:
-            logger.exception("Payout error")
-
-        # Save history
-        try:
-            players = db.get_lobby_players(lobby_id) or []
-            players_data = [{"user_id": p["user_id"], "first_name": p.get("first_name"), "is_winner": p["user_id"] == winner} for p in players]
-            db.save_durak_game_history(lobby_id, winner, pot, players_data)
-            # mark finished
-            conn = None
-            cur = None
-            try:
-                conn = db.get_connection()
-                cur = db._cursor(conn)
-                cur.execute("UPDATE durak_lobbies SET status = 'finished', updated_at = NOW() WHERE id = %s", (lobby_id,))
-                conn.commit()
-            finally:
-                if cur: cur.close()
-                if conn: conn.close()
-        except Exception as e:
-            logger.exception("History save error")
-
-        del active_games[lobby_id]
+        _finalize_game(lobby_id, game)
 
     # Broadcast update to all connected clients in the lobby
     await durak_ws_manager.broadcast(lobby_id, {
@@ -510,6 +505,39 @@ async def perform_game_action(lobby_id: int, req: GameActionRequest):
         "message": message,
         "state": new_state
     }
+
+
+@router.post("/lobbies/{lobby_id}/forfeit")
+async def forfeit_game(lobby_id: int, req: StartGameRequest):
+    """Игрок сдаётся: партия завершается, победа соперника (выплата/история/финиш)."""
+    game = active_games.get(lobby_id)
+    if not game:
+        # Игры нет в памяти (рестарт/уже завершена) — просто помечаем лобби завершённым
+        try:
+            db.finish_durak_lobby(lobby_id)
+        except Exception:
+            logger.exception("forfeit finish (no game) error")
+        return {"status": "ok", "game_instance": False}
+
+    pid = req.user_id
+    if pid not in game.player_ids:
+        raise HTTPException(status_code=403, detail="You are not a participant in this game")
+
+    if not game.game_over:
+        game.forfeit(pid)
+
+    final_state = game.get_full_game_state()
+    winner = game.winner
+    _finalize_game(lobby_id, game)
+
+    await durak_ws_manager.broadcast(lobby_id, {
+        "type": "game_ended",
+        "winner_id": winner,
+        "final_state": final_state,
+        "forfeited_by": pid,
+    })
+    logger.info(f"[DURAK] Forfeit in lobby {lobby_id} by {pid}, winner={winner}")
+    return {"status": "ok", "winner_id": winner}
 
 
 @router.get("/history")

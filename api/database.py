@@ -93,6 +93,7 @@ from api.db.durak import (
     get_active_durak_lobbies,
     join_durak_lobby,
     get_lobby_players,
+    finish_durak_lobby,
     leave_durak_lobby,
     update_lobby_settings,
     set_player_ready,
@@ -138,7 +139,7 @@ __all__ = [
     "admin_get_summary_stats",
     # durak
     "create_durak_lobby", "get_active_durak_lobbies", "join_durak_lobby",
-    "get_lobby_players", "leave_durak_lobby", "update_lobby_settings",
+    "get_lobby_players", "finish_durak_lobby", "leave_durak_lobby", "update_lobby_settings",
     "set_player_ready", "is_user_in_active_lobby", "start_durak_game",
     "get_durak_lobby_by_id", "save_durak_game_history", "get_durak_history",
     "get_durak_ratings", "ban_durak_user", "is_durak_banned",

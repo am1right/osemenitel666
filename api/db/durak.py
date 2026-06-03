@@ -170,6 +170,19 @@ def get_lobby_players(lobby_id: int) -> List[Dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
+def finish_durak_lobby(lobby_id: int) -> None:
+    """Помечает лобби завершённым (status='finished')."""
+    conn = get_connection()
+    cur = _cursor(conn)
+    cur.execute(
+        "UPDATE durak_lobbies SET status = 'finished', updated_at = NOW() WHERE id = %s",
+        (lobby_id,),
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
 def leave_durak_lobby(lobby_id: int, user_id: int) -> bool:
     """Выходит из лобби. Если уходит создатель — передаёт владение или закрывает лобби.
     При наличии ставки деньги переходят в pot (не возвращаются).
