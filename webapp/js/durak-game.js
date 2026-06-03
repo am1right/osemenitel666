@@ -734,7 +734,8 @@
     window.currentLobbyId = DG.lobbyId;
 
     if (!DG.lobbyId) {
-      console.error('[durak] no lobby id in URL');
+      // Не игровая страница (например профиль) — клиент игры не запускаем,
+      // но window.createDurakCard уже доступен для превью карт.
       return;
     }
 

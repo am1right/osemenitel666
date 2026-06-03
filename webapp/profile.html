@@ -6,8 +6,10 @@
     <title>Профиль | Chin Games</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="js/api.js"></script>
+    <script src="js/durak-game.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="durak-card.css">
     <style>
         * { user-select:none!important;-webkit-user-select:none!important;-webkit-tap-highlight-color:transparent!important;-webkit-touch-callout:none!important;box-sizing:border-box; }
         html,body { overscroll-behavior:none!important;touch-action:none!important;overflow:hidden!important;height:100%!important;position:fixed!important;width:100%!important;margin:0!important;padding:0!important; }
@@ -37,6 +39,13 @@
         .durak-row--win { color:#7CFFB0; }
         .durak-row--loss { color:#ff8a8a; }
         .durak-box-empty { color:rgba(255,255,255,0.4);font-size:12.5px;padding:8px 0; }
+        .skin-chips { display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px; }
+        .skin-chip { padding:7px 14px;border-radius:999px;border:1px solid rgba(0,255,255,0.3);background:rgba(0,255,255,0.07);color:#cfe9f2;font-size:12px;font-weight:600;cursor:pointer; }
+        .skin-chip.active { background:rgba(0,255,255,0.22);border-color:#00ffff;color:#fff; }
+        .skin-chip.locked { opacity:0.45;cursor:default; }
+        .skin-preview { display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:6px 0; }
+        #durak-skins-box .rdcard { width:58px;height:82px; }
+        .skin-hint { font-size:11px;color:rgba(255,255,255,0.45);margin-top:8px;text-align:center; }
         .stat-item { background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 8px;text-align:center; }
         .stat-item__value { font-family:'Orbitron',sans-serif;font-size:20px;font-weight:700;color:#00ffff;text-shadow:0 0 10px rgba(0,255,255,0.5);line-height:1.1;margin-bottom:4px; }
         .stat-item__label { font-size:10px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.5px;line-height:1.2; }
@@ -349,12 +358,14 @@
                 <span class="stats-card__game-name">Дурак Онлайн</span>
             </div>
             <div id="durak-stats"><div class="loading-spinner"></div></div>
-            <div style="display:flex;gap:8px;margin-top:12px;">
-                <button onclick="toggleDurakBox('history')" class="durak-toggle" id="durak-history-btn">📜 История матчей</button>
+            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+                <button onclick="toggleDurakBox('history')" class="durak-toggle" id="durak-history-btn">📜 История</button>
                 <button onclick="toggleDurakBox('ratings')" class="durak-toggle" id="durak-ratings-btn">🏆 Рейтинг</button>
+                <button onclick="toggleDurakBox('skins')" class="durak-toggle" id="durak-skins-btn">🎨 Внешний вид карт</button>
             </div>
             <div id="durak-history-box" style="display:none;margin-top:12px;"></div>
             <div id="durak-ratings-box" style="display:none;margin-top:12px;"></div>
+            <div id="durak-skins-box" style="display:none;margin-top:12px;"></div>
         </div>
     </div>
 
@@ -676,22 +687,61 @@
             } catch (e) { renderDurakStats(null); }
         }
 
-        let _durakBoxLoaded = { history: false, ratings: false };
+        const _DURAK_BOXES = ['history', 'ratings', 'skins'];
+        let _durakBoxLoaded = { history: false, ratings: false, skins: false };
         function toggleDurakBox(kind) {
             const box = document.getElementById(`durak-${kind}-box`);
             const btn = document.getElementById(`durak-${kind}-btn`);
-            const other = kind === 'history' ? 'ratings' : 'history';
-            const otherBox = document.getElementById(`durak-${other}-box`);
-            const otherBtn = document.getElementById(`durak-${other}-btn`);
-            if (otherBox) otherBox.style.display = 'none';
-            if (otherBtn) otherBtn.classList.remove('active');
             const open = box.style.display === 'none';
+            // Закрываем все блоки (показываем максимум один)
+            _DURAK_BOXES.forEach(k => {
+                const b = document.getElementById(`durak-${k}-box`);
+                const bt = document.getElementById(`durak-${k}-btn`);
+                if (b) b.style.display = 'none';
+                if (bt) bt.classList.remove('active');
+            });
             box.style.display = open ? 'block' : 'none';
             btn.classList.toggle('active', open);
             if (open && !_durakBoxLoaded[kind]) {
                 _durakBoxLoaded[kind] = true;
-                (kind === 'history' ? loadDurakHistory() : loadDurakRatings());
+                if (kind === 'history') loadDurakHistory();
+                else if (kind === 'ratings') loadDurakRatings();
+                else if (kind === 'skins') renderDurakSkins();
             }
+        }
+
+        // ── Кастомизация: внешний вид карт ──
+        const DURAK_SKINS = [
+            { id: 'standard', name: 'Стандартный', locked: false },
+        ];
+        const SKIN_PREVIEW_CARDS = ['6♣', '10♦', 'J♠', 'Q♥', 'K♣', 'A♦'];
+        function getDurakSkin() { try { return localStorage.getItem('durakCardSkin') || 'standard'; } catch (e) { return 'standard'; } }
+        function setDurakSkin(id) { try { localStorage.setItem('durakCardSkin', id); } catch (e) {} }
+        function renderDurakSkins() {
+            const box = document.getElementById('durak-skins-box');
+            if (!box) return;
+            const current = getDurakSkin();
+            const chips = DURAK_SKINS.map(s => {
+                const cls = 'skin-chip' + (s.id === current ? ' active' : '') + (s.locked ? ' locked' : '');
+                return `<div class="${cls}" data-skin="${s.id}">${s.name}${s.locked ? ' 🔒' : ''}</div>`;
+            }).join('');
+            box.innerHTML = `<div class="skin-chips">${chips}</div>
+                <div class="skin-preview" id="durak-skin-preview"></div>
+                <div class="skin-hint">В, Д, К и Т — крупные иконки. Остальные карты — крупная цифра номинала.</div>`;
+            const prev = document.getElementById('durak-skin-preview');
+            const make = window.createDurakCard;
+            if (prev && typeof make === 'function') {
+                SKIN_PREVIEW_CARDS.forEach(c => prev.appendChild(make(c)));
+            } else if (prev) {
+                prev.innerHTML = '<div class="durak-box-empty">Не удалось загрузить превью карт.</div>';
+            }
+            box.querySelectorAll('.skin-chip').forEach(ch => {
+                ch.onclick = () => {
+                    if (ch.classList.contains('locked')) return;
+                    setDurakSkin(ch.dataset.skin);
+                    renderDurakSkins();
+                };
+            });
         }
 
         async function loadDurakHistory() {
