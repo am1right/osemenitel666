@@ -504,8 +504,23 @@ DURAK_SWEEP_INTERVAL = 60            # как часто проверять
 DURAK_DISCONNECT_FORFEIT_SEC = 90    # отключён дольше — авто-форфейт (если соперник на связи)
 
 
+DURAK_CLEANUP_EVERY = 10             # каждые N циклов свипера чистим устаревшие лобби
+_sweep_tick = 0
+
+
 async def _sweep_abandoned_games():
-    """Авто-доигрывает/завершает игры, в которых давно никто не ходит."""
+    """Авто-доигрывает/завершает игры, в которых давно никто не ходит,
+    и периодически чистит устаревшие waiting/finished лобби."""
+    global _sweep_tick
+    _sweep_tick += 1
+    if _sweep_tick % DURAK_CLEANUP_EVERY == 1:
+        try:
+            summary = db.cleanup_stale_durak_lobbies()
+            if summary.get("cancelled") or summary.get("deleted"):
+                logger.info(f"[DURAK] Cleanup: {summary}")
+        except Exception:
+            logger.exception("sweeper: cleanup_stale_durak_lobbies failed")
+
     try:
         lobby_ids = db.list_active_durak_game_lobbies()
     except Exception:
@@ -523,22 +538,26 @@ async def _sweep_abandoned_games():
                 _finalize_game(lobby_id, game)
                 continue
 
-            # Авто-форфейт: 1×1, один игрок давно отвалился, соперник на связи
-            if len(game.player_ids) == 2:
-                connected = durak_ws_manager.connected_user_ids(lobby_id)
-                forfeited = None
-                for pid in list(game.player_ids):
-                    ds = durak_ws_manager.disconnected_since(lobby_id, pid)
-                    opponent_online = any(p in connected for p in game.player_ids if p != pid)
-                    if ds and (now - ds) > DURAK_DISCONNECT_FORFEIT_SEC and opponent_online:
-                        game.forfeit(pid)
-                        forfeited = pid
-                        break
-                if forfeited is not None:
-                    logger.info(f"[DURAK] Sweeper: forfeit disconnected {forfeited} in lobby {lobby_id}")
+            # Авто-форфейт по отвалу: игрок давно офлайн, хотя бы один соперник на связи
+            connected = durak_ws_manager.connected_user_ids(lobby_id)
+            forfeited = None
+            for pid in list(game.player_ids):
+                ds = durak_ws_manager.disconnected_since(lobby_id, pid)
+                opponent_online = any(p in connected for p in game.player_ids if p != pid)
+                if ds and (now - ds) > DURAK_DISCONNECT_FORFEIT_SEC and opponent_online:
+                    game.forfeit(pid)
+                    forfeited = pid
+                    break
+            if forfeited is not None:
+                logger.info(f"[DURAK] Sweeper: forfeit disconnected {forfeited} in lobby {lobby_id}")
+                if game.game_over:
                     await broadcast_game_state(lobby_id, game, "game_ended")
                     _finalize_game(lobby_id, game)
-                    continue
+                else:
+                    game.last_action_at = time.time()
+                    _persist(lobby_id, game)
+                    await broadcast_game_state(lobby_id, game, "game_action", {"forfeited_by": forfeited})
+                continue
 
             if now - game.last_action_at < DURAK_ABANDON_SEC:
                 continue
@@ -614,13 +633,18 @@ def _finalize_game(lobby_id: int, game) -> None:
     durak = getattr(game, "durak", None)
     all_players = list(getattr(game, "all_player_ids", []) or [])
     finished = list(getattr(game, "finished", []) or [])
-    # Победители в порядке выхода: сначала вышедшие (по очереди), затем прочие не-дураки
-    if durak is not None and all_players:
-        winners = [p for p in finished if p != durak]
+    forfeited = list(getattr(game, "forfeited", []) or [])
+    # Исключаем из банка дурака и всех сдавшихся/выбывших по отвалу
+    excluded = set(forfeited)
+    if durak is not None:
+        excluded.add(durak)
+    # Победители в порядке выхода: сначала вышедшие (по очереди), затем прочие не-исключённые
+    if all_players and (durak is not None or forfeited):
+        winners = [p for p in finished if p not in excluded]
         for p in all_players:
-            if p != durak and p not in winners:
+            if p not in excluded and p not in winners:
                 winners.append(p)
-    elif game.winner:
+    elif game.winner and game.winner not in excluded:
         winners = [game.winner]
     else:
         winners = []
@@ -798,6 +822,15 @@ async def forfeit_game(lobby_id: int, req: StartGameRequest, tg_user: dict = Dep
     if not game.game_over:
         game.forfeit(pid)
 
+    # 3+ игроков: сдавшийся выбыл, но партия продолжается — не финализируем
+    if not game.game_over:
+        game.last_action_at = time.time()
+        _persist(lobby_id, game)
+        await broadcast_game_state(lobby_id, game, "game_action",
+                                   {"forfeited_by": pid, "user_id": pid, "action": "forfeit"})
+        logger.info(f"[DURAK] Forfeit (eliminated) in lobby {lobby_id} by {pid}")
+        return {"status": "ok", "eliminated": pid, "game_over": False}
+
     winner = game.winner
     await broadcast_game_state(lobby_id, game, "game_ended", {"forfeited_by": pid})
     _finalize_game(lobby_id, game)
@@ -888,10 +921,34 @@ async def admin_ban_durak(target_user: int, reason: str = "", tg_user: dict = De
 # ── Реальный WebSocket для Durak (реaltime обновления) ────────────
 
 @router.websocket("/ws/{lobby_id}")
-async def durak_websocket(websocket: WebSocket, lobby_id: int, user_id: int = Query(..., description="User ID")):
+async def durak_websocket(
+    websocket: WebSocket,
+    lobby_id: int,
+    user_id: int = Query(..., description="User ID"),
+    init_data: Optional[str] = Query(default=None, description="Telegram WebApp initData (подпись)"),
+):
     """WebSocket соединение для лобби/игры Дурака.
-    Клиент подключается: ws(s)://host/api/durak/ws/{lobby_id}?user_id=XXX
+    Клиент подключается: ws(s)://host/api/durak/ws/{lobby_id}?user_id=XXX&init_data=...
+    Если передан init_data — проверяем подпись и берём id из неё (нельзя слать
+    реакции/присутствие за чужим id). Без init_data соединение отклоняется.
     """
+    # Аутентификация по подписанному initData
+    try:
+        from api.tg_auth import verify_init_data, BOT_TOKEN
+    except ImportError:
+        from tg_auth import verify_init_data, BOT_TOKEN
+    if not init_data:
+        await websocket.close(code=1008)
+        logger.warning(f"[DURAK WS] rejected lobby {lobby_id}: missing init_data")
+        return
+    try:
+        verified = verify_init_data(init_data, BOT_TOKEN)
+        user_id = int(verified["id"])  # доверяем только проверенному id
+    except Exception as e:
+        await websocket.close(code=1008)
+        logger.warning(f"[DURAK WS] rejected lobby {lobby_id}: bad init_data ({e})")
+        return
+
     await durak_ws_manager.connect(lobby_id, user_id, websocket)
     try:
         # Подтверждение подключения + уведомляем остальных об онлайне

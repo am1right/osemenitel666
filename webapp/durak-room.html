@@ -857,7 +857,9 @@
 
                 const protocol = (window.location.protocol === 'https:') ? 'wss:' : 'ws:';
                 const host = window.location.host || 'localhost:8000';
-                const wsUrl = `${protocol}//${host}/api/durak/ws/${this.lobbyId}?user_id=${this.userId}`;
+                const tgInit = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '';
+                let wsUrl = `${protocol}//${host}/api/durak/ws/${this.lobbyId}?user_id=${this.userId}`;
+                if (tgInit) wsUrl += `&init_data=${encodeURIComponent(tgInit)}`;
 
                 try {
                     this.socket = new WebSocket(wsUrl);

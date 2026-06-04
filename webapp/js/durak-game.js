@@ -590,7 +590,9 @@
   function connectSocket() {
     const proto = (location.protocol === 'https:') ? 'wss:' : 'ws:';
     const host = location.host || 'localhost:8000';
-    const url = `${proto}//${host}/api/durak/ws/${DG.lobbyId}?user_id=${DG.userId}`;
+    const tgInit = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '';
+    let url = `${proto}//${host}/api/durak/ws/${DG.lobbyId}?user_id=${DG.userId}`;
+    if (tgInit) url += `&init_data=${encodeURIComponent(tgInit)}`;
     try {
       const ws = new WebSocket(url);
       DG.socket = ws;

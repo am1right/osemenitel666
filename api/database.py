@@ -116,6 +116,7 @@ from api.db.durak import (
     get_durak_user_stats,
     admin_reset_durak_all,
     admin_reset_durak_player,
+    cleanup_stale_durak_lobbies,
     ban_durak_user,
     is_durak_banned,
 )
@@ -162,6 +163,6 @@ __all__ = [
     "set_player_ready", "is_user_in_active_lobby", "start_durak_game",
     "get_durak_lobby_by_id", "save_durak_game_history", "get_durak_history",
     "get_durak_ratings", "get_durak_user_stats",
-    "admin_reset_durak_all", "admin_reset_durak_player",
+    "admin_reset_durak_all", "admin_reset_durak_player", "cleanup_stale_durak_lobbies",
     "ban_durak_user", "is_durak_banned",
 ]

@@ -199,6 +199,7 @@ class DurakGame:
         self.all_player_ids = list(player_ids)    # исходный порядок рассадки (для ротации)
         self.num_players = len(player_ids)
         self.finished: List[int] = []             # вышедшие из игры (в порядке выхода) = победители
+        self.forfeited: List[int] = []            # сдавшиеся/выбывшие по отвалу (исключены из банка)
         self.durak: Optional[int] = None          # проигравший (остался с картами)
         self.game_type = game_type
 
@@ -256,6 +257,7 @@ class DurakGame:
             "all_player_ids": self.all_player_ids,
             "num_players": self.num_players,
             "finished": self.finished,
+            "forfeited": self.forfeited,
             "durak": self.durak,
             "game_type": self.game_type,
             "deck_size": self.deck.size,
@@ -285,6 +287,7 @@ class DurakGame:
         g.all_player_ids = list(data["all_player_ids"])
         g.num_players = int(data.get("num_players", len(g.all_player_ids)))
         g.finished = list(data.get("finished", []))
+        g.forfeited = list(data.get("forfeited", []))
         g.durak = data.get("durak")
         g.trump_suit = Suit(data["trump_suit"]) if data.get("trump_suit") else None
         g.deck.size = int(data.get("deck_size", 36))
@@ -440,12 +443,49 @@ class DurakGame:
             return beat_card.rank.value > attack_card.rank.value
         return False
 
+    def _remove_active_player(self, pid: int) -> None:
+        """Убирает игрока из активных посреди партии (сдача/отвал) и чинит роли.
+        Карты выбывшего и текущий стол уходят в сброс, кон прерывается."""
+        if pid not in self.player_ids:
+            return
+        # карты выбывшего и стол — в сброс
+        self.discard_pile.extend(self.hands.get(pid, []))
+        self.hands[pid] = []
+        for atk, bt in self.table:
+            if atk:
+                self.discard_pile.append(atk)
+            if bt:
+                self.discard_pile.append(bt)
+        self.table = []
+        self._reset_wave_state()
+        nxt = self._next_active_after(pid)
+        self.player_ids.remove(pid)
+        if len(self.player_ids) <= 1:
+            return  # конец игры обработает вызывающий
+        # роли пересобираем от следующего активного
+        new_attacker = nxt if nxt in self.player_ids else self.player_ids[0]
+        self.current_attacker = new_attacker
+        self.current_defender = self._next_active_after(new_attacker)
+        self.draw_for_players()
+        self._eliminate_finished()
+
     def forfeit(self, player_id: int) -> bool:
-        """Игрок сдаётся: игра завершается, сдавшийся — проигравший.
-        Победитель (для банка): первый вышедший; иначе единственный соперник;
-        иначе лидер (у кого меньше всего карт)."""
+        """Игрок сдаётся.
+        • 3+ активных игроков — сдавшийся выбывает, партия продолжается до дурака.
+        • 1×1 (или остался один соперник) — игра завершается, сдавшийся = дурак.
+        Сдавшийся всегда исключён из дележа банка."""
         if self.game_over or player_id not in self.player_ids:
             return False
+        if player_id not in self.forfeited:
+            self.forfeited.append(player_id)
+
+        # 3+ игроков — выбывание с продолжением
+        if len(self.player_ids) > 2:
+            self._remove_active_player(player_id)
+            self._check_game_over()
+            return True
+
+        # 1×1 — конец партии
         others = [p for p in self.player_ids if p != player_id]
         self.game_over = True
         self.durak = player_id
@@ -895,6 +935,7 @@ class DurakGame:
             "winner": self.winner,
             "durak": self.durak,
             "finished": list(self.finished),
+            "forfeited": list(self.forfeited),
             "role": role,
             "allowed_actions": allowed_actions,
             "legal_attacks": legal_attacks,

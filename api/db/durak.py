@@ -619,6 +619,61 @@ def admin_reset_durak_player(user_id: int) -> Dict[str, Any]:
     return {"ok": True, "deleted": deleted}
 
 
+def cleanup_stale_durak_lobbies(waiting_max_age_min: int = 30, finished_max_age_days: int = 7) -> Dict[str, Any]:
+    """Чистка устаревших данных:
+    • «висящие» waiting-лобби старше N минут → возврат ставок игрокам + отмена;
+    • старые finished/cancelled лобби (и их игроки) старше N дней → удаление.
+    Возвращает сводку {cancelled, refunded, deleted}.
+    """
+    conn = get_connection()
+    cur = _cursor(conn)
+    cancelled = 0
+    refunded = 0
+    deleted = 0
+    try:
+        # 1. Просроченные waiting-лобби
+        cur.execute('''
+            SELECT id, bet_amount FROM durak_lobbies
+            WHERE status = 'waiting'
+              AND COALESCE(updated_at, created_at) < NOW() - (%s || ' minutes')::interval
+        ''', (str(waiting_max_age_min),))
+        stale = cur.fetchall()
+        for lob in stale:
+            lobby_id = lob["id"]
+            bet = lob["bet_amount"] or 0
+            cur.execute('SELECT user_id FROM durak_lobby_players WHERE lobby_id = %s', (lobby_id,))
+            members = [r["user_id"] for r in cur.fetchall()]
+            if bet > 0:
+                for uid in members:
+                    topup_wallet(uid, "", bet, f"Возврат ставки (лобби #{lobby_id} отменено по таймауту)")
+                    refunded += 1
+            cur.execute('DELETE FROM durak_lobby_players WHERE lobby_id = %s', (lobby_id,))
+            cur.execute("UPDATE durak_lobbies SET status = 'cancelled', pot = 0, updated_at = NOW() WHERE id = %s", (lobby_id,))
+            cancelled += 1
+
+        # 2. Удаление старых завершённых/отменённых лобби
+        cur.execute('''
+            SELECT id FROM durak_lobbies
+            WHERE status IN ('finished', 'cancelled')
+              AND COALESCE(updated_at, created_at) < NOW() - (%s || ' days')::interval
+        ''', (str(finished_max_age_days),))
+        old = [r["id"] for r in cur.fetchall()]
+        for lobby_id in old:
+            cur.execute('DELETE FROM durak_lobby_players WHERE lobby_id = %s', (lobby_id,))
+            cur.execute('DELETE FROM durak_game_state WHERE lobby_id = %s', (lobby_id,))
+            cur.execute('DELETE FROM durak_lobbies WHERE id = %s', (lobby_id,))
+            deleted += 1
+
+        conn.commit()
+    except Exception:
+        logger.exception("cleanup_stale_durak_lobbies error")
+        conn.rollback()
+    finally:
+        cur.close()
+        conn.close()
+    return {"ok": True, "cancelled": cancelled, "refunded": refunded, "deleted": deleted}
+
+
 def ban_durak_user(user_id: int, reason: str = "") -> bool:
     conn = get_connection()
     cur = _cursor(conn)
