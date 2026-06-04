@@ -245,10 +245,11 @@
         }
         .dg-slot:first-child { margin-left: 0; }
         .dg-slot .rdcard { position: absolute; width: 58px; height: 82px; }
-        .dg-slot .dg-attack { top: 0; left: 0; }
+        .dg-slot .dg-attack { top: 0; left: 0; z-index: 1; }
         .dg-slot .dg-beat {
             top: 14px; left: 13px;
             transform: rotate(8deg);
+            z-index: 2;
         }
         .dg-attack.unbeaten.beatable {
             box-shadow: 0 0 0 3px rgba(52,208,255,0.7), 0 4px 10px rgba(0,0,0,0.5);
