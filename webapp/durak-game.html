@@ -307,6 +307,47 @@
             color: rgba(255,255,255,0.7);
             font-weight: 600;
         }
+
+        /* ── Индикатор хода + экранный таймер ── */
+        .dg-turn {
+            display: flex; align-items: center; gap: 9px;
+            margin: 4px auto 0; width: max-content; max-width: 92%;
+            padding: 5px 8px 5px 15px;
+            border-radius: 999px;
+            background: rgba(10,32,40,0.55);
+            border: 1px solid rgba(255,255,255,0.12);
+            font-size: 0.82rem; font-weight: 700; color: #cfe9ff;
+            transition: color .2s, border-color .2s, box-shadow .2s;
+        }
+        .dg-turn.hidden { display: none; }
+        .dg-turn.my-turn {
+            color: #00f3ff; border-color: rgba(0,243,255,0.55);
+            box-shadow: 0 0 14px rgba(0,243,255,0.22);
+        }
+        .dg-turn.low { color: #ff8585; border-color: rgba(255,90,90,0.5); }
+        .dg-turn-timer {
+            position: relative; width: 26px; height: 26px; flex: 0 0 auto;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.72rem; font-weight: 800; color: #fff;
+            border-radius: 50%;
+            background: conic-gradient(var(--turn-col,#00f3ff) var(--turn-deg,360deg), rgba(255,255,255,0.12) 0);
+        }
+        .dg-turn-timer::after {
+            content: ''; position: absolute; inset: 3px; border-radius: 50%;
+            background: #0a2028;
+        }
+        .dg-turn-timer > span { position: relative; z-index: 1; }
+        .dg-turn.low .dg-turn-timer { --turn-col: #ff5a5a; }
+
+        /* ── Анимации карт ── */
+        @keyframes dgDeal { from { opacity: 0; transform: translateY(-26px) scale(.82); } to { opacity: 1; } }
+        @keyframes dgPlay { from { opacity: 0; transform: translateY(-20px) scale(.85) rotate(-7deg); } to { opacity: 1; } }
+        @keyframes dgBeat { from { opacity: 0; transform: translate(16px,-22px) scale(.85) rotate(13deg); } to { opacity: 1; } }
+        .dg-attack.dg-anim { animation: dgPlay .26s ease-out; }
+        .dg-beat.dg-anim { animation: dgBeat .26s ease-out; }
+        .dg-hand-card.dg-anim { animation: dgDeal .3s ease-out backwards; }
+        @keyframes dgTakeFlash { 0% { background: rgba(255,90,90,0); } 40% { background: rgba(255,90,90,0.16); } 100% { background: rgba(255,90,90,0); } }
+        .dg-table.take-flash { animation: dgTakeFlash .5s ease; border-radius: 14px; }
         .dg-actions {
             display: flex;
             align-items: center;
@@ -413,6 +454,12 @@
         <!-- Соперники -->
         <div class="dg-opponents" id="dg-opponents"></div>
 
+        <!-- Индикатор хода + экранный таймер -->
+        <div class="dg-turn hidden" id="dg-turn">
+            <span class="dg-turn-text" id="dg-turn-text"></span>
+            <span class="dg-turn-timer" id="dg-turn-timer"><span id="dg-turn-secs"></span></span>
+        </div>
+
         <!-- Центр: колода | стол | бито -->
         <div class="dg-center">
             <div class="dg-deck-col">
@@ -442,6 +489,7 @@
             <div class="dg-actions" id="dg-actions"></div>
             <div class="dg-side-actions">
                 <div class="dg-balance"><span id="dg-balance-val">0</span> ⭐</div>
+                <div class="dg-icon-btn" id="dg-sound-btn" title="Звук">🔊</div>
                 <div class="dg-icon-btn" id="dg-emoji-btn" title="Эмоции">😊</div>
                 <div class="dg-icon-btn" title="Сдаться / выйти"
                      onclick="window.surrenderDurak ? window.surrenderDurak() : (window.location.href='durak.html')">🏳️</div>

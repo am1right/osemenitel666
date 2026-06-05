@@ -848,6 +848,16 @@ class DurakGame:
         """Сколько карт на столе ещё не отбиты."""
         return sum(1 for _, bt in self.table if bt is None)
 
+    def get_active_player(self) -> Optional[int]:
+        """Игрок, чей сейчас ход (на него работает таймер авто-действия).
+        Зеркалит логику _apply_turn_timeout: если есть неотбитые — защитник,
+        иначе атакующий."""
+        if self.game_over:
+            return None
+        if self._get_unbeaten_count() > 0:
+            return self.current_defender
+        return self.current_attacker
+
     def _check_game_over(self):
         """Игра окончена, когда активным остался ≤1 игрок. Оставшийся — дурак."""
         if self.game_over:
@@ -919,6 +929,10 @@ class DurakGame:
             "players": self.player_ids,
             "attacker": self.current_attacker,
             "defender": self.current_defender,
+            # Чей сейчас ход (для индикатора и экранного таймера) + точка отсчёта
+            "active_player": self.get_active_player(),
+            "last_action_at": self.last_action_at,
+            "turn_timeout_sec": 60,
             # Масть козыря как символ ("♥"), а не "Suit.HEARTS" — клиент сравнивает с мастями карт
             "trump_suit": self.trump_suit.value if self.trump_suit else None,
             # Реальная козырная карта (нижняя в колоде), пока колода не пуста — для отрисовки стопки

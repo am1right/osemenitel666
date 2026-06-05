@@ -45,6 +45,45 @@
   // экспорт наружу для отладки/совместимости
   window.DG = DG;
 
+  // ── Звук (WebAudio-синтез, без ассетов) ───────────────────────
+  const Sound = (function () {
+    let ctx = null;
+    let enabled = localStorage.getItem('durakSound') !== '0';
+    function ac() {
+      if (!ctx) {
+        try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+      }
+      return ctx;
+    }
+    function beep(freq, dur, type, vol) {
+      if (!enabled) return;
+      const c = ac();
+      if (!c) return;
+      try {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = type || 'sine';
+        o.frequency.value = freq;
+        const t = c.currentTime;
+        g.gain.setValueAtTime(vol || 0.06, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + (dur || 0.12));
+        o.connect(g); g.connect(c.destination);
+        o.start(t); o.stop(t + (dur || 0.12));
+      } catch (e) {}
+    }
+    return {
+      play:  () => beep(330, 0.10, 'triangle', 0.06),
+      beat:  () => beep(520, 0.09, 'square', 0.05),
+      take:  () => beep(170, 0.24, 'sawtooth', 0.05),
+      bito:  () => { beep(440, 0.07); setTimeout(() => beep(660, 0.11), 70); },
+      turn:  () => beep(720, 0.11, 'sine', 0.07),
+      win:   () => [523, 659, 784].forEach((f, i) => setTimeout(() => beep(f, 0.17, 'triangle', 0.07), i * 120)),
+      lose:  () => [392, 330, 262].forEach((f, i) => setTimeout(() => beep(f, 0.20, 'sawtooth', 0.05), i * 140)),
+      toggle: () => { enabled = !enabled; localStorage.setItem('durakSound', enabled ? '1' : '0'); return enabled; },
+      isOn: () => enabled,
+    };
+  })();
+  window.DurakSound = Sound;
+
   // ── Утилита запросов ───────────────────────────────────────
   function api(url, opts) {
     const fn = window.apiFetch || fetch;
@@ -164,20 +203,111 @@
 
   function render(state) {
     if (!state) return;
+    const prev = DG.state;
     DG.state = state;
     window.currentGameState = state;
 
     renderTopBar(state);
+    updateTurnUI(state);
     renderOpponents(state);
     renderDeckAndTrump(state);
     renderDiscard(state);
-    renderTable(state);
-    renderHand(state);
+    renderTable(state, prev);
+    renderHand(state, prev);
     renderActions(state);
+
+    reactToChanges(state, prev);
 
     if (state.game_over) showGameOver(state);
   }
   window.renderDurakBoard = render;
+
+  // ── Индикатор хода + экранный таймер ──────────────────────────
+  function updateTurnUI(state) {
+    const box = document.getElementById('dg-turn');
+    const txt = document.getElementById('dg-turn-text');
+    if (!box) return;
+    if (state.game_over || state.active_player == null) {
+      box.classList.add('hidden');
+      stopTurnTimer();
+      return;
+    }
+    box.classList.remove('hidden');
+    const mine = String(state.active_player) === String(DG.userId);
+    box.classList.toggle('my-turn', mine);
+    if (txt) txt.textContent = mine ? 'Ваш ход' : ('Ход: ' + shortName(state.active_player));
+
+    const tt = state.turn_timeout_sec || 60;
+    // Новый ход (сменился игрок или обновился last_action_at) → сброс дедлайна
+    if (DG._lastActionAt !== state.last_action_at || DG._turnFor !== state.active_player) {
+      DG._lastActionAt = state.last_action_at;
+      DG._turnFor = state.active_player;
+      DG._turnTotal = tt;
+      DG._turnDeadline = Date.now() + tt * 1000;
+    }
+    startTurnTimer();
+  }
+
+  function startTurnTimer() {
+    if (DG._turnInt) return;
+    DG._turnInt = setInterval(tickTurn, 250);
+    tickTurn();
+  }
+  function stopTurnTimer() {
+    if (DG._turnInt) { clearInterval(DG._turnInt); DG._turnInt = null; }
+  }
+  function tickTurn() {
+    const box = document.getElementById('dg-turn');
+    const ring = document.getElementById('dg-turn-timer');
+    const sec = document.getElementById('dg-turn-secs');
+    if (!box || box.classList.contains('hidden') || !DG._turnDeadline) return;
+    const remMs = Math.max(0, DG._turnDeadline - Date.now());
+    const rem = Math.ceil(remMs / 1000);
+    const frac = Math.max(0, Math.min(1, remMs / (DG._turnTotal * 1000)));
+    if (sec) sec.textContent = rem;
+    if (ring) ring.style.setProperty('--turn-deg', (frac * 360) + 'deg');
+    box.classList.toggle('low', rem <= 10);
+  }
+
+  // ── Реакция на изменения состояния: звук + take-flash ─────────
+  function reactToChanges(state, prev) {
+    // Звук «ваш ход»
+    const meActive = String(state.active_player) === String(DG.userId);
+    const wasActive = prev && String(prev.active_player) === String(DG.userId);
+    if (!state.game_over && meActive && !wasActive) {
+      Sound.turn();
+      if (window.Telegram?.WebApp?.HapticFeedback) {
+        try { window.Telegram.WebApp.HapticFeedback.impactOccurred('light'); } catch (e) {}
+      }
+    }
+    if (!prev) return;
+
+    const pTable = prev.table || [];
+    const cTable = state.table || [];
+    const prevAttacks = new Set(pTable.map((p) => p.attack));
+    const prevBeats = new Set(pTable.filter((p) => p.beat).map((p) => p.attack));
+    const newAttacks = cTable.filter((p) => !prevAttacks.has(p.attack)).length;
+    const newBeats = cTable.filter((p) => p.beat && !prevBeats.has(p.attack)).length;
+
+    if (pTable.length > 0 && cTable.length === 0) {
+      // Кон закрылся: бито (карты ушли в сброс) или взятие
+      if ((state.discard_count || 0) > (prev.discard_count || 0)) {
+        Sound.bito();
+      } else {
+        Sound.take();
+        const zone = document.getElementById('dg-table');
+        if (zone) {
+          zone.classList.remove('take-flash');
+          void zone.offsetWidth;
+          zone.classList.add('take-flash');
+          setTimeout(() => zone.classList.remove('take-flash'), 520);
+        }
+      }
+    } else {
+      if (newAttacks > 0) Sound.play();
+      if (newBeats > 0) Sound.beat();
+    }
+  }
 
   function renderTopBar(state) {
     const trumpMini = document.getElementById('dg-trump-badge');
@@ -318,13 +448,17 @@
     }
   }
 
-  function renderTable(state) {
+  function renderTable(state, prev) {
     const zone = document.getElementById('dg-table');
     if (!zone) return;
     zone.innerHTML = '';
 
     const table = state.table || [];
     const unbeatenAttacks = table.filter((p) => !p.beat).map((p) => p.attack);
+    // Что было на столе в прошлом рендере — чтобы анимировать только новое
+    const pTable = (prev && prev.table) || [];
+    const prevAttacks = new Set(pTable.map((p) => p.attack));
+    const prevBeats = new Set(pTable.filter((p) => p.beat).map((p) => p.attack));
 
     table.forEach((pair) => {
       const slot = document.createElement('div');
@@ -332,11 +466,13 @@
 
       const atk = createCard(pair.attack);
       atk.classList.add('dg-attack');
+      if (!prevAttacks.has(pair.attack)) atk.classList.add('dg-anim');
       slot.appendChild(atk);
 
       if (pair.beat) {
         const bt = createCard(pair.beat);
         bt.classList.add('dg-beat');
+        if (!prevBeats.has(pair.attack)) bt.classList.add('dg-anim');
         slot.appendChild(bt);
       } else {
         atk.classList.add('unbeaten');
