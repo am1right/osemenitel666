@@ -1604,14 +1604,14 @@
         // Регенерация будет заморожена в energy.js пока current > MAX.
         function _addEnergy(amount) {
             const KEY = 'cg_energy_v1';
-            const MAX = 8;
+            const MAX = 100;   // батарея 0..100%
             let state;
             try {
                 state = JSON.parse(localStorage.getItem(KEY)) || { amount: MAX, lastRegen: Date.now() };
             } catch {
                 state = { amount: MAX, lastRegen: Date.now() };
             }
-            state.amount = (state.amount || 0) + amount;
+            state.amount = Math.min(MAX, (state.amount || 0) + amount);
             state.lastRegen = Date.now();
             localStorage.setItem(KEY, JSON.stringify(state));
 
