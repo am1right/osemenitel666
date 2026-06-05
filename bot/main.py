@@ -11,7 +11,7 @@ from telegram import (
 )
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler,
-    InlineQueryHandler, PreCheckoutQueryHandler,
+    InlineQueryHandler, PreCheckoutQueryHandler, CallbackQueryHandler,
     ContextTypes, filters
 )
 
@@ -49,8 +49,38 @@ def _internal_headers() -> dict:
 
 # ===================== КЛАВИАТУРЫ =====================
 def get_webapp_keyboard():
-    keyboard = [[InlineKeyboardButton("🎮 Запустить Chin Games", web_app=WebAppInfo(url=WEBAPP_URL))]]
+    keyboard = [
+        [InlineKeyboardButton("🎮 Запустить Chin Games", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [InlineKeyboardButton("📖 Как играть", callback_data="show_rules")],
+    ]
     return InlineKeyboardMarkup(keyboard)
+
+
+RULES_TEXT = (
+    "📖 <b>Как играть в Chin Games</b>\n\n"
+    "🎮 <b>Игры.</b> Нажми «Запустить Chin Games» и выбирай: Snake, 2048, "
+    "Math Master, Flappy Chin и Дурак онлайн.\n\n"
+    "⚡ <b>Энергия.</b> Каждая партия тратит энергию. Она восстанавливается со "
+    "временем — а если не хочешь ждать, пополни в Магазине за ⭐ Stars.\n\n"
+    "🏆 <b>Рекорды.</b> Доводи партию до конца — лучший результат попадает в "
+    "таблицу лидеров каждой игры.\n\n"
+    "🃏 <b>Дурак онлайн.</b> Создавай лобби или заходи к друзьям, играй на ⭐ — "
+    "победитель забирает банк.\n\n"
+    "👤 <b>Профиль и Магазин</b> — внизу приложения: статистика, скины, пополнение."
+)
+
+
+async def rules_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Кнопка «Как играть» в /start — показывает краткие правила."""
+    query = update.callback_query
+    if not query:
+        return
+    await query.answer()
+    await query.message.reply_text(
+        text=RULES_TEXT,
+        parse_mode="HTML",
+        reply_markup=get_webapp_keyboard(),
+    )
 
 # ─── Дедупликация /start ────────────────────────────────────────────
 _last_start: dict[int, float] = {}
@@ -390,6 +420,7 @@ def main():
     application = ApplicationBuilder().token(BOT_TOKEN).build()
 
     application.add_handler(CommandHandler("start", start_command))
+    application.add_handler(CallbackQueryHandler(rules_callback, pattern="^show_rules$"))
     application.add_handler(InlineQueryHandler(inline_query_handler))
     application.add_handler(PreCheckoutQueryHandler(pre_checkout_query_handler))
     application.add_handler(MessageHandler(
