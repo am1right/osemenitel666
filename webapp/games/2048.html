@@ -751,6 +751,7 @@
     
         function endGame() {
             gameOver = true;
+            if (window.Energy) Energy.endSession();
             document.getElementById('final-score').textContent = score;
             document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
             document.getElementById('end-screen').classList.add('active');

@@ -562,6 +562,7 @@
 
         function endGame() {
             clearInterval(timerInterval);
+            if (window.Energy) Energy.endSession();
             document.getElementById('final-score').innerText = score;
             document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
             document.getElementById('end-screen').classList.add('active');

@@ -19,10 +19,23 @@
 
 const Energy = (() => {
     // ─── CONFIG ───────────────────────────────────────────
-    const MAX         = 8;               // базовый максимум (= бэкенд MAX)
-    const REGEN_MS    = 12 * 60 * 1000;  // 12 минут на единицу
+    // Батарея 0..100%. Заряда хватает на ~50 мин игры; восстановление с 0 до
+    // 100% ≈ 3 часа (база, ускоряется апгрейдом из магазина).
+    const MAX         = 100;             // проценты (= бэкенд ENERGY_MAX)
+    let   REGEN_MS    = 108 * 1000;      // 108с на 1% → 100% за 3ч (база; сервер уточняет)
     const STORAGE_KEY = 'cg_energy_v1';
     const API         = 'https://chingames.duckdns.org';
+
+    // Плавный расход: на входе списывается cost%, дальше пока идёт партия
+    // батарея тает — DRAIN_UNIT_MS на 1%. 100% / (30с) ≈ 50 минут игры.
+    // Кончилась посреди игры — даём доиграть, новый старт блокируется.
+    const DRAIN_UNIT_MS = 30 * 1000;     // 1% за 30 секунд активной игры
+
+    // Состояние сессии расхода
+    let _sessionOn   = false;
+    let _drainTimer  = null;
+    let _drainAccum  = 0;                 // мс, накопленные к следующей единице
+    let _lastTick    = 0;
 
     function _iconSrc() {
         return location.pathname.includes('/games/')
@@ -105,6 +118,7 @@ const Energy = (() => {
             const res = await api(`${API}/api/energy/balance?user_id=${userId}`);
             if (!res.ok) return null;
             const d = await res.json();
+            if (d.regen_ms) REGEN_MS = d.regen_ms;   // учитываем апгрейд скорости регена
             _save({ amount: d.amount, lastRegen: d.last_regen });
             return d;
         } catch {
@@ -138,6 +152,57 @@ const Energy = (() => {
         _save(s);
         return true;
     }
+
+    // ─── DRAIN ENGINE (плавный расход во время игры) ──────
+    // Доля до следующей списываемой единицы (0..1) — для плавной полоски.
+    function _drainFraction() {
+        return _sessionOn ? Math.min(1, _drainAccum / DRAIN_UNIT_MS) : 0;
+    }
+
+    function _refreshWidget() {
+        const w = document.getElementById('energy-widget');
+        if (w && typeof w._refresh === 'function') w._refresh();
+    }
+
+    function _drainTick() {
+        const now = Date.now();
+        _drainAccum += now - _lastTick;
+        _lastTick = now;
+        while (_drainAccum >= DRAIN_UNIT_MS) {
+            if (get().current <= 0) { _drainAccum = 0; break; }  // пусто — доигрываем текущую
+            spend(1);
+            _drainAccum -= DRAIN_UNIT_MS;
+        }
+        _refreshWidget();
+    }
+
+    /** Старт сессии: запускает плавный расход (вызывается при старте партии). */
+    function startSession() {
+        if (_sessionOn) return;
+        _sessionOn  = true;
+        _drainAccum = 0;
+        _lastTick   = Date.now();
+        _drainTimer = setInterval(_drainTick, 250);
+    }
+
+    /** Конец сессии: останавливает расход (вызывается при game-over). */
+    function endSession() {
+        _sessionOn = false;
+        if (_drainTimer) { clearInterval(_drainTimer); _drainTimer = null; }
+        _drainAccum = 0;
+        _refreshWidget();
+    }
+
+    // Подстраховка: вкладку свернули/закрыли — не тратим энергию «в фоне»
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden && _sessionOn && _drainTimer) {
+            clearInterval(_drainTimer);
+            _drainTimer = null;
+        } else if (!document.hidden && _sessionOn && !_drainTimer) {
+            _lastTick = Date.now();
+            _drainTimer = setInterval(_drainTick, 250);
+        }
+    });
 
     // ─── UI WIDGET ────────────────────────────────────────
     const WIDGET_CSS = `
@@ -177,13 +242,47 @@ const Energy = (() => {
             border-radius: 4px;
             background: linear-gradient(90deg, #00ffff, #bc13fe);
             box-shadow: 0 0 8px #00ffff;
-            transition: width 0.5s ease, background 0.4s;
+            transition: width 0.3s linear, background 0.4s;
         }
         #energy-widget .ew-count {
             font-size: 13px;
             font-weight: 700;
             color: #fff;
             white-space: nowrap;
+        }
+        /* ── Батарея телефона ── */
+        #energy-widget .ew-battery {
+            position: relative;
+            flex: 1;
+            height: 22px;
+            min-width: 64px;
+            border: 2px solid rgba(255,255,255,0.75);
+            border-radius: 5px;
+            overflow: hidden;
+            background: rgba(255,255,255,0.06);
+        }
+        #energy-widget .ew-batt-fill {
+            position: absolute; left: 0; top: 0; bottom: 0;
+            border-radius: 2px;
+            transition: width 0.3s linear, background 0.4s;
+            background: linear-gradient(90deg, #00ffae, #00ffae);
+            box-shadow: 0 0 10px rgba(0,255,174,0.6);
+        }
+        #energy-widget.ew-batt-low  .ew-batt-fill { background: #ffd93d; box-shadow: 0 0 10px rgba(255,217,61,0.6); }
+        #energy-widget.ew-batt-crit .ew-batt-fill { background: #ff4466; box-shadow: 0 0 10px rgba(255,68,102,0.7); }
+        #energy-widget.ew-batt-crit .ew-battery   { animation: battPulse 1.1s ease-in-out infinite; }
+        @keyframes battPulse { 0%,100% { border-color: rgba(255,68,102,0.6);} 50% { border-color: rgba(255,68,102,1);} }
+        #energy-widget .ew-batt-pct {
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 700;
+            color: #fff; text-shadow: 0 0 4px rgba(0,0,0,0.8); z-index: 1;
+        }
+        /* «Носик» батареи */
+        #energy-widget .ew-batt-cap {
+            width: 4px; height: 10px; flex-shrink: 0;
+            background: rgba(255,255,255,0.75);
+            border-radius: 0 2px 2px 0; margin-left: -2px;
         }
         #energy-widget .ew-timer {
             font-size: 10px;
@@ -332,35 +431,33 @@ const Energy = (() => {
         }
 
         function refresh() {
-            const { current, max, nextRechargeIn, overflow } = get();
-            const empty = current === 0;
+            const { current, max, nextRechargeIn } = get();
+            // Плавный расход: вычитаем дробную долю текущей сессии для «таяния»
+            const display = Math.max(0, current - _drainFraction());
+            const pct = Math.max(0, Math.min(100, (display / max) * 100));
 
-            // Overflow: бар всегда 100%, счётчик показывает реальное число
-            // Normal:   бар пропорционален current/max
-            const pct = overflow ? 100 : (current / max) * 100;
+            // Уровень заряда → цвет батареи
+            const level = pct <= 15 ? 'crit' : (pct <= 40 ? 'low' : 'ok');
+            wrap.className = `ew-batt-${level}` + (current === 0 ? ' ew-empty' : '');
 
-            // Состояния: ew-overflow > ew-empty > '' (нормальное)
-            wrap.className = overflow ? 'ew-overflow' : (empty ? 'ew-empty' : '');
-
-            // Таймер: при overflow показываем подсказку что реген заморожен
             let timerHtml = '';
-            if (overflow) {
-                timerHtml = `<span class="ew-timer" style="color:rgba(255,215,0,0.6)">реген заморожен</span>`;
-            } else if (nextRechargeIn !== null) {
-                timerHtml = `<span class="ew-timer">+1 через ${_fmtTime(nextRechargeIn)}</span>`;
+            if (current < max && nextRechargeIn !== null) {
+                timerHtml = `<span class="ew-timer">+1% ${_fmtTime(nextRechargeIn)}</span>`;
             }
 
             wrap.innerHTML = `
-                <span class="ew-label">${iconHtml(22)}</span>
-                <div class="ew-bar-wrap">
-                    <div class="ew-bar-fill" style="width:${pct}%"></div>
+                <div class="ew-battery">
+                    <div class="ew-batt-fill" style="width:${pct}%"></div>
+                    <span class="ew-batt-pct">${Math.round(display)}%</span>
                 </div>
-                <span class="ew-count">${current}/${max}</span>
+                <span class="ew-batt-cap"></span>
                 ${timerHtml}
             `;
         }
 
+        wrap._refresh = refresh;          // чтобы дренаж мог обновлять виджет на лету
         refresh();
+        if (wrap._energyInterval) clearInterval(wrap._energyInterval);
         const iv = setInterval(refresh, 1000);
         wrap._energyInterval = iv;
 
@@ -380,12 +477,17 @@ const Energy = (() => {
 
         function renderOverlay() {
             const { nextRechargeIn } = get();
+            const inGames = location.pathname.includes('/games/');
+            const shopUrl = inGames ? '../shop.html' : 'shop.html';
+            const menuUrl = inGames ? '../index.html' : 'index.html';
             overlay.innerHTML = `
                 <div class="neo-icon">${iconHtml(56)}</div>
-                <h2>POWER EXHAUSTED</h2>
-                <p>Энергия закончилась.<br>Восстановление автоматическое.</p>
-                <div class="neo-timer">${nextRechargeIn !== null ? _fmtTime(nextRechargeIn) : '—'}</div>
-                <button class="neo-back" onclick="window.location.href='../index.html'">← Главное меню</button>
+                <h2>Энергия кончилась</h2>
+                <p>Доиграл — теперь самое интересное 😈<br>Пополни запас и продолжай, или подожди.</p>
+                <div class="neo-timer">+1 через ${nextRechargeIn !== null ? _fmtTime(nextRechargeIn) : '—'}</div>
+                <button class="neo-back" style="border-color:#ffd700;color:#ffd700;box-shadow:0 0 12px rgba(255,215,0,0.35)"
+                        onclick="window.location.href='${shopUrl}'">⚡ Пополнить</button>
+                <button class="neo-back" onclick="window.location.href='${menuUrl}'">← Меню</button>
             `;
         }
 
@@ -434,6 +536,7 @@ const Energy = (() => {
         return function trySpend() {
             if (spend(cost)) {
                 showWidget(containerEl);
+                startSession();          // вход оплачен → запускаем плавный расход
                 return true;
             }
             _showNoEnergyOverlay();
@@ -458,5 +561,6 @@ const Energy = (() => {
         }
     }
 
-    return { get, canPlay, spend, showWidget, init, pull, MAX, API, iconHtml, iconSrc: _iconSrc };
+    return { get, canPlay, spend, showWidget, init, pull, startSession, endSession,
+             MAX, API, iconHtml, iconSrc: _iconSrc };
 })();

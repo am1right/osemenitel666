@@ -1119,6 +1119,10 @@
 
             </div>
 
+            <!-- УСКОРЕНИЕ РЕГЕНА -->
+            <div class="section-title">Ускорение зарядки</div>
+            <div class="packs-grid" id="regenUpgrades"></div>
+
             <!-- INFO BANNER -->
             <div class="stars-info">
                 <div class="si-icon">ℹ️</div>
@@ -1535,6 +1539,65 @@
                 });
             }
         }
+
+        // ── Апгрейды скорости восстановления энергии ──────────────
+        async function loadRegenUpgrades() {
+            const userId = tg.initDataUnsafe?.user?.id;
+            if (!userId) return;
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api(`/api/shop/regen_upgrades?user_id=${userId}`);
+                const data = await res.json();
+                const grid = document.getElementById('regenUpgrades');
+                if (!grid) return;
+                grid.innerHTML = (data.upgrades || []).map(u => `
+                    <div class="pack-card" ${u.owned ? '' : `onclick="buyRegen(${u.level})"`}
+                         style="${u.owned ? 'opacity:.45;pointer-events:none' : ''}">
+                        <div class="pack-icon"><img src="icons/enegry.png" alt=""></div>
+                        <div class="pack-amount">×${u.mult}</div>
+                        <div class="pack-label">${u.owned ? 'куплено' : 'быстрее'}</div>
+                        <div class="pack-price"><span class="star-icon">⭐</span><span>${u.stars}</span></div>
+                    </div>`).join('');
+            } catch (e) {}
+        }
+
+        async function buyRegen(level) {
+            const userId = tg.initDataUnsafe?.user?.id;
+            if (!userId) return;
+            let resp;
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api('/api/shop/buy_regen', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, level })
+                });
+                resp = await res.json();
+                if (!res.ok) throw new Error(resp.detail || 'err');
+            } catch (e) { showToast('⚠️ Ошибка покупки', 'error'); return; }
+
+            if (resp.method === 'wallet') {
+                _walletBalance = resp.balance;
+                const wb = document.getElementById('walletBalance'); if (wb) wb.textContent = _walletBalance;
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                showToast(`✅ Зарядка ускорена ×${resp.mult}`, 'success');
+                loadRegenUpgrades();
+                return;
+            }
+            if (resp.method === 'invoice') {
+                tg.openInvoice(resp.invoice_url, (status) => {
+                    if (status === 'paid') {
+                        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                        showToast('✅ Зарядка ускорена!', 'success');
+                        loadRegenUpgrades();
+                    } else if (status === 'cancelled') {
+                        showToast('Платёж отменён', '');
+                    } else if (status === 'failed') {
+                        showToast('❌ Ошибка оплаты', 'error');
+                    }
+                });
+            }
+        }
+        document.addEventListener('DOMContentLoaded', loadRegenUpgrades);
 
         // Прямое добавление энергии в хранилище (обходит Energy.spend)
         // Намеренно НЕ ограничиваем MAX — overflow разрешён после покупки.

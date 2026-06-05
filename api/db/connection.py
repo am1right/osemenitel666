@@ -226,11 +226,13 @@ def init_db():
     cur.execute('''
         CREATE TABLE IF NOT EXISTS energy (
             user_id    BIGINT PRIMARY KEY,
-            amount     INTEGER NOT NULL DEFAULT 8,
+            amount     INTEGER NOT NULL DEFAULT 100,
             last_regen BIGINT  NOT NULL DEFAULT 0,
+            regen_mult REAL    NOT NULL DEFAULT 1.0,
             updated_at TIMESTAMP DEFAULT NOW()
         )
     ''')
+    cur.execute("ALTER TABLE energy ADD COLUMN IF NOT EXISTS regen_mult REAL NOT NULL DEFAULT 1.0")
 
     cur.execute('''
         CREATE TABLE IF NOT EXISTS case_settings (

@@ -309,7 +309,7 @@ async def pre_checkout_query_handler(update: Update, context: ContextTypes.DEFAU
         user_id = int(user_id_str)
         amount  = int(amount_str)
 
-        if ptype not in ("energy", "wallet", "case"):
+        if ptype not in ("energy", "wallet", "case", "regen"):
             raise ValueError(f"Неизвестный тип платежа: {ptype}")
         if user_id != query.from_user.id:
             raise ValueError(f"user_id mismatch: payload={user_id} sender={query.from_user.id}")
@@ -409,6 +409,21 @@ async def successful_payment_handler(update: Update, context: ContextTypes.DEFAU
                     )
                 else:
                     logger.error(f"[SHOP] confirm_case failed: {resp.status_code} {resp.text}")
+
+            elif ptype == "regen":
+                resp = await client.post(
+                    f"{API_BASE}/api/shop/confirm_regen",
+                    headers=_internal_headers(),
+                    json={"user_id": user_id, "level": amount},
+                )
+                if resp.status_code == 200:
+                    await update.message.reply_text(
+                        "⚡ Скорость восстановления энергии улучшена!\n"
+                        "Батарея теперь заряжается быстрее.",
+                    )
+                    logger.info(f"[SHOP] regen confirmed: user={user_id} level={amount}")
+                else:
+                    logger.error(f"[SHOP] confirm_regen failed: {resp.status_code} {resp.text}")
 
     except Exception as e:
         logger.error(f"[PAYMENT] successful_payment error: {e}")

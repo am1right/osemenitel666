@@ -470,6 +470,7 @@
         function endGame() {
             if (!gameRunning) return;
             gameRunning = false;
+            if (window.Energy) Energy.endSession();
             waitingForStart = false;
             startOverlay.classList.add('hidden');
             canvas.removeEventListener('touchstart', flap);
