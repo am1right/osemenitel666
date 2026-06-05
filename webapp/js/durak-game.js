@@ -495,13 +495,17 @@
     }
   }
 
-  function renderHand(state) {
+  function renderHand(state, prev) {
     const handEl = document.getElementById('dg-hand');
     if (!handEl) return;
     handEl.innerHTML = '';
 
     const my = state.hands ? state.hands[DG.userId] : null;
     if (!my || !Array.isArray(my)) return;
+
+    // Новые карты (добор/раздача) анимируем; при первом рендере анимируем все
+    const prevMy = prev && prev.hands && Array.isArray(prev.hands[DG.userId]) ? prev.hands[DG.userId] : null;
+    const isNew = (c) => !prevMy || !prevMy.includes(c);
 
     const legalAttacks = new Set(state.legal_attacks || []);
     const beatable = new Set((state.legal_beats || []).map((b) => b.beat));
@@ -537,6 +541,10 @@
     sorted.forEach((cardStr, i) => {
       const card = createCard(cardStr);
       card.classList.add('dg-hand-card');
+      if (isNew(cardStr)) {
+        card.classList.add('dg-anim');
+        card.style.animationDelay = (i * 0.04) + 's';
+      }
       card.style.marginLeft = i === 0 ? '0' : `-${overlap}px`;
 
       // веер-дуга: крайние карты чуть ниже (translateY в экранных координатах)
@@ -760,6 +768,7 @@
 
   function showGameOver(state) {
     stopPolling();
+    stopTurnTimer();
     const overlay = document.getElementById('dg-gameover');
     if (!overlay) return;
     const titleEl = document.getElementById('dg-go-title');
@@ -767,6 +776,10 @@
 
     const me = DG.userId;
     const isDurak = state.durak != null && state.durak === me;
+    if (!DG._goSoundPlayed) {
+      DG._goSoundPlayed = true;
+      if (isDurak) Sound.lose(); else Sound.win();
+    }
     let title;
     if (isDurak) title = 'Вы — дурак';
     else if (state.winner === me) title = 'Вы победили!';
@@ -814,6 +827,17 @@
   // ════════════════════════════════════════════════════════════
 
   const EMOJIS = ['like','lmao','cool','wow','angry','troll','kiss','evil','what','chill'];
+
+  function initSoundToggle() {
+    const sb = document.getElementById('dg-sound-btn');
+    if (!sb) return;
+    sb.textContent = Sound.isOn() ? '🔊' : '🔇';
+    sb.onclick = () => {
+      const on = Sound.toggle();
+      sb.textContent = on ? '🔊' : '🔇';
+      if (on) Sound.turn();
+    };
+  }
 
   function initEmotions() {
     const picker = document.getElementById('dg-emoji-picker');
@@ -928,6 +952,7 @@
       loadState().then(() => {
         startPolling();
         initEmotions();
+        initSoundToggle();
         connectSocket();
       });
     });
