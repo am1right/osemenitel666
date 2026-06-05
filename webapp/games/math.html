@@ -432,7 +432,7 @@
         }
 
         function generateProblem() {
-            const newLevel = Math.floor(score / 5) + 1;
+            const newLevel = Math.floor(score / 4) + 1;   // быстрее рост сложности (было /5)
             if (newLevel > currentLevel) currentLevel = newLevel;
             document.getElementById('level').innerText = currentLevel;
 
@@ -446,14 +446,14 @@
             if (rand > opWeights[0] + opWeights[1]) op = '*';
             else if (rand > opWeights[0]) op = '-';
 
-            let maxNum = 10 + (currentLevel * 2);
+            let maxNum = 10 + (currentLevel * 3);          // числа растут быстрее (было *2)
             let a = Math.floor(Math.random() * maxNum) + 1;
             let b = Math.floor(Math.random() * maxNum) + 1;
 
             if (op === '*') {
-                a = Math.floor(Math.random() * (5 + currentLevel)) + 1;
-                b = Math.floor(Math.random() * (5 + currentLevel)) + 1;
-                if (currentLevel > 5) { a *= 2; b = Math.floor(Math.random() * 5) + 1; }
+                a = Math.floor(Math.random() * (4 + currentLevel * 2)) + 2;
+                b = Math.floor(Math.random() * (4 + currentLevel * 2)) + 2;
+                if (currentLevel > 5) { a *= 2; b = Math.floor(Math.random() * (4 + currentLevel)) + 2; }
             }
             if (op === '-') {
                 if (a < b) [a, b] = [b, a];
@@ -474,9 +474,12 @@
             let answers = new Set();
             answers.add(correctAnswer);
             
+            // Неверные варианты масштабируем под величину ответа — на больших числах
+            // «±5» делало их слишком очевидными
+            const span = Math.max(4, Math.round(Math.abs(correctAnswer) * 0.2));
             while (answers.size < 4) {
-                let offset = Math.floor(Math.random() * 10) - 5;
-                if (offset === 0) offset = 5;
+                let offset = Math.floor(Math.random() * (span * 2 + 1)) - span;
+                if (offset === 0) offset = span;
                 let fake = correctAnswer + offset;
                 if (fake >= 0 && fake !== correctAnswer) answers.add(fake);
             }
@@ -517,7 +520,7 @@
 
             if (ans === correctAnswer) {
                 score++;
-                timeLeft += 2;
+                timeLeft += 1;   // меньше «докрутки» времени — игра не тянется бесконечно (было +2)
                 if (navigator.vibrate) navigator.vibrate(50);
                 document.body.style.boxShadow = "inset 0 0 50px #00ff00";
                 setTimeout(() => document.body.style.boxShadow = "none", 150);
