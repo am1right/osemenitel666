@@ -180,8 +180,10 @@ async def api_get_stats(user_id: int, game_name: str):
 # ── Shop ───────────────────────────────────────────────────────────
 
 # amount (энергия) → цена в Stars. Должно совпадать с shop.html и energy.js
-ENERGY_PACKS: dict[int, int] = {3: 12, 5: 18, 8: 27, 14: 46, 22: 70}
-ENERGY_MAX = 8  # базовый максимум (overflow разрешён после покупки)
+# Энергия теперь батарея 0..100%. amount = % заряда → цена в Stars.
+# ~0.32⭐ за 1% (эквивалент старому: 4⭐/энергия × 8 = полный бак 32⭐).
+ENERGY_PACKS: dict[int, int] = {15: 5, 30: 10, 50: 16, 75: 24, 100: 32}
+ENERGY_MAX = 100  # батарея
 
 
 @app.post("/api/shop/create_invoice")
