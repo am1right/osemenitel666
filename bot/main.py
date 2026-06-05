@@ -28,7 +28,7 @@ load_dotenv(BASE_DIR / "config" / ".env", override=True)
 BOT_TOKEN    = os.getenv("BOT_TOKEN")
 API_BASE         = os.getenv("API_BASE", "https://chin-games-bot.onrender.com")
 BASE_STATIC      = f"{API_BASE}/static"
-WEBAPP_URL       = f"{BASE_STATIC}/index.html?v=2205241"
+WEBAPP_URL       = f"{BASE_STATIC}/index.html?v=2205243"
 INLINE_IMAGE_URL = f"{BASE_STATIC}/icons/inline.png"  # используется для inline превью
 
 # ID владельца бота для уведомлений о подозрительной активности
