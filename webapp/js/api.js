@@ -18,7 +18,7 @@
   // Endpoints that should receive the X-Telegram-Init-Data header
   const PROTECTED_PREFIXES = [
     '/api/',
-    'https://chin-games-bot.onrender.com/api/',
+    'https://chingames.duckdns.org/api/',
     // Add any other backend origins here if needed
   ];
 

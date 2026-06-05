@@ -22,7 +22,7 @@ const Energy = (() => {
     const MAX         = 8;               // базовый максимум (= бэкенд MAX)
     const REGEN_MS    = 12 * 60 * 1000;  // 12 минут на единицу
     const STORAGE_KEY = 'cg_energy_v1';
-    const API         = 'https://chin-games-bot.onrender.com';
+    const API         = 'https://chingames.duckdns.org';
 
     function _iconSrc() {
         return location.pathname.includes('/games/')
