@@ -274,6 +274,16 @@
             <div class="wallet-card__arrow">›</div>
         </div>
 
+        <!-- Вывод (пока недоступен) -->
+        <button id="withdraw-btn" disabled
+            onclick="(window.Telegram?.WebApp?.showAlert||alert)('Вывод станет доступен через 21 день.')"
+            style="width:100%;margin-top:10px;padding:13px;border:1px solid rgba(255,215,0,0.25);border-radius:14px;
+                   background:rgba(255,215,0,0.05);color:rgba(255,215,0,0.55);font-family:'Orbitron',sans-serif;
+                   font-size:0.85rem;font-weight:700;letter-spacing:0.5px;cursor:not-allowed;display:flex;
+                   align-items:center;justify-content:center;gap:8px;opacity:0.7;">
+            🔒 Вывод <span style="font-family:'Rajdhani',sans-serif;font-weight:500;font-size:0.78rem;color:rgba(255,255,255,0.4);">· доступен через 21 день</span>
+        </button>
+
         <!-- Реферальная программа -->
         <div class="ref-card" id="ref-card" style="display:none;">
             <div class="ref-card__header">
@@ -299,7 +309,7 @@
             </button>
             <!-- Список приглашённых рефералов -->
             <div class="ref-list" id="ref-list" style="display:none;">
-                <div class="ref-list__title">👥 Приглашённые</div>
+                <div class="ref-list__title" id="ref-list-title" style="cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px;">👥 Приглашённые <span id="ref-list-caret">▾</span></div>
                 <div id="ref-list-items"></div>
             </div>
         </div>
@@ -830,6 +840,28 @@
                 return;
             }
             listEl.style.display = 'block';
+
+            // Заголовок-тоггл: сворачивает список (если рефералов много — экономит экран)
+            const titleEl = document.getElementById('ref-list-title');
+            const caretEl = document.getElementById('ref-list-caret');
+            titleEl.firstChild.textContent = `👥 Приглашённые (${recent.length}) `;
+            if (!titleEl._bound) {
+                titleEl._bound = true;
+                titleEl.onclick = () => {
+                    const hidden = itemsEl.style.display === 'none';
+                    itemsEl.style.display = hidden ? 'flex' : 'none';
+                    itemsEl.style.flexDirection = 'column';
+                    itemsEl.style.gap = '8px';
+                    if (caretEl) caretEl.textContent = hidden ? '▾' : '▸';
+                };
+            }
+            // По умолчанию сворачиваем, если рефералов больше 3
+            const collapse = recent.length > 3;
+            itemsEl.style.display = collapse ? 'none' : 'flex';
+            itemsEl.style.flexDirection = 'column';
+            itemsEl.style.gap = '8px';
+            if (caretEl) caretEl.textContent = collapse ? '▸' : '▾';
+
             itemsEl.innerHTML = recent.map(r => {
                 const name      = r.first_name || ('ID ' + r.invitee_id);
                 const initial   = name[0].toUpperCase();

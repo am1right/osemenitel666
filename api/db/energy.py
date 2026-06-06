@@ -120,7 +120,9 @@ def admin_adjust_energy(user_id: int, delta: int) -> Dict[str, Any]:
     cur  = _cursor(conn)
     amount, last_regen, mult = _ensure_energy_row(cur, user_id)
     conn.commit()  # фиксируем INSERT если строки не было
-    new_amount = max(0, min(ENERGY_MAX, amount + delta))   # батарея не выше 100%
+    # Покупка/выдача складывается с текущим зарядом (можно >100%);
+    # реген выше 100% не работает (см. _apply_energy_regen).
+    new_amount = max(0, amount + delta)
     cur.execute(
         """
         INSERT INTO energy (user_id, amount, last_regen, updated_at)

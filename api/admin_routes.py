@@ -180,6 +180,11 @@ try:
         _check_admin(req.username)
         return db.admin_zero_wallet(user_id)
 
+    @router.post("/player/{user_id}/reset_referrals")
+    async def admin_reset_player_referrals(user_id: int, req: AdminActionRequest):
+        _check_admin(req.username)
+        return db.admin_reset_referrals(user_id)
+
     # Массовые (для всех игроков)
     @router.post("/reset_all/scores")
     async def admin_reset_all_scores_ep(username: str):

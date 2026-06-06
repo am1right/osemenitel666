@@ -146,9 +146,11 @@ def get_referral_stats(inviter_id: int) -> Dict[str, Any]:
         FROM referrals WHERE inviter_id = %s
     ''', (inviter_id,))
     row = cur.fetchone()
+    # В профиле показываем только тех, по кому бонус ещё НЕ получен.
+    # Полученные остаются в базе (для статистики), но визуально не нужны.
     cur.execute('''
         SELECT invitee_id, first_name, reward_sent, policy_accepted, created_at
-        FROM referrals WHERE inviter_id = %s
+        FROM referrals WHERE inviter_id = %s AND reward_sent = 0
         ORDER BY created_at DESC LIMIT 20
     ''', (inviter_id,))
     recent_rows = cur.fetchall()
@@ -168,6 +170,18 @@ def get_referral_stats(inviter_id: int) -> Dict[str, Any]:
         "recent":       recent,
         "games_needed": REFERRAL_GAMES_NEEDED,
     }
+
+
+def admin_reset_referrals(inviter_id: int) -> Dict[str, Any]:
+    """Админ: удаляет всех рефералов игрока (как пригласившего)."""
+    conn = get_connection()
+    cur  = _cursor(conn)
+    cur.execute("DELETE FROM referrals WHERE inviter_id = %s", (inviter_id,))
+    deleted = cur.rowcount
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"ok": True, "deleted": deleted}
 
 
 def is_already_referred(invitee_id: int) -> bool:

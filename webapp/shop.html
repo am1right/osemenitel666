@@ -1610,7 +1610,7 @@
             } catch {
                 state = { amount: MAX, lastRegen: Date.now() };
             }
-            state.amount = Math.min(MAX, (state.amount || 0) + amount);
+            state.amount = (state.amount || 0) + amount;   // складывается, можно >100%
             state.lastRegen = Date.now();
             localStorage.setItem(KEY, JSON.stringify(state));
 

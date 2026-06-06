@@ -569,6 +569,7 @@
                     <button type="button" onclick="quickReset(${p.user_id},'durak')" class="bulk-reset-btn">🃏 Сброс Дурака</button>
                     <button type="button" onclick="quickReset(${p.user_id},'energy')" class="bulk-reset-btn">⚡ Заряд = 100%</button>
                     <button type="button" onclick="quickReset(${p.user_id},'wallet')" class="bulk-reset-btn">⭐ Обнулить баланс</button>
+                    <button type="button" onclick="quickReset(${p.user_id},'referrals')" class="bulk-reset-btn">🔗 Очистить рефералов</button>
                 </div>
 
                 <!-- Danger zone -->
@@ -725,9 +726,10 @@
                 durak: 'сбросить рейтинг Дурака',
                 energy: 'установить заряд 100%',
                 wallet: 'обнулить баланс Stars',
+                referrals: 'очистить всех рефералов',
             };
             if (!confirm(`Игрок ${userId}: ${labels[kind]}?`)) return;
-            const ep = { scores: 'reset_scores', durak: 'reset_durak', energy: 'reset_energy', wallet: 'reset_wallet' }[kind];
+            const ep = { scores: 'reset_scores', durak: 'reset_durak', energy: 'reset_energy', wallet: 'reset_wallet', referrals: 'reset_referrals' }[kind];
             try {
                 const api = window.apiFetch || fetch;
                 const res = await api(`${API}/api/admin/player/${userId}/${ep}`, {

@@ -71,6 +71,7 @@ from api.db.referrals import (
     try_grant_referral_reward,
     claim_referral_reward,
     get_referral_stats,
+    admin_reset_referrals,
     is_already_referred,
     check_fraud_daily_flood,
     check_fraud_inactive_ratio,
@@ -145,7 +146,7 @@ __all__ = [
     "FRAUD_DAILY_LIMIT", "FRAUD_INACTIVE_RATIO",
     "register_referral", "accept_referral_policy", "get_referral_by_invitee",
     "get_invitee_total_games", "try_grant_referral_reward", "claim_referral_reward",
-    "get_referral_stats", "is_already_referred",
+    "get_referral_stats", "admin_reset_referrals", "is_already_referred",
     "check_fraud_daily_flood", "check_fraud_inactive_ratio",
     # admin
     "get_user_flags", "admin_delete_player", "admin_get_all_players",
