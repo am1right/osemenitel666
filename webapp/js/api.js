@@ -51,6 +51,38 @@
   // Optional: expose the original fetch if someone really needs it
   window._originalFetch = ORIGINAL_FETCH;
 
+  // ── Синтвейв-фон (динамическая сетка) на всех страницах ─────────
+  (function injectSynthwaveBg() {
+    function add() {
+      if (document.getElementById('sw-bg')) return;
+      const css = document.createElement('style');
+      css.id = 'sw-bg-css';
+      css.textContent = `
+        #sw-bg { position:fixed; inset:0; z-index:-1; background:#2c0f4a; overflow:hidden; pointer-events:none; }
+        #sw-bg .sw-sun { position:absolute; left:50%; top:32%; width:64vmin; height:64vmin;
+          transform:translate(-50%,-50%);
+          background:radial-gradient(circle, rgba(255,0,200,.22), rgba(0,247,255,.10) 45%, rgba(44,15,74,0) 68%); }
+        #sw-bg .sw-floor { position:absolute; left:-50%; right:-50%; bottom:-14%; height:62%;
+          background-image:
+            linear-gradient(rgba(0,247,255,.35) 2px, transparent 2px),
+            linear-gradient(90deg, rgba(188,19,254,.30) 2px, transparent 2px);
+          background-size:46px 46px;
+          transform:perspective(330px) rotateX(73deg); transform-origin:bottom center;
+          animation:swScroll 5s linear infinite; }
+        #sw-bg .sw-glow { position:absolute; left:0; right:0; bottom:0; height:24%;
+          background:linear-gradient(to top, rgba(0,247,255,.10), transparent); }
+        @keyframes swScroll { from { background-position:0 0; } to { background-position:0 46px; } }
+      `;
+      document.head.appendChild(css);
+      const bg = document.createElement('div');
+      bg.id = 'sw-bg';
+      bg.innerHTML = '<div class="sw-sun"></div><div class="sw-floor"></div><div class="sw-glow"></div>';
+      document.body.insertBefore(bg, document.body.firstChild);
+    }
+    if (document.body) add();
+    else document.addEventListener('DOMContentLoaded', add);
+  })();
+
   // ── Анти-чит: токен игровой сессии ──────────────────────────────
   // Игра вызывает GameGuard.start(game) при старте партии → сервер выдаёт
   // одноразовый токен. При сохранении счёта токен кладётся в тело запроса.
