@@ -999,7 +999,8 @@ async def api_admin_case_settings_save(request: Request):
             raise HTTPException(status_code=400, detail="nft_gifts must be a list")
         valuable_chance = float(data.get("valuable_chance", 0.4))
         valuable_cooldown_min = int(data.get("valuable_cooldown_min", 60))
-        result = save_case_settings(nft_gifts, valuable_chance, valuable_cooldown_min)
+        nft_chance = float(data.get("nft_chance", 0.18))
+        result = save_case_settings(nft_gifts, valuable_chance, valuable_cooldown_min, nft_chance)
         logger.info(f"[CASE] settings updated by {username}: {len(result['nft_gifts'])} NFT URLs")
         return {"status": "ok", **result}
     except HTTPException:

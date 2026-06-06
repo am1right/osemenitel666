@@ -240,9 +240,11 @@ def init_db():
             nft_gifts             TEXT NOT NULL DEFAULT '[]',
             valuable_chance       REAL NOT NULL DEFAULT 0.4,
             valuable_cooldown_min INTEGER NOT NULL DEFAULT 60,
+            nft_chance            REAL NOT NULL DEFAULT 0.18,
             updated_at            TIMESTAMP DEFAULT NOW()
         )
     ''')
+    cur.execute("ALTER TABLE case_settings ADD COLUMN IF NOT EXISTS nft_chance REAL NOT NULL DEFAULT 0.18")
     cur.execute('''
         INSERT INTO case_settings (id, nft_gifts, valuable_chance, valuable_cooldown_min)
         VALUES (1, '[]', 0.4, 60)

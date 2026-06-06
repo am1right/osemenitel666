@@ -11,12 +11,13 @@ CASE_REWARD_DEDUP_SEC              = 20
 CASE_VALUABLE_CHANCE_DEFAULT       = 0.4
 CASE_NFT_IN_VALUABLE_SHARE         = 0.45
 CASE_VALUABLE_COOLDOWN_MIN_DEFAULT = 60
+CASE_NFT_CHANCE_DEFAULT            = 0.18   # отдельный шанс именно NFT (0..1)
 
 
 def get_case_settings() -> Dict[str, Any]:
     conn = get_connection()
     cur  = _cursor(conn)
-    cur.execute("SELECT nft_gifts, valuable_chance, valuable_cooldown_min FROM case_settings WHERE id = 1")
+    cur.execute("SELECT nft_gifts, valuable_chance, valuable_cooldown_min, nft_chance FROM case_settings WHERE id = 1")
     row = cur.fetchone()
     cur.close()
     conn.close()
@@ -25,6 +26,7 @@ def get_case_settings() -> Dict[str, Any]:
             "nft_gifts":             [],
             "valuable_chance":       CASE_VALUABLE_CHANCE_DEFAULT,
             "valuable_cooldown_min": CASE_VALUABLE_COOLDOWN_MIN_DEFAULT,
+            "nft_chance":            CASE_NFT_CHANCE_DEFAULT,
         }
     try:
         gifts = json.loads(row["nft_gifts"] or "[]")
@@ -40,13 +42,19 @@ def get_case_settings() -> Dict[str, Any]:
     except (KeyError, TypeError, ValueError):
         cooldown_min = CASE_VALUABLE_COOLDOWN_MIN_DEFAULT
     cooldown_min = max(5, min(24 * 60, cooldown_min))
-    return {"nft_gifts": gifts, "valuable_chance": chance, "valuable_cooldown_min": cooldown_min}
+    try:
+        nft_chance = float(row["nft_chance"] if row["nft_chance"] is not None else CASE_NFT_CHANCE_DEFAULT)
+    except (KeyError, TypeError, ValueError):
+        nft_chance = CASE_NFT_CHANCE_DEFAULT
+    nft_chance = max(0.0, min(1.0, nft_chance))   # допускаем 0%..100%
+    return {"nft_gifts": gifts, "valuable_chance": chance, "valuable_cooldown_min": cooldown_min, "nft_chance": nft_chance}
 
 
 def save_case_settings(
     nft_gifts: List[str],
     valuable_chance: float = CASE_VALUABLE_CHANCE_DEFAULT,
     valuable_cooldown_min: int = CASE_VALUABLE_COOLDOWN_MIN_DEFAULT,
+    nft_chance: float = CASE_NFT_CHANCE_DEFAULT,
 ) -> Dict[str, Any]:
     cleaned = []
     for url in nft_gifts:
@@ -57,21 +65,23 @@ def save_case_settings(
             cleaned.append(u)
     chance       = max(0.05, min(0.95, float(valuable_chance)))
     cooldown_min = max(5, min(24 * 60, int(valuable_cooldown_min)))
+    nft_ch       = max(0.0, min(1.0, float(nft_chance)))
     conn = get_connection()
     cur  = _cursor(conn)
     cur.execute('''
-        INSERT INTO case_settings (id, nft_gifts, valuable_chance, valuable_cooldown_min, updated_at)
-        VALUES (1, %s, %s, %s, NOW())
+        INSERT INTO case_settings (id, nft_gifts, valuable_chance, valuable_cooldown_min, nft_chance, updated_at)
+        VALUES (1, %s, %s, %s, %s, NOW())
         ON CONFLICT (id) DO UPDATE SET
             nft_gifts             = EXCLUDED.nft_gifts,
             valuable_chance       = EXCLUDED.valuable_chance,
             valuable_cooldown_min = EXCLUDED.valuable_cooldown_min,
+            nft_chance            = EXCLUDED.nft_chance,
             updated_at            = NOW()
-    ''', (json.dumps(cleaned, ensure_ascii=False), chance, cooldown_min))
+    ''', (json.dumps(cleaned, ensure_ascii=False), chance, cooldown_min, nft_ch))
     conn.commit()
     cur.close()
     conn.close()
-    return {"nft_gifts": cleaned, "valuable_chance": chance, "valuable_cooldown_min": cooldown_min}
+    return {"nft_gifts": cleaned, "valuable_chance": chance, "valuable_cooldown_min": cooldown_min, "nft_chance": nft_ch}
 
 
 def _roll_common_stars() -> int:
@@ -91,8 +101,8 @@ def _pick_common_reward() -> Dict[str, Any]:
     return {"type": "stars", "amount": amount, "title": title}
 
 
-def _pick_valuable_reward(nft_gifts: List[str]) -> Dict[str, Any]:
-    if nft_gifts and random.random() < CASE_NFT_IN_VALUABLE_SHARE:
+def _pick_valuable_reward(nft_gifts: List[str], allow_nft: bool = True) -> Dict[str, Any]:
+    if allow_nft and nft_gifts and random.random() < CASE_NFT_IN_VALUABLE_SHARE:
         url = random.choice(nft_gifts)
         return {"type": "nft", "gift_url": url, "amount": 0, "title": "NFT-подарок!"}
     roll = random.random()
@@ -179,17 +189,24 @@ def grant_case_reward(user_id: int, first_name: str = "") -> Dict[str, Any]:
     settings         = get_case_settings()
     nft_gifts        = settings["nft_gifts"]
     valuable_chance  = settings["valuable_chance"]
+    nft_chance       = settings.get("nft_chance", CASE_NFT_CHANCE_DEFAULT)
     cooldown_sec     = settings["valuable_cooldown_min"] * 60
-    valuable_blocked = _is_global_valuable_on_cooldown(cooldown_sec)
-    roll_valuable    = random.random() < valuable_chance
-    if roll_valuable and valuable_blocked:
-        roll_valuable = False
-    if roll_valuable:
-        pick = _pick_valuable_reward(nft_gifts)
+
+    # 1) NFT решается ОТДЕЛЬНЫМ шансом и ни на что больше не влияет.
+    if nft_gifts and random.random() < nft_chance:
+        url  = random.choice(nft_gifts)
+        pick = {"type": "nft", "gift_url": url, "amount": 0, "title": "NFT-подарок!"}
         tier = "valuable"
     else:
-        pick = _pick_common_reward()
-        tier = "common"
+        # 2) Остальные награды — по своей логике (без NFT, он уже разыгран выше).
+        valuable_blocked = _is_global_valuable_on_cooldown(cooldown_sec)
+        roll_valuable    = random.random() < valuable_chance and not valuable_blocked
+        if roll_valuable:
+            pick = _pick_valuable_reward(nft_gifts, allow_nft=False)
+            tier = "valuable"
+        else:
+            pick = _pick_common_reward()
+            tier = "common"
     reward         = _apply_case_pick(user_id, first_name, pick)
     reward["tier"] = tier
     conn = get_connection()
