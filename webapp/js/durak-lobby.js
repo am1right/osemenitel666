@@ -314,7 +314,15 @@
         goToLobby(lobbyId, lobbyData);
         return;
       }
-      alert('Ошибка входа: ' + e.message);
+      // Ожидаемые причины (лобби закрыто/удалено/заполнено/не существует) —
+      // это нормально (сам вышел и т.п.): без резкого алерта, просто обновляем список.
+      const expected = ['not available', 'not found', 'full', 'недоступ', 'не найдено', 'заполнено', '404'];
+      const isExpected = expected.some((w) => m.includes(w));
+      if (!isExpected) alert('Ошибка входа: ' + e.message);
+      if (typeof loadLobbies === 'function' && document.getElementById('lobby-list')) {
+        loadLobbies();
+        if (typeof startLobbyListPolling === 'function') startLobbyListPolling();
+      }
     }
   }
   window.joinLobby = joinLobby;
