@@ -43,14 +43,16 @@ def get_active_contests() -> List[Dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
-def get_unannounced_finished_contests(min_age_sec: int = 300) -> List[Dict[str, Any]]:
-    """Завершённые соревнования без отправленного итога, старше min_age_sec."""
+def get_unannounced_finished_contests(min_age_sec: int = 300, max_age_sec: int = 21600) -> List[Dict[str, Any]]:
+    """Недавно завершённые соревнования без отправленного итога:
+    конец между (min_age_sec) и (max_age_sec) назад — чтобы не вываливать всю историю."""
     conn = get_connection()
     cur = _cursor(conn)
     cur.execute(
         "SELECT * FROM contests WHERE status = 'finished' AND COALESCE(result_announced,0) = 0 "
-        "AND ends_at <= NOW() - (%s * INTERVAL '1 second')",
-        (min_age_sec,),
+        "AND ends_at <= NOW() - (%s * INTERVAL '1 second') "
+        "AND ends_at >= NOW() - (%s * INTERVAL '1 second')",
+        (min_age_sec, max_age_sec),
     )
     rows = cur.fetchall()
     cur.close(); conn.close()
