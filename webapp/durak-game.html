@@ -382,9 +382,11 @@
         /* Стили карт (.rdcard / .rdback) вынесены в durak-card.css */
 
         /* ══════════ ЭМОЦИИ ══════════ */
-        /* Палитра эмодзи — квадратная панель с сеткой, по центру над кнопкой */
+        /* Палитра эмодзи — квадратная панель с сеткой, по центру над кнопкой.
+           !important — перебиваем #durak-board > * { position: relative }, иначе
+           пикер встаёт в поток и толкает карты вверх. */
         .dg-emoji-picker {
-            position: fixed;
+            position: fixed !important;
             left: 50%; bottom: 84px;
             transform: translateX(-50%) scale(0.85);
             display: none;

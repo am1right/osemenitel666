@@ -217,6 +217,7 @@
     renderActions(state);
 
     reactToChanges(state, prev);
+    animateTransitions(prev, state);
 
     if (state.game_over) showGameOver(state);
   }
@@ -270,6 +271,77 @@
   }
 
   // ── Реакция на изменения состояния: звук + take-flash ─────────
+  // ── Общая визуализация движения карт (колода→рука/соперники, стол→сброс/взятие) ──
+  function _rect(el) { return el ? el.getBoundingClientRect() : null; }
+
+  function flyGhost(from, to, cardStr, delay) {
+    if (!from || !to) return;
+    const g = cardStr ? createCard(cardStr) : createBack();
+    g.style.cssText = `position:fixed;left:${from.left}px;top:${from.top}px;` +
+      `width:${from.width}px;height:${from.height}px;margin:0;z-index:9998;pointer-events:none;` +
+      `transform-origin:top left;opacity:0;` +
+      `transition:transform .34s cubic-bezier(.25,.8,.3,1),opacity .15s;`;
+    document.body.appendChild(g);
+    const dx = to.left - from.left, dy = to.top - from.top;
+    const sc = from.width ? (to.width / from.width) : 1;
+    requestAnimationFrame(() => {
+      g.style.opacity = '1';
+      setTimeout(() => { g.style.transform = `translate(${dx}px,${dy}px) scale(${sc})`; }, delay || 0);
+    });
+    setTimeout(() => g.remove(), 360 + (delay || 0));
+  }
+
+  function _handCount(h, pid) {
+    const v = h && h[pid];
+    return typeof v === 'number' ? v : (Array.isArray(v) ? v.length : 0);
+  }
+
+  function animateTransitions(prev, state) {
+    if (!prev) return;                       // первый рендер не анимируем
+    const deckR = _rect(document.getElementById('dg-deck'));
+
+    // 1) Мои новые карты (добор) ← колода
+    const prevMy = (prev.hands && Array.isArray(prev.hands[DG.userId])) ? prev.hands[DG.userId] : [];
+    const my = (state.hands && Array.isArray(state.hands[DG.userId])) ? state.hands[DG.userId] : [];
+    if (deckR) {
+      my.filter((c) => !prevMy.includes(c)).forEach((c, i) => {
+        const hel = document.querySelector(`#dg-hand .dg-hand-card[data-card="${c}"]`);
+        flyGhost(deckR, _rect(hel), c, i * 55);
+      });
+    }
+
+    // 2) Соперники добрали ← колода (по росту количества карт)
+    if (deckR) {
+      (state.players || []).forEach((pid) => {
+        if (String(pid) === String(DG.userId)) return;
+        const delta = _handCount(state.hands, pid) - _handCount(prev.hands, pid);
+        if (delta > 0) {
+          const oppR = _rect(document.querySelector(`.dg-opp[data-uid="${pid}"]`));
+          for (let i = 0; i < Math.min(delta, 4); i++) flyGhost(deckR, oppR, null, i * 55);
+        }
+      });
+    }
+
+    // 3) Стол очистился → бито (в сброс) или взятие (к защитнику)
+    const pLen = (prev.table || []).length;
+    if (pLen > 0 && (state.table || []).length === 0) {
+      const tableR = _rect(document.getElementById('dg-table'));
+      const took = (state.discard_count || 0) <= (prev.discard_count || 0);
+      let toR;
+      if (took) {
+        const def = prev.defender;
+        toR = String(def) === String(DG.userId)
+          ? _rect(document.getElementById('dg-hand'))
+          : _rect(document.querySelector(`.dg-opp[data-uid="${def}"]`));
+      } else {
+        toR = _rect(document.getElementById('dg-discard'));
+      }
+      if (tableR && toR) {
+        for (let i = 0; i < Math.min(pLen, 5); i++) flyGhost(tableR, toR, null, i * 40);
+      }
+    }
+  }
+
   function reactToChanges(state, prev) {
     // Звук «ваш ход»
     const meActive = String(state.active_player) === String(DG.userId);
@@ -466,12 +538,14 @@
 
       const atk = createCard(pair.attack);
       atk.classList.add('dg-attack');
+      atk.dataset.card = pair.attack;
       if (!prevAttacks.has(pair.attack)) atk.classList.add('dg-anim');
       slot.appendChild(atk);
 
       if (pair.beat) {
         const bt = createCard(pair.beat);
         bt.classList.add('dg-beat');
+        bt.dataset.card = pair.beat;
         if (!prevBeats.has(pair.attack)) bt.classList.add('dg-anim');
         slot.appendChild(bt);
       } else {
@@ -541,6 +615,7 @@
     sorted.forEach((cardStr, i) => {
       const card = createCard(cardStr);
       card.classList.add('dg-hand-card');
+      card.dataset.card = cardStr;
       if (isNew(cardStr)) {
         card.classList.add('dg-anim');
         card.style.animationDelay = (i * 0.04) + 's';
@@ -671,10 +746,38 @@
     }
   }
 
+  // Анимация полёта карты от руки к её месту на столе (FLIP клона)
+  function flyCardToTable(cardStr, fromRect) {
+    if (!fromRect) return;
+    const tgt = document.querySelector(`#dg-table .dg-beat[data-card="${cardStr}"]`)
+             || document.querySelector(`#dg-table .dg-attack[data-card="${cardStr}"]`);
+    if (!tgt) return;
+    const to = tgt.getBoundingClientRect();
+    const clone = createCard(cardStr);
+    clone.style.cssText = `position:fixed;left:${fromRect.left}px;top:${fromRect.top}px;` +
+      `width:${fromRect.width}px;height:${fromRect.height}px;margin:0;z-index:99999;pointer-events:none;` +
+      `transform-origin:top left;transition:transform .26s cubic-bezier(.25,.8,.3,1),opacity .26s;`;
+    document.body.appendChild(clone);
+    tgt.style.opacity = '0';                       // прячем реальную, пока летит клон
+    const dx = to.left - fromRect.left, dy = to.top - fromRect.top;
+    const sc = fromRect.width ? (to.width / fromRect.width) : 1;
+    requestAnimationFrame(() => {
+      clone.style.transform = `translate(${dx}px,${dy}px) scale(${sc})`;
+    });
+    setTimeout(() => { clone.remove(); if (tgt) tgt.style.opacity = ''; }, 280);
+  }
+
   async function doAction(action, extra) {
     const s = DG.state;
     if (DG.busy || !s || s.game_over) return;
     DG.busy = true;
+    // Запоминаем позицию сыгранной карты в руке ДО перерисовки
+    const playedCard = extra && (extra.card || extra.beat_card);
+    let srcRect = null;
+    if (playedCard) {
+      const hel = document.querySelector(`#dg-hand .dg-hand-card[data-card="${playedCard}"]`);
+      if (hel) srcRect = hel.getBoundingClientRect();
+    }
     try {
       const body = Object.assign({ user_id: DG.userId, action }, extra || {});
       const res = await api(`/api/durak/lobbies/${DG.lobbyId}/action`, {
@@ -689,6 +792,7 @@
       } else if (data.state) {
         DG.selectedHandCard = null;
         render(data.state);
+        if (playedCard) flyCardToTable(playedCard, srcRect);
       }
     } catch (e) {
       console.error('[durak] action error', e);
