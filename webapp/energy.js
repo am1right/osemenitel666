@@ -456,7 +456,7 @@ const Energy = (() => {
             document.querySelectorAll('.js-continue').forEach((b) => {
                 const ok = current >= MIN_START;
                 b.disabled = false;   // если мало энергии — кнопка предложит докупить заряд
-                b.textContent = ok ? '▶ Продолжить · 10 ⭐' : '⚡ Купить заряд · 32 ⭐';
+                b.textContent = ok ? 'Продолжить · 10 ⭐' : '⚡ Купить заряд · 32 ⭐';
             });
         }
 
