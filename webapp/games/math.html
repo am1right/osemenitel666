@@ -512,6 +512,16 @@
 
         // Минимальный cooldown 80ms — защита от двойного клика,
         // но не мешает быстрым игрокам (реакция человека ~150ms+)
+        // Вспышка экрана (поверх всего, т.к. фон-сетка перекрывает тень body)
+        const _flashEl = document.createElement('div');
+        _flashEl.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9990;opacity:0;transition:opacity .12s ease;';
+        document.body.appendChild(_flashEl);
+        function flashScreen(color) {
+            _flashEl.style.boxShadow = 'inset 0 0 60px ' + color;
+            _flashEl.style.opacity = '1';
+            setTimeout(() => { _flashEl.style.opacity = '0'; }, 150);
+        }
+
         let lastAnswerTime = 0;
 
         function checkAnswer(ans) {
@@ -523,13 +533,11 @@
                 score++;
                 timeLeft += 1;   // меньше «докрутки» времени — игра не тянется бесконечно (было +2)
                 if (navigator.vibrate) navigator.vibrate(50);
-                document.body.style.boxShadow = "inset 0 0 50px #00ff00";
-                setTimeout(() => document.body.style.boxShadow = "none", 150);
+                flashScreen('#00ff00');
             } else {
                 timeLeft -= 5;
                 if (navigator.vibrate) navigator.vibrate(200);
-                document.body.style.boxShadow = "inset 0 0 50px #ff0000";
-                setTimeout(() => document.body.style.boxShadow = "none", 150);
+                flashScreen('#ff0000');
             }
             updateUI();
             generateProblem();
