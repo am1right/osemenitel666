@@ -63,21 +63,25 @@
           transform:translate(-50%,-50%);
           background:radial-gradient(circle, rgba(255,0,200,.22), rgba(0,247,255,.10) 45%, rgba(44,15,74,0) 68%); }
         #sw-bg .sw-floor { position:absolute; left:-60%; right:-60%; bottom:0; height:50%;
+          transform:perspective(280px) rotateX(76deg); transform-origin:bottom center; overflow:hidden; }
+        /* Движущийся слой — анимируем transform (только композитор, без перерисовки) */
+        #sw-bg .sw-grid { position:absolute; left:0; right:0; top:-100%; bottom:-100%;
           background-image:
             linear-gradient(rgba(0,247,255,.8) 2px, transparent 2px),
             linear-gradient(90deg, rgba(188,19,254,.7) 2px, transparent 2px);
           background-size:90px 90px;
-          transform:perspective(280px) rotateX(76deg); transform-origin:bottom center;
-          animation:swScroll 2.4s linear infinite; }
+          will-change:transform;
+          animation:swMove 2.4s linear infinite; }
         #sw-bg .sw-glow { position:absolute; left:0; right:0; bottom:0; height:30%;
           background:linear-gradient(to top, rgba(0,247,255,.18), transparent); }
-        /* сетка уезжает к горизонту (от игрока) */
-        @keyframes swScroll { from { background-position:0 90px; } to { background-position:0 0; } }
+        /* сетка уезжает к горизонту (от игрока) — ровно одна ячейка для бесшовного цикла */
+        @keyframes swMove { from { transform:translateY(0); } to { transform:translateY(-90px); } }
+        @media (prefers-reduced-motion: reduce) { #sw-bg .sw-grid { animation:none; } }
       `;
       document.head.appendChild(css);
       const bg = document.createElement('div');
       bg.id = 'sw-bg';
-      bg.innerHTML = '<div class="sw-sun"></div><div class="sw-floor"></div><div class="sw-glow"></div>';
+      bg.innerHTML = '<div class="sw-sun"></div><div class="sw-floor"><div class="sw-grid"></div></div><div class="sw-glow"></div>';
       document.body.insertBefore(bg, document.body.firstChild);
     }
     if (document.body) add();
