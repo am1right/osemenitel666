@@ -9,7 +9,7 @@ from api.db.connection import get_connection, _cursor
 # игры. Восстановление с нуля до 100% ≈ 3 часа (база), ускоряется апгрейдом
 # скорости регена из магазина (regen_mult: 1.0, 2.0, 3.0 …).
 ENERGY_MAX      = 100                 # проценты заряда
-ENERGY_REGEN_MS = 180 * 1000          # база: 180с на 1% → 100% за 5 часов
+ENERGY_REGEN_MS = 20 * 60 * 1000      # база: 20 минут на 1% → 100% за ~33ч
 
 
 def _effective_regen_ms(mult: float) -> int:
