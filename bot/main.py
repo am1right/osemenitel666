@@ -70,6 +70,42 @@ RULES_TEXT = (
 )
 
 
+async def bind_chat_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/bind — привязать текущий чат для автопоста соревнований (только админ)."""
+    user = update.effective_user
+    chat = update.effective_chat
+    if not user or user.id != ADMIN_ID:
+        return
+    title = (chat.title or (user.first_name or "") or str(chat.id))
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.post(f"{API_BASE}/api/announce/bind",
+                                  headers=_internal_headers(),
+                                  json={"chat_id": chat.id, "title": title})
+        ok = r.status_code == 200
+        await update.message.reply_text("✅ Чат привязан — сюда будут приходить анонсы соревнований." if ok
+                                        else "⚠️ Не удалось привязать чат.")
+    except Exception as e:
+        logger.error(f"[BIND] {e}")
+        await update.message.reply_text("⚠️ Ошибка привязки чата.")
+
+
+async def unbind_chat_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/unbind — отвязать текущий чат."""
+    user = update.effective_user
+    chat = update.effective_chat
+    if not user or user.id != ADMIN_ID:
+        return
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            await client.post(f"{API_BASE}/api/announce/unbind",
+                              headers=_internal_headers(), json={"chat_id": chat.id})
+        await update.message.reply_text("✅ Чат отвязан от анонсов.")
+    except Exception as e:
+        logger.error(f"[UNBIND] {e}")
+        await update.message.reply_text("⚠️ Ошибка.")
+
+
 async def rules_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Кнопка «Как играть» в /start — показывает краткие правила."""
     query = update.callback_query
@@ -435,6 +471,8 @@ def main():
     application = ApplicationBuilder().token(BOT_TOKEN).build()
 
     application.add_handler(CommandHandler("start", start_command))
+    application.add_handler(CommandHandler("bind", bind_chat_command))
+    application.add_handler(CommandHandler("unbind", unbind_chat_command))
     application.add_handler(CallbackQueryHandler(rules_callback, pattern="^show_rules$"))
     application.add_handler(InlineQueryHandler(inline_query_handler))
     application.add_handler(PreCheckoutQueryHandler(pre_checkout_query_handler))

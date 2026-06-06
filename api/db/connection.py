@@ -245,6 +245,14 @@ def init_db():
         )
     ''')
     cur.execute("ALTER TABLE case_settings ADD COLUMN IF NOT EXISTS nft_chance REAL NOT NULL DEFAULT 0.18")
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS announce_chats (
+            chat_id  BIGINT PRIMARY KEY,
+            title    TEXT,
+            added_at TIMESTAMP DEFAULT NOW()
+        )
+    ''')
     cur.execute('''
         INSERT INTO case_settings (id, nft_gifts, valuable_chance, valuable_cooldown_min)
         VALUES (1, '[]', 0.4, 60)

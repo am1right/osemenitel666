@@ -22,6 +22,7 @@ from api.database import (
     get_energy, spend_energy, get_user_flags,
     CASE_PRICE, grant_case_reward, confirm_case_reward,
     get_case_settings, save_case_settings, get_case_valuable_cooldown_status,
+    add_announce_chat, remove_announce_chat, get_announce_chats,
 )
 
 try:
@@ -79,6 +80,9 @@ BOT_TOKEN     = os.getenv("BOT_TOKEN", "")
 BOT_USERNAME  = os.getenv("BOT_USERNAME", "chingamebot")  # юзернейм бота без @
 
 VALID_GAMES = ("math", "2048", "snake", "flappy")
+GAME_LABELS = {"math": "Math Master", "2048": "2048", "snake": "Snake", "flappy": "Flappy Chin"}
+# Чаты/каналы для автопоста соревнований (через запятую: @username или -100... id)
+ANNOUNCE_CHATS = [c.strip() for c in os.getenv("ANNOUNCE_CHATS", "").split(",") if c.strip()]
 
 # ── Анти-чит: токены игровой сессии ─────────────────────────────────
 # Счёт нельзя засчитать без одноразового токена, выданного сервером на старте
@@ -761,6 +765,82 @@ async def api_active_contests():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+async def _announce_contest(game_name, prize_type, prize_value, gift_id, duration_min):
+    """Короткий автопост о старте соревнования в привязанные чаты/каналы."""
+    if not ANNOUNCE_CHATS:
+        return
+    label = GAME_LABELS.get(game_name, game_name)
+    if prize_type == "gift":
+        prize = f"🎁 NFT-приз{(' — ' + gift_id) if gift_id else ''}"
+    else:
+        prize = f"⭐ {prize_value} Stars"
+    text = (
+        "🏆 <b>Соревнование идёт!</b>\n"
+        f"🎮 {label}\n"
+        f"🥇 Приз: {prize}\n"
+        f"⏱ {duration_min} мин — успей в топ!"
+    )
+    try:
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+        kb = InlineKeyboardMarkup([[InlineKeyboardButton("🎮 Играть", url=f"https://t.me/{BOT_USERNAME}?startapp=play")]])
+    except Exception:
+        kb = None
+    # Чаты: из .env (ANNOUNCE_CHATS) + привязанные через бота (БД)
+    targets = list(ANNOUNCE_CHATS)
+    try:
+        targets += [str(c) for c in get_announce_chats()]
+    except Exception:
+        pass
+    bot = get_bot()
+    for chat in dict.fromkeys(targets):   # дедуп, порядок сохранён
+        try:
+            cid = int(chat) if str(chat).lstrip("-").isdigit() else chat
+            await bot.send_message(chat_id=cid, text=text, parse_mode="HTML", reply_markup=kb)
+        except Exception as e:
+            logger.warning(f"[ANNOUNCE] post to {chat} failed: {e}")
+
+
+@app.post("/api/announce/bind")
+async def api_announce_bind(request: Request, _: None = Depends(require_internal)):
+    """Привязать чат для автопоста (вызывает бот по команде /bind)."""
+    data = await request.json()
+    chat_id = int(data.get("chat_id"))
+    title = data.get("title", "") or ""
+    return add_announce_chat(chat_id, title)
+
+
+@app.post("/api/announce/unbind")
+async def api_announce_unbind(request: Request, _: None = Depends(require_internal)):
+    data = await request.json()
+    return remove_announce_chat(int(data.get("chat_id")))
+
+
+@app.post("/api/announce/repost")
+async def api_announce_repost(request: Request):
+    """Повторно разослать анонсы по всем активным соревнованиям (для админа)."""
+    data = await request.json()
+    username = (data.get("username") or "").lstrip("@").lower()
+    if not is_admin(username):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    contests = get_active_contests()
+    now = datetime.now(timezone.utc)
+    reposted = 0
+    for c in contests:
+        ev = c["ends_at"]
+        ends_at = ev if isinstance(ev, datetime) else datetime.fromisoformat(str(ev).replace("Z", "+00:00"))
+        if ends_at.tzinfo is None:
+            ends_at = ends_at.replace(tzinfo=timezone.utc)
+        if ends_at <= now:
+            continue
+        mins = max(1, int((ends_at - now).total_seconds() // 60))
+        try:
+            await _announce_contest(c["game_name"], c["prize_type"], c["prize_value"], c["gift_id"], mins)
+            reposted += 1
+        except Exception as e:
+            logger.warning(f"[ANNOUNCE] repost #{c['id']} failed: {e}")
+    return {"ok": True, "reposted": reposted}
+
+
 @app.post("/api/contests/create")
 async def api_create_contest(request: Request):
     """Создать соревнование. Только для админов."""
@@ -809,6 +889,10 @@ async def api_create_contest(request: Request):
         )
 
         logger.info(f"🏆 Contest #{contest_id} created by {username}: {game_name} | {prize_type} | winners={winners_count}")
+        try:
+            await _announce_contest(game_name, prize_type, prize_value, gift_id, duration_min)
+        except Exception as e:
+            logger.warning(f"[ANNOUNCE] contest #{contest_id} announce error: {e}")
         return {"status": "ok", "contest_id": contest_id}
 
     except HTTPException:

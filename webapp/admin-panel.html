@@ -195,6 +195,12 @@
             <button type="button" onclick="globalReset('wallets')" class="bulk-reset-btn">⭐ Обнулить балансы</button>
         </div>
 
+        <!-- Анонсы соревнований -->
+        <div class="section-title">📣 Соревнования</div>
+        <div style="margin-bottom:8px;">
+            <button type="button" onclick="repostAnnouncements()" class="bulk-reset-btn" style="width:100%;">📣 Переслать анонсы активных соревнований</button>
+        </div>
+
         <!-- Search -->
         <div class="search-wrap">
             <input class="search-input" type="text" id="search-input" placeholder="Поиск по имени или ID..." autocomplete="off" spellcheck="false">
@@ -763,6 +769,20 @@
                 showToast('Готово' + extra, 'success');
                 loadPlayers(true);
                 loadSummaryStats();
+            } catch(e) { showToast('Ошибка: ' + (e.message || ''), 'error'); }
+        }
+
+        async function repostAnnouncements() {
+            if (!confirm('Переслать анонсы по всем активным соревнованиям в привязанные чаты?')) return;
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api(`${API}/api/announce/repost`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user.username }),
+                });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(d.detail || `HTTP ${res.status}`);
+                showToast(`Отправлено анонсов: ${d.reposted ?? 0}`, 'success');
             } catch(e) { showToast('Ошибка: ' + (e.message || ''), 'error'); }
         }
 

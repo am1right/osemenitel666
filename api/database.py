@@ -78,6 +78,7 @@ from api.db.referrals import (
 )
 
 from api.db.admin import (
+    add_announce_chat, remove_announce_chat, get_announce_chats,
     get_user_flags,
     admin_delete_player,
     admin_get_all_players,
@@ -153,6 +154,7 @@ __all__ = [
     "admin_ensure_self", "admin_get_player", "admin_adjust_wallet",
     "admin_adjust_score", "admin_set_blocked", "admin_set_ref_disabled",
     "admin_get_summary_stats",
+    "add_announce_chat", "remove_announce_chat", "get_announce_chats",
     "admin_reset_player_scores", "admin_reset_all_scores",
     "admin_set_energy", "admin_set_all_energy",
     "admin_zero_wallet", "admin_zero_all_wallets",

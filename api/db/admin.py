@@ -4,6 +4,35 @@ from typing import Dict, Any, List, Optional
 from api.db.connection import get_connection, _cursor, _delete_player
 
 
+# ── Чаты для автопоста соревнований ────────────────────────────────
+
+def add_announce_chat(chat_id: int, title: str = "") -> Dict[str, Any]:
+    conn = get_connection(); cur = _cursor(conn)
+    cur.execute(
+        "INSERT INTO announce_chats (chat_id, title) VALUES (%s, %s) "
+        "ON CONFLICT (chat_id) DO UPDATE SET title = EXCLUDED.title",
+        (chat_id, title or ""),
+    )
+    conn.commit(); cur.close(); conn.close()
+    return {"ok": True, "chat_id": chat_id}
+
+
+def remove_announce_chat(chat_id: int) -> Dict[str, Any]:
+    conn = get_connection(); cur = _cursor(conn)
+    cur.execute("DELETE FROM announce_chats WHERE chat_id = %s", (chat_id,))
+    n = cur.rowcount
+    conn.commit(); cur.close(); conn.close()
+    return {"ok": True, "removed": n}
+
+
+def get_announce_chats() -> List[int]:
+    conn = get_connection(); cur = _cursor(conn)
+    cur.execute("SELECT chat_id FROM announce_chats")
+    rows = cur.fetchall()
+    cur.close(); conn.close()
+    return [r["chat_id"] for r in rows]
+
+
 # ── Админские сбросы (персональные и массовые) ─────────────────────
 
 def admin_reset_player_scores(user_id: int) -> Dict[str, Any]:
