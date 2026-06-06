@@ -249,22 +249,6 @@
             </div>
         </div>
 
-        <!-- Кнопка для админов (скрыта по умолчанию) -->
-        <div id="admin-section" style="display:none;">
-            <button class="admin-btn" onclick="location.href='contest-panel.html'">
-                <span class="admin-badge"><img src="icons/cup.png" style="width:14px;height:14px;vertical-align:middle;"></span>
-                Настроить соревнование
-            </button>
-            <button class="admin-btn" onclick="location.href='case-settings.html'" style="margin-top:10px;">
-                <span class="admin-badge">📦</span>
-                Настройка кейса
-            </button>
-            <button class="admin-btn" onclick="location.href='admin-panel.html'" style="margin-top:10px;background:linear-gradient(135deg,rgba(0,180,255,0.2),rgba(0,80,200,0.15));border-color:rgba(0,180,255,0.5);color:#00b4ff;box-shadow:0 0 16px rgba(0,180,255,0.15);">
-                <span class="admin-badge">🛡️</span>
-                Панель администратора
-            </button>
-        </div>
-
         <!-- Активные соревнования -->
         <div id="contests-section" style="display:none;">
             <div class="section-title">🔥 Активные соревнования</div>
@@ -374,6 +358,22 @@
             <div id="durak-history-box" style="display:none;margin-top:12px;"></div>
             <div id="durak-ratings-box" style="display:none;margin-top:12px;"></div>
             <div id="durak-skins-box" style="display:none;margin-top:12px;"></div>
+        </div>
+
+        <!-- Кнопки админа (внизу профиля, скрыты по умолчанию) -->
+        <div id="admin-section" style="display:none;margin-top:18px;">
+            <button class="admin-btn" onclick="location.href='contest-panel.html'">
+                <span class="admin-badge"><img src="icons/cup.png" style="width:14px;height:14px;vertical-align:middle;"></span>
+                Настроить соревнование
+            </button>
+            <button class="admin-btn" onclick="location.href='case-settings.html'" style="margin-top:10px;">
+                <span class="admin-badge">📦</span>
+                Настройка кейса
+            </button>
+            <button class="admin-btn" onclick="location.href='admin-panel.html'" style="margin-top:10px;background:linear-gradient(135deg,rgba(0,180,255,0.2),rgba(0,80,200,0.15));border-color:rgba(0,180,255,0.5);color:#00b4ff;box-shadow:0 0 16px rgba(0,180,255,0.15);">
+                <span class="admin-badge">🛡️</span>
+                Панель администратора
+            </button>
         </div>
     </div>
 
