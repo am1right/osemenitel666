@@ -274,6 +274,13 @@
             <h1 class="glitch" data-text="CHIN GAMES">CHIN GAMES</h1>
             <p class="subtitle">Докажи, что ты лучший! Начни игру!</p>
 
+            <!-- 🟢 Онлайн прямо сейчас -->
+            <div id="online-badge" style="display:flex; justify-content:center; align-items:center; gap:7px; margin-bottom:12px; font-family:'Orbitron',sans-serif; font-size:13px; color:#7CFFB2;">
+                <span style="width:9px; height:9px; border-radius:50%; background:#34e36b; box-shadow:0 0 8px #34e36b; animation:onlpulse 1.6s infinite;"></span>
+                <span><b id="online-count">—</b> онлайн</span>
+            </div>
+            <style>@keyframes onlpulse{0%,100%{opacity:.5}50%{opacity:1}}</style>
+
             <!-- ⚡ Energy widget -->
             <div id="energy-container" style="display:flex; justify-content:center; margin-bottom:18px;"></div>
 
@@ -659,6 +666,19 @@
         }
 
         loadContestBadges();
+
+        async function loadOnline() {
+            try {
+                const api = window.apiFetch || fetch;
+                const uid = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || '';
+                const res = await api(`${API}/api/online${uid ? '?user_id=' + uid : ''}`);
+                const d = await res.json();
+                const el = document.getElementById('online-count');
+                if (el) el.textContent = d.online ?? '—';
+            } catch (e) {}
+        }
+        loadOnline();
+        setInterval(loadOnline, 30000);
     </script>
 
     <div class="nft-modal-overlay" id="nft-modal-overlay" onclick="closeNftModal(event)">

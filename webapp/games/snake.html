@@ -310,6 +310,7 @@
         }
 
         function startGame() {
+            if (window.GameGuard) GameGuard.start('snake');
             snake = [{x:7,y:7}];
             dx = 1; dy = 0;
             dirQueue = [];
@@ -350,6 +351,7 @@
                         user_id: user.id,
                         first_name: user.first_name || user.username || "Игрок",
                         game: 'snake',
+                        token: window.GameGuard?.token,
                         score: score
                     })
                 }).then(() => loadMiniLeaderboard()).catch(() => loadMiniLeaderboard());

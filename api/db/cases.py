@@ -6,7 +6,7 @@ from api.db.connection import get_connection, _cursor
 from api.db.wallet import topup_wallet
 from api.db.energy import admin_adjust_energy
 
-CASE_PRICE                         = 1000
+CASE_PRICE                         = 600
 CASE_REWARD_DEDUP_SEC              = 20
 CASE_VALUABLE_CHANCE_DEFAULT       = 0.4
 CASE_NFT_IN_VALUABLE_SHARE         = 0.45

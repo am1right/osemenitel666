@@ -51,6 +51,26 @@
   // Optional: expose the original fetch if someone really needs it
   window._originalFetch = ORIGINAL_FETCH;
 
+  // ── Анти-чит: токен игровой сессии ──────────────────────────────
+  // Игра вызывает GameGuard.start(game) при старте партии → сервер выдаёт
+  // одноразовый токен. При сохранении счёта токен кладётся в тело запроса.
+  // Без валидного токена сервер счёт не засчитает.
+  window.GameGuard = {
+    token: null,
+    async start(game) {
+      this.token = null;
+      try {
+        const res = await window.apiFetch('/api/game/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ game })
+        });
+        if (res.ok) this.token = (await res.json()).token || null;
+      } catch (e) {}
+      return this.token;
+    }
+  };
+
   // Convenience: allow calling apiFetch with relative paths from anywhere
   window.API_BASE = ''; // can be overridden if needed
 

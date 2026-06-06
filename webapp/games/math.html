@@ -577,6 +577,7 @@
                         user_id: user.id,
                         first_name: user.first_name || user.username || "Игрок",
                         game: 'math',
+                        token: window.GameGuard?.token,
                         score: score
                     })
                 }).then(() => loadMiniLeaderboard())
@@ -590,6 +591,7 @@
         }
 
         function startGame() {
+            if (window.GameGuard) GameGuard.start('math');
             score = 0;
             timeLeft = 30;
             currentLevel = 1;

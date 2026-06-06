@@ -315,7 +315,7 @@ async def pre_checkout_query_handler(update: Update, context: ContextTypes.DEFAU
             raise ValueError(f"user_id mismatch: payload={user_id} sender={query.from_user.id}")
         if amount <= 0:
             raise ValueError(f"Некорректный amount: {amount}")
-        if ptype == "case" and amount != 1000:
+        if ptype == "case" and amount != 600:
             raise ValueError(f"Некорректная цена кейса: {amount}")
 
         logger.info(f"✅ PreCheckout OK | type={ptype} user={user_id} amount={amount}")

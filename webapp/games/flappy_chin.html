@@ -300,6 +300,7 @@
                         user_id: user.id,
                         first_name: user.first_name || user.username || 'Игрок',
                         game: GAME_ID,
+                        token: window.GameGuard?.token,
                         score: finalScore
                     })
                 });
@@ -445,6 +446,7 @@
         }
 
         function startGame() {
+            if (window.GameGuard) GameGuard.start('flappy');
             bird.y = canvas.height / 2;
             bird.velocity = 0;
             score = 0;

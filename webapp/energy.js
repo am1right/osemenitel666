@@ -30,6 +30,7 @@ const Energy = (() => {
     // батарея тает — DRAIN_UNIT_MS на 1%. 100% / (30с) ≈ 50 минут игры.
     // Кончилась посреди игры — даём доиграть, новый старт блокируется.
     const DRAIN_UNIT_MS = 7 * 1000;      // 1% за 7 секунд активной игры (~12 мин на заряд)
+    const MIN_START     = 50;            // минимум % заряда, чтобы начать партию
 
     // Состояние сессии расхода
     let _sessionOn   = false;
@@ -462,7 +463,7 @@ const Energy = (() => {
     }
 
     // ─── NO-ENERGY OVERLAY ───────────────────────────────
-    function _showNoEnergyOverlay() {
+    function _showNoEnergyOverlay(reason) {
         _injectCSS();
 
         let overlay = document.getElementById('no-energy-overlay');
@@ -477,10 +478,15 @@ const Energy = (() => {
             const inGames = location.pathname.includes('/games/');
             const shopUrl = inGames ? '../shop.html' : 'shop.html';
             const menuUrl = inGames ? '../index.html' : 'index.html';
+            const isMin = reason === 'min';
+            const h2 = isMin ? `Нужно минимум ${MIN_START}%` : 'Энергия кончилась';
+            const p = isMin
+                ? `Для игры нужно минимум <b>${MIN_START}%</b> заряда.<br>Пополни или подожди восстановления.`
+                : 'Доиграл — теперь самое интересное 😈<br>Пополни запас и продолжай, или подожди.';
             overlay.innerHTML = `
                 <div class="neo-icon">${iconHtml(56)}</div>
-                <h2>Энергия кончилась</h2>
-                <p>Доиграл — теперь самое интересное 😈<br>Пополни запас и продолжай, или подожди.</p>
+                <h2>${h2}</h2>
+                <p>${p}</p>
                 <div class="neo-timer">+1 через ${nextRechargeIn !== null ? _fmtTime(nextRechargeIn) : '—'}</div>
                 <button class="neo-back" style="border-color:#ffd700;color:#ffd700;box-shadow:0 0 12px rgba(255,215,0,0.35)"
                         onclick="window.location.href='${shopUrl}'">⚡ Пополнить</button>
@@ -491,9 +497,10 @@ const Energy = (() => {
         renderOverlay();
         overlay.classList.add('show');
 
+        const threshold = reason === 'min' ? MIN_START : 1;
         const iv = setInterval(() => {
             const { current } = get();
-            if (current > 0) {
+            if (current >= threshold) {
                 overlay.classList.remove('show');
                 clearInterval(iv);
             } else {
@@ -531,6 +538,11 @@ const Energy = (() => {
         }
 
         return function trySpend() {
+            // Нужно минимум MIN_START% заряда, чтобы начать
+            if (get().current < MIN_START) {
+                _showNoEnergyOverlay('min');
+                return false;
+            }
             if (spend(cost)) {
                 showWidget(containerEl);
                 startSession();          // вход оплачен → запускаем плавный расход
@@ -545,11 +557,11 @@ const Energy = (() => {
         const btn = document.getElementById(btnId);
         if (!btn) return;
         const { current } = get();
-        if (current < cost) {
+        if (current < MIN_START) {
             btn.disabled = true;
             btn.style.opacity = '0.45';
             btn.style.cursor  = 'not-allowed';
-            btn.title = 'Недостаточно энергии';
+            btn.title = `Нужно ≥${MIN_START}% заряда`;
         } else {
             btn.disabled = false;
             btn.style.opacity = '';

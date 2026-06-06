@@ -740,6 +740,7 @@
         }
     
         function startGame() {
+            if (window.GameGuard) GameGuard.start('2048');
             score = 0;
             gameOver = false;
             initBoard();
@@ -766,6 +767,7 @@
                         user_id: user.id,
                         first_name: user.first_name || user.username || "Игрок",
                         game: '2048',
+                        token: window.GameGuard?.token,
                         score: score
                     })
                 }).then(() => loadMiniLeaderboard())
