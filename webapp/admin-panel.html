@@ -191,7 +191,7 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
             <button type="button" onclick="globalReset('scores')" class="bulk-reset-btn">🎮 Обнулить очки</button>
             <button type="button" onclick="globalReset('durak')" class="bulk-reset-btn">🃏 Сброс рейтинга Дурака</button>
-            <button type="button" onclick="globalReset('energy')" class="bulk-reset-btn">⚡ Энергия = 8</button>
+            <button type="button" onclick="globalReset('energy')" class="bulk-reset-btn">⚡ Заряд = 100%</button>
             <button type="button" onclick="globalReset('wallets')" class="bulk-reset-btn">⭐ Обнулить балансы</button>
         </div>
 
@@ -567,7 +567,7 @@
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                     <button type="button" onclick="quickReset(${p.user_id},'scores')" class="bulk-reset-btn">🎮 Обнулить очки</button>
                     <button type="button" onclick="quickReset(${p.user_id},'durak')" class="bulk-reset-btn">🃏 Сброс Дурака</button>
-                    <button type="button" onclick="quickReset(${p.user_id},'energy')" class="bulk-reset-btn">⚡ Энергия = 8</button>
+                    <button type="button" onclick="quickReset(${p.user_id},'energy')" class="bulk-reset-btn">⚡ Заряд = 100%</button>
                     <button type="button" onclick="quickReset(${p.user_id},'wallet')" class="bulk-reset-btn">⭐ Обнулить баланс</button>
                 </div>
 
@@ -723,7 +723,7 @@
             const labels = {
                 scores: 'обнулить очки во всех играх',
                 durak: 'сбросить рейтинг Дурака',
-                energy: 'установить энергию 8',
+                energy: 'установить заряд 100%',
                 wallet: 'обнулить баланс Stars',
             };
             if (!confirm(`Игрок ${userId}: ${labels[kind]}?`)) return;
@@ -747,7 +747,7 @@
             const labels = {
                 scores: 'ОБНУЛИТЬ очки во всех играх у ВСЕХ игроков',
                 durak: 'СБРОСИТЬ рейтинг Дурака у ВСЕХ',
-                energy: 'установить энергию 8 ВСЕМ игрокам',
+                energy: 'установить заряд 100% ВСЕМ игрокам',
                 wallets: 'ОБНУЛИТЬ балансы Stars у ВСЕХ',
             };
             if (!confirm(`⚠️ ${labels[kind]}?\nДействие необратимо.`)) return;

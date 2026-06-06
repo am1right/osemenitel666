@@ -173,7 +173,7 @@ try:
     @router.post("/player/{user_id}/reset_energy")
     async def admin_reset_player_energy(user_id: int, req: AdminActionRequest):
         _check_admin(req.username)
-        return db.admin_set_energy(user_id, 8)
+        return db.admin_set_energy(user_id, 100)
 
     @router.post("/player/{user_id}/reset_wallet")
     async def admin_reset_player_wallet(user_id: int, req: AdminActionRequest):
@@ -194,7 +194,7 @@ try:
     @router.post("/reset_all/energy")
     async def admin_reset_all_energy_ep(username: str):
         _check_admin(username)
-        return db.admin_set_all_energy(8)
+        return db.admin_set_all_energy(100)
 
     @router.post("/reset_all/wallets")
     async def admin_reset_all_wallets_ep(username: str):
