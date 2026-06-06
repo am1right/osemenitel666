@@ -62,17 +62,17 @@
         #sw-bg .sw-sun { position:absolute; left:50%; top:32%; width:64vmin; height:64vmin;
           transform:translate(-50%,-50%);
           background:radial-gradient(circle, rgba(255,0,200,.22), rgba(0,247,255,.10) 45%, rgba(44,15,74,0) 68%); }
-        #sw-bg .sw-floor { position:absolute; left:-50%; right:-50%; bottom:-8%; height:55%;
+        #sw-bg .sw-floor { position:absolute; left:-60%; right:-60%; bottom:0; height:50%;
           background-image:
-            linear-gradient(rgba(0,247,255,.75) 2px, transparent 2px),
-            linear-gradient(90deg, rgba(188,19,254,.65) 2px, transparent 2px);
-          background-size:54px 54px;
-          transform:perspective(300px) rotateX(74deg); transform-origin:bottom center;
-          filter:drop-shadow(0 0 4px rgba(0,247,255,.4));
-          animation:swScroll 2.6s linear infinite; }
+            linear-gradient(rgba(0,247,255,.8) 2px, transparent 2px),
+            linear-gradient(90deg, rgba(188,19,254,.7) 2px, transparent 2px);
+          background-size:90px 90px;
+          transform:perspective(280px) rotateX(76deg); transform-origin:bottom center;
+          animation:swScroll 2.4s linear infinite; }
         #sw-bg .sw-glow { position:absolute; left:0; right:0; bottom:0; height:30%;
           background:linear-gradient(to top, rgba(0,247,255,.18), transparent); }
-        @keyframes swScroll { from { background-position:0 0; } to { background-position:0 54px; } }
+        /* сетка уезжает к горизонту (от игрока) */
+        @keyframes swScroll { from { background-position:0 90px; } to { background-position:0 0; } }
       `;
       document.head.appendChild(css);
       const bg = document.createElement('div');
