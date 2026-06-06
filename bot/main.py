@@ -26,6 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / "config" / ".env", override=True)
 
 BOT_TOKEN    = os.getenv("BOT_TOKEN")
+BOT_USERNAME     = os.getenv("BOT_USERNAME", "chingamebot")
 API_BASE         = os.getenv("API_BASE", "https://chin-games-bot.onrender.com")
 BASE_STATIC      = f"{API_BASE}/static"
 WEBAPP_URL       = f"{BASE_STATIC}/index.html?v=2205243"
@@ -48,11 +49,14 @@ def _internal_headers() -> dict:
     return {"X-Internal-Secret": INTERNAL_SECRET}
 
 # ===================== КЛАВИАТУРЫ =====================
-def get_webapp_keyboard():
+def get_webapp_keyboard(user_id: int | None = None):
+    ref_url = f"https://t.me/{BOT_USERNAME}?start=ref_{user_id}" if user_id else None
     keyboard = [
         [InlineKeyboardButton("🎮 Запустить Chin Games", web_app=WebAppInfo(url=WEBAPP_URL))],
         [InlineKeyboardButton("📖 Как играть", callback_data="show_rules")],
     ]
+    if ref_url:
+        keyboard.append([InlineKeyboardButton("👥 Пригласить друга", url=ref_url)])
     return InlineKeyboardMarkup(keyboard)
 
 
@@ -264,7 +268,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         text=text,
         parse_mode="HTML",
-        reply_markup=get_webapp_keyboard()
+        reply_markup=get_webapp_keyboard(user.id)
     )
 
 

@@ -839,7 +839,11 @@ async def _contest_reminder_loop():
                 lines = []
                 for c, left in active:
                     label = GAME_LABELS.get(c["game_name"], c["game_name"])
-                    prize = "🎁 NFT-приз" if c["prize_type"] == "gift" else f"⭐ {c['prize_value']} Stars"
+                    if c["prize_type"] == "gift":
+                        gid = c.get("gift_id") or ""
+                        prize = f'🎁 <a href="{gid}">NFT-приз</a>' if gid else "🎁 NFT-приз"
+                    else:
+                        prize = f"⭐ {c['prize_value']} Stars"
                     lines.append(f"• {label} — {prize} (≈{int(left // 60)} мин)")
                 text = ("⏳ <b>Остался ~1 час до конца соревнований!</b>\n\n"
                         + "\n".join(lines) + "\n\nУспей ворваться в топ!")
@@ -864,7 +868,8 @@ async def _contest_reminder_loop():
                 for c in finished:
                     label = GAME_LABELS.get(c["game_name"], c["game_name"])
                     if c["prize_type"] == "gift":
-                        prize = c["gift_id"] or "NFT-приз"
+                        gid = c.get("gift_id") or ""
+                        prize = f'🎁 <a href="{gid}">NFT-приз</a>' if gid else "🎁 NFT-приз"
                     else:
                         prize = f"⭐ {c['prize_value']} Stars"
                     lb = get_leaderboard(c["game_name"], 1)
@@ -882,7 +887,7 @@ async def _announce_contest(game_name, prize_type, prize_value, gift_id, duratio
         return
     label = GAME_LABELS.get(game_name, game_name)
     if prize_type == "gift":
-        prize = f"🎁 NFT-приз{(' — ' + gift_id) if gift_id else ''}"
+        prize = f'🎁 <a href="{gift_id}">NFT-приз</a>' if gift_id else "🎁 NFT-приз"
     else:
         prize = f"⭐ {prize_value} Stars"
     text = (
@@ -974,6 +979,70 @@ async def api_announce_repost(request: Request):
         except Exception as e:
             logger.warning(f"[ANNOUNCE] repost #{c['id']} failed: {e}")
     return {"ok": True, "reposted": reposted}
+
+
+@app.post("/api/admin/repost_reminder")
+async def api_repost_reminder(request: Request):
+    """Переотправить напоминание об активных соревнованиях (сколько осталось)."""
+    data = await request.json()
+    username = (data.get("username") or "").lstrip("@").lower()
+    if not is_admin(username):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    contests = get_active_contests()
+    now = datetime.now(timezone.utc)
+    lines = []
+    for c in contests:
+        ev = c["ends_at"]
+        ends_at = ev if isinstance(ev, datetime) else datetime.fromisoformat(str(ev).replace("Z", "+00:00"))
+        if ends_at.tzinfo is None:
+            ends_at = ends_at.replace(tzinfo=timezone.utc)
+        if ends_at <= now:
+            continue
+        left = (ends_at - now).total_seconds()
+        label = GAME_LABELS.get(c["game_name"], c["game_name"])
+        if c["prize_type"] == "gift":
+            gid = c.get("gift_id") or ""
+            prize = f'🎁 <a href="{gid}">NFT-приз</a>' if gid else "🎁 NFT-приз"
+        else:
+            prize = f"⭐ {c['prize_value']} Stars"
+        lines.append(f"• {label} — {prize} (≈{int(left // 60)} мин)")
+    if not lines:
+        return {"ok": False, "detail": "Нет активных соревнований"}
+    text = "⏳ <b>Скоро конец соревнований!</b>\n\n" + "\n".join(lines) + "\n\nУспей ворваться в топ!"
+    await _post_to_chats(text)
+    return {"ok": True}
+
+
+@app.post("/api/admin/repost_last_result")
+async def api_repost_last_result(request: Request):
+    """Переотправить итог последнего завершённого соревнования."""
+    data = await request.json()
+    username = (data.get("username") or "").lstrip("@").lower()
+    if not is_admin(username):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT * FROM contests WHERE status = 'finished' ORDER BY ends_at DESC LIMIT 1"
+        )
+        row = cur.fetchone()
+    finally:
+        conn.close()
+    if not row:
+        return {"ok": False, "detail": "Нет завершённых соревнований"}
+    c = dict(row)
+    label = GAME_LABELS.get(c["game_name"], c["game_name"])
+    if c["prize_type"] == "gift":
+        gid = c.get("gift_id") or ""
+        prize = f'🎁 <a href="{gid}">NFT-приз</a>' if gid else "🎁 NFT-приз"
+    else:
+        prize = f"⭐ {c['prize_value']} Stars"
+    lb = get_leaderboard(c["game_name"], 1)
+    top = lb[0]["first_name"] if lb and lb[0].get("first_name") else "—"
+    text = f"🏆 <b>Победители!</b>\n\n🎮 <b>{label}</b> — {prize}\n🥇 Топ 1: {top}"
+    await _post_to_chats(text)
+    return {"ok": True}
 
 
 @app.post("/api/contests/create")

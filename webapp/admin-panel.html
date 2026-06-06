@@ -198,6 +198,8 @@
         <div class="section-title">📣 Соревнования</div>
         <div style="margin-bottom:8px;">
             <button type="button" onclick="repostAnnouncements()" class="bulk-reset-btn" style="width:100%;">📣 Переслать анонсы активных соревнований</button>
+            <button type="button" onclick="repostReminder()" class="bulk-reset-btn" style="width:100%;margin-top:8px;">⏳ Напомнить об активных соревнованиях</button>
+            <button type="button" onclick="repostLastResult()" class="bulk-reset-btn" style="width:100%;margin-top:8px;">🏆 Переотправить итог последнего соревнования</button>
             <button type="button" onclick="backfillUsernames()" class="bulk-reset-btn" style="width:100%;margin-top:8px;">🔗 Подтянуть @username игроков</button>
         </div>
 
@@ -788,6 +790,32 @@
                 const d = await res.json().catch(() => ({}));
                 if (!res.ok) throw new Error(d.detail || `HTTP ${res.status}`);
                 showToast(`Отправлено анонсов: ${d.reposted ?? 0}`, 'success');
+            } catch(e) { showToast('Ошибка: ' + (e.message || ''), 'error'); }
+        }
+
+        async function repostReminder() {
+            if (!confirm('Отправить напоминание об активных соревнованиях в канал?')) return;
+            try {
+                const res = await fetch(`${API}/api/admin/repost_reminder`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user.username }),
+                });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(d.detail || `HTTP ${res.status}`);
+                showToast('Напоминание отправлено', 'success');
+            } catch(e) { showToast('Ошибка: ' + (e.message || ''), 'error'); }
+        }
+
+        async function repostLastResult() {
+            if (!confirm('Переотправить итог последнего завершённого соревнования в канал?')) return;
+            try {
+                const res = await fetch(`${API}/api/admin/repost_last_result`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user.username }),
+                });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(d.detail || `HTTP ${res.status}`);
+                showToast('Итог переотправлен', 'success');
             } catch(e) { showToast('Ошибка: ' + (e.message || ''), 'error'); }
         }
 
