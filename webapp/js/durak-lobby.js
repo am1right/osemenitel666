@@ -188,6 +188,15 @@
       alert('Окно создания лобби не найдено');
       return;
     }
+    // Прячем прочие модалки/оверлеи, которые могли «зависнуть» поверх и
+    // перехватывать клики (после игры / bfcache-восстановления страницы).
+    ['confirm-modal', 'edit-settings-modal'].forEach((id) => {
+      const m = document.getElementById(id);
+      if (m) m.style.display = 'none';
+    });
+    document.querySelectorAll('#no-energy-overlay, .dg-gameover').forEach((el) => {
+      el.style.display = 'none';
+    });
     modal.style.display = 'flex';
     const nameInput = document.getElementById('lobby-name');
     if (nameInput) nameInput.value = '';

@@ -543,6 +543,15 @@
                 });
             }
 
+            // Сброс модалок при возврате на страницу (в т.ч. из bfcache),
+            // иначе «зависшая» модалка перехватывает клики по окну создания лобби.
+            window.addEventListener('pageshow', () => {
+                ['create-modal', 'confirm-modal', 'edit-settings-modal'].forEach((id) => {
+                    const m = document.getElementById(id);
+                    if (m) m.style.display = 'none';
+                });
+            });
+
             // Фильтры (пока декоративные)
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 btn.addEventListener('click', () => {

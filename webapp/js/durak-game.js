@@ -758,13 +758,17 @@
       `width:${fromRect.width}px;height:${fromRect.height}px;margin:0;z-index:99999;pointer-events:none;` +
       `transform-origin:top left;transition:transform .26s cubic-bezier(.25,.8,.3,1),opacity .26s;`;
     document.body.appendChild(clone);
-    tgt.style.opacity = '0';                       // прячем реальную, пока летит клон
+    // Прячем реальную карту, пока летит клон. visibility (не opacity!) — иначе
+    // её перебивает анимация появления dg-anim и видно «двойника».
+    tgt.classList.remove('dg-anim');
+    tgt.style.animation = 'none';
+    tgt.style.visibility = 'hidden';
     const dx = to.left - fromRect.left, dy = to.top - fromRect.top;
     const sc = fromRect.width ? (to.width / fromRect.width) : 1;
     requestAnimationFrame(() => {
       clone.style.transform = `translate(${dx}px,${dy}px) scale(${sc})`;
     });
-    setTimeout(() => { clone.remove(); if (tgt) tgt.style.opacity = ''; }, 280);
+    setTimeout(() => { clone.remove(); if (tgt) tgt.style.visibility = ''; }, 280);
   }
 
   async function doAction(action, extra) {
