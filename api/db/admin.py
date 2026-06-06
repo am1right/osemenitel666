@@ -4,6 +4,19 @@ from typing import Dict, Any, List, Optional
 from api.db.connection import get_connection, _cursor, _delete_player
 
 
+def upsert_tg_username(user_id: int, username: str) -> None:
+    """Сохраняет @username игрока (для перехода к аккаунту из админки)."""
+    if not username:
+        return
+    conn = get_connection(); cur = _cursor(conn)
+    cur.execute(
+        "INSERT INTO tg_users (user_id, username, updated_at) VALUES (%s, %s, NOW()) "
+        "ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username, updated_at = NOW()",
+        (user_id, username),
+    )
+    conn.commit(); cur.close(); conn.close()
+
+
 # ── Чаты для автопоста соревнований ────────────────────────────────
 
 def add_announce_chat(chat_id: int, title: str = "") -> Dict[str, Any]:
@@ -140,7 +153,8 @@ def admin_get_all_players(limit: int = 100, offset: int = 0, search: str = "") -
                 s.last_active,
                 COALESCE(s.games_count, 0)     AS games_count,
                 COALESCE(bl.blocked, 0)        AS blocked,
-                COALESCE(bl.ref_disabled, 0)   AS ref_disabled
+                COALESCE(bl.ref_disabled, 0)   AS ref_disabled,
+                tu.username                    AS username
             FROM all_users u
             LEFT JOIN (
                 SELECT user_id,
@@ -153,6 +167,7 @@ def admin_get_all_players(limit: int = 100, offset: int = 0, search: str = "") -
             ) s ON s.user_id = u.user_id
             LEFT JOIN wallet     w  ON w.user_id  = u.user_id
             LEFT JOIN admin_bans bl ON bl.user_id = u.user_id
+            LEFT JOIN tg_users   tu ON tu.user_id = u.user_id
         )
         SELECT * FROM player_agg
     """

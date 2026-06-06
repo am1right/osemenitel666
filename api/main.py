@@ -24,6 +24,7 @@ from api.database import (
     CASE_PRICE, grant_case_reward, confirm_case_reward,
     get_case_settings, save_case_settings, get_case_valuable_cooldown_status,
     add_announce_chat, remove_announce_chat, get_announce_chats,
+    upsert_tg_username,
 )
 
 try:
@@ -219,6 +220,11 @@ async def api_save_score(request: Request, tg_user: dict = Depends(require_webap
         if not ok:
             logger.warning(f"[ANTICHEAT] {user_id} {game_name} score {score} rejected: {reason}")
             raise HTTPException(status_code=403, detail="Invalid game session")
+        try:
+            if tg_user.get("username"):
+                upsert_tg_username(int(tg_user["id"]), tg_user["username"])
+        except Exception:
+            pass
         result = save_score(user_id, first_name, game_name, score)
 
         # ── Реферальная проверка: начислить награду если реферал достиг 3 игр ──
