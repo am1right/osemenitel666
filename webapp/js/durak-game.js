@@ -755,11 +755,23 @@
           if (DG.state) { DG.state.connected = msg.connected || []; render(DG.state); }
         }
       };
-      ws.onclose = () => { DG.socket = null; };
+      ws.onopen = () => { if (DG._reconnectTimer) { clearTimeout(DG._reconnectTimer); DG._reconnectTimer = null; } };
+      ws.onclose = () => { DG.socket = null; scheduleReconnect(); };
       ws.onerror = () => {};
     } catch (e) {
       console.warn('[durak] WS unavailable, polling only', e);
+      scheduleReconnect();
     }
+  }
+
+  // Авто-переподключение WS, пока партия идёт — чтобы все видели реакции/онлайн
+  function scheduleReconnect() {
+    if (DG._reconnectTimer) return;
+    if (DG.state && DG.state.game_over) return;
+    DG._reconnectTimer = setTimeout(() => {
+      DG._reconnectTimer = null;
+      if (!(DG.state && DG.state.game_over)) connectSocket();
+    }, 2500);
   }
 
   // ════════════════════════════════════════════════════════════
@@ -870,34 +882,36 @@
     }
   }
 
-  /** Показывает летящий эмодзи возле игрока-отправителя. */
+  /** Эмодзи вылетает от отправителя (своя кнопка / плитка соперника) и летит
+   *  к ЦЕНТРУ экрана — одинаково для игрока и для врага. */
   function showFlyingReaction(name, fromUserId) {
-    // Куда привязать: своя реакция — к кнопке эмоций (низ), чужая — к плитке соперника
     let anchor = null;
     if (fromUserId && String(fromUserId) !== String(DG.userId)) {
       anchor = document.querySelector(`.dg-opp[data-uid="${fromUserId}"]`);
     }
     if (!anchor) anchor = document.getElementById('dg-emoji-btn');
 
+    const r = anchor ? anchor.getBoundingClientRect() : null;
+    const sx = r ? r.left + r.width / 2 : window.innerWidth / 2;
+    const sy = r ? r.top + r.height / 2 : window.innerHeight - 120;
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+
     const el = document.createElement('div');
     el.className = 'dg-flying-reaction';
     el.innerHTML = `<img src="icons/emoji/${name}.png" draggable="false">`;
-
-    let cx, cy;
-    if (anchor) {
-      const r = anchor.getBoundingClientRect();
-      cx = r.left + r.width / 2;
-      cy = r.top + r.height / 2;
-    } else {
-      cx = window.innerWidth / 2;
-      cy = window.innerHeight - 150;
-    }
-    el.style.left = cx + 'px';
-    el.style.top = cy + 'px';
-
-    // В body с position:fixed — не влияет на раскладку поля (карты не дёргаются)
+    el.style.left = sx + 'px';
+    el.style.top = sy + 'px';
     document.body.appendChild(el);
-    setTimeout(() => el.remove(), 1900);
+
+    // Старт от отправителя → летим в центр (рост), держим, затем уплываем вверх и гаснем
+    requestAnimationFrame(() => {
+      el.style.left = cx + 'px';
+      el.style.top = cy + 'px';
+      el.classList.add('arrived');
+    });
+    setTimeout(() => el.classList.add('leaving'), 1000);
+    setTimeout(() => el.remove(), 1600);
   }
   window.showFlyingReaction = showFlyingReaction;
 

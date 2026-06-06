@@ -382,42 +382,51 @@
         /* Стили карт (.rdcard / .rdback) вынесены в durak-card.css */
 
         /* ══════════ ЭМОЦИИ ══════════ */
+        /* Палитра эмодзи — квадратная панель с сеткой, по центру над кнопкой */
         .dg-emoji-picker {
-            position: absolute;
-            bottom: 64px; right: 12px;
+            position: fixed;
+            left: 50%; bottom: 84px;
+            transform: translateX(-50%) scale(0.85);
             display: none;
             grid-template-columns: repeat(5, 1fr);
-            gap: 6px;
-            padding: 10px;
-            background: rgba(15,30,38,0.96);
-            border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 14px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-            z-index: 50;
+            gap: 8px;
+            padding: 14px;
+            width: min(86vw, 300px);
+            background: rgba(15,30,38,0.97);
+            border: 1px solid rgba(255,255,255,0.16);
+            border-radius: 18px;
+            box-shadow: 0 14px 40px rgba(0,0,0,0.65);
+            z-index: 200;
+            opacity: 0;
+            transition: opacity .15s ease, transform .15s ease;
         }
-        .dg-emoji-picker.show { display: grid; }
+        .dg-emoji-picker.show { display: grid; opacity: 1; transform: translateX(-50%) scale(1); }
         .dg-emoji-item {
-            width: 40px; height: 40px;
+            aspect-ratio: 1;
             display: flex; align-items: center; justify-content: center;
-            border-radius: 9px; cursor: pointer;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px; cursor: pointer;
+            transition: background .12s, transform .08s;
         }
-        .dg-emoji-item:active { background: rgba(255,255,255,0.12); }
-        .dg-emoji-item img { width: 34px; height: 34px; }
+        .dg-emoji-item:active { background: rgba(0,243,255,0.18); transform: scale(0.9); }
+        .dg-emoji-item img { width: 78%; height: 78%; object-fit: contain; }
+
+        /* Летящий эмодзи: от отправителя к центру экрана */
         .dg-flying-reaction {
-            position: fixed;            /* в body, не влияет на раскладку поля */
-            transform: translate(-50%, -50%);
+            position: fixed;
             z-index: 9999;
             pointer-events: none;
-            animation: dgFly 1.9s forwards;
+            transform: translate(-50%, -50%) scale(0.4);
+            opacity: 0;
+            transition: left .5s cubic-bezier(.2,.8,.2,1),
+                        top .5s cubic-bezier(.2,.8,.2,1),
+                        transform .5s cubic-bezier(.2,.8,.2,1),
+                        opacity .25s ease;
         }
-        .dg-flying-reaction img { width: 56px; height: 56px;
-            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5)); }
-        @keyframes dgFly {
-            0%   { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
-            15%  { transform: translate(-50%, -70%) scale(1.15); opacity: 1; }
-            70%  { opacity: 1; }
-            100% { transform: translate(-50%, -200%) scale(0.7); opacity: 0; }
-        }
+        .dg-flying-reaction.arrived { transform: translate(-50%, -50%) scale(1.35); opacity: 1; }
+        .dg-flying-reaction.leaving { opacity: 0; transform: translate(-50%, -160%) scale(0.85); }
+        .dg-flying-reaction img { width: 84px; height: 84px;
+            filter: drop-shadow(0 6px 12px rgba(0,0,0,0.55)); }
 
         /* ══════════ GAME OVER ══════════ */
         .dg-gameover {
