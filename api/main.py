@@ -24,7 +24,7 @@ from api.database import (
     CASE_PRICE, grant_case_reward, confirm_case_reward,
     get_case_settings, save_case_settings, get_case_valuable_cooldown_status,
     add_announce_chat, remove_announce_chat, get_announce_chats,
-    upsert_tg_username,
+    upsert_tg_username, admin_get_all_players,
 )
 
 try:
@@ -924,6 +924,30 @@ async def api_announce_bind(request: Request, _: None = Depends(require_internal
 async def api_announce_unbind(request: Request, _: None = Depends(require_internal)):
     data = await request.json()
     return remove_announce_chat(int(data.get("chat_id")))
+
+
+@app.post("/api/admin/backfill_usernames")
+async def api_backfill_usernames(request: Request):
+    """Подтянуть @username всех игроков через бота (get_chat)."""
+    data = await request.json()
+    uname = (data.get("username") or "").lstrip("@").lower()
+    if not is_admin(uname):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    bot = get_bot()
+    players = admin_get_all_players(limit=2000).get("players", [])
+    filled = 0
+    for p in players:
+        if p.get("username"):
+            continue
+        try:
+            chat = await bot.get_chat(p["user_id"])
+            if getattr(chat, "username", None):
+                upsert_tg_username(p["user_id"], chat.username)
+                filled += 1
+        except Exception:
+            pass
+        await asyncio.sleep(0.05)
+    return {"ok": True, "filled": filled}
 
 
 @app.post("/api/announce/repost")

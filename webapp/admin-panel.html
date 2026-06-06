@@ -199,6 +199,7 @@
         <div class="section-title">📣 Соревнования</div>
         <div style="margin-bottom:8px;">
             <button type="button" onclick="repostAnnouncements()" class="bulk-reset-btn" style="width:100%;">📣 Переслать анонсы активных соревнований</button>
+            <button type="button" onclick="backfillUsernames()" class="bulk-reset-btn" style="width:100%;margin-top:8px;">🔗 Подтянуть @username игроков</button>
         </div>
 
         <!-- Search -->
@@ -783,6 +784,21 @@
                 const d = await res.json().catch(() => ({}));
                 if (!res.ok) throw new Error(d.detail || `HTTP ${res.status}`);
                 showToast(`Отправлено анонсов: ${d.reposted ?? 0}`, 'success');
+            } catch(e) { showToast('Ошибка: ' + (e.message || ''), 'error'); }
+        }
+
+        async function backfillUsernames() {
+            showToast('Подтягиваю @username…', '');
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api(`${API}/api/admin/backfill_usernames`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user.username }),
+                });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(d.detail || `HTTP ${res.status}`);
+                showToast(`Подтянуто: ${d.filled ?? 0}`, 'success');
+                loadPlayers(true);
             } catch(e) { showToast('Ошибка: ' + (e.message || ''), 'error'); }
         }
 
