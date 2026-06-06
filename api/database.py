@@ -23,6 +23,8 @@ from api.db.contests import (
     create_contest,
     get_active_contests,
     get_contest,
+    get_unannounced_finished_contests,
+    mark_contest_announced,
     finish_contest,
     mark_prize_sent,
     cancel_contest,
@@ -132,6 +134,7 @@ __all__ = [
     "save_score", "get_user_stats", "get_leaderboard",
     # contests
     "create_contest", "get_active_contests", "get_contest", "finish_contest",
+    "get_unannounced_finished_contests", "mark_contest_announced",
     "mark_prize_sent", "cancel_contest",
     # wallet
     "get_wallet", "topup_wallet", "spend_wallet", "get_wallet_transactions",

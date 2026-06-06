@@ -173,9 +173,11 @@ def init_db():
             started_at     TIMESTAMP DEFAULT NOW(),
             ends_at        TIMESTAMP NOT NULL,
             status         TEXT DEFAULT 'active',
-            snapshot_start TEXT DEFAULT NULL
+            snapshot_start TEXT DEFAULT NULL,
+            result_announced INTEGER DEFAULT 0
         )
     ''')
+    cur.execute("ALTER TABLE contests ADD COLUMN IF NOT EXISTS result_announced INTEGER DEFAULT 0")
 
     cur.execute('''
         CREATE TABLE IF NOT EXISTS contest_results (

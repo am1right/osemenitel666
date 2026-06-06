@@ -13,6 +13,7 @@ from telegram import Bot, LabeledPrice
 from api.database import (
     init_db, save_score, get_leaderboard, get_user_stats,
     create_contest, get_active_contests, get_contest,
+    get_unannounced_finished_contests, mark_contest_announced,
     finish_contest, mark_prize_sent, cancel_contest,
     get_wallet, spend_wallet, topup_wallet, get_wallet_transactions,
     register_referral, claim_referral_reward, get_referral_stats,
@@ -840,6 +841,34 @@ async def _contest_reminder_loop():
                 text = ("⏳ <b>Остался ~1 час до конца соревнований!</b>\n\n"
                         + "\n".join(lines) + "\n\nУспей ворваться в топ!")
                 await _post_to_chats(text)
+
+            # Завершаем просрочённые активные соревнования
+            for c in contests:
+                ev = c["ends_at"]
+                ends_at = ev if isinstance(ev, datetime) else datetime.fromisoformat(str(ev).replace("Z", "+00:00"))
+                if ends_at.tzinfo is None:
+                    ends_at = ends_at.replace(tzinfo=timezone.utc)
+                if ends_at <= now:
+                    try:
+                        await _finish_contest_auto(c["id"])
+                    except Exception as e:
+                        logger.warning(f"[ANNOUNCE] finish #{c['id']} failed: {e}")
+
+            # Сводный итог через 5 мин после конца — ОДНО сообщение по всем
+            finished = get_unannounced_finished_contests(300)
+            if finished:
+                blocks = []
+                for c in finished:
+                    label = GAME_LABELS.get(c["game_name"], c["game_name"])
+                    if c["prize_type"] == "gift":
+                        prize = c["gift_id"] or "NFT-приз"
+                    else:
+                        prize = f"⭐ {c['prize_value']} Stars"
+                    lb = get_leaderboard(c["game_name"], 1)
+                    top = (lb[0]["first_name"] if lb and lb[0].get("first_name") else "—")
+                    blocks.append(f"🎮 <b>{label}</b> — {prize}\n🥇 Топ 1: {top}")
+                    mark_contest_announced(c["id"])
+                await _post_to_chats("🏆 <b>Победители!</b>\n\n" + "\n\n".join(blocks))
         except Exception as e:
             logger.warning(f"[ANNOUNCE] reminder loop error: {e}")
 
@@ -1086,22 +1115,8 @@ async def _finish_contest_auto(contest_id: int) -> list:
             except Exception as e:
                 logger.error(f"Prize send error for user {w['user_id']}: {e}")
 
-    # Публичный итог в привязанные чаты/канал
-    try:
-        label = GAME_LABELS.get(c["game_name"], c["game_name"])
-        prize = "🎁 NFT-приз" if c["prize_type"] == "gift" else f"⭐ {c['prize_value']} Stars"
-        medals = ["🥇", "🥈", "🥉"]
-        if winners:
-            lines = [f"{medals[i] if i < 3 else '🏅'} {w.get('first_name') or ('#' + str(w['user_id']))} (+{w['score']})"
-                     for i, w in enumerate(winners)]
-            body = "\n".join(lines)
-        else:
-            body = "Победитель не определён 🤷"
-        text = (f"🏁 <b>Соревнование завершено!</b>\n🎮 {label}\n🥇 Приз: {prize}\n\n{body}")
-        await _post_to_chats(text)
-    except Exception as e:
-        logger.warning(f"[ANNOUNCE] finish post failed: {e}")
-
+    # Публичный итог отправляется отдельным сводным сообщением через 5 мин
+    # (см. _contest_reminder_loop) — здесь только личные призы.
     logger.info(f"🏁 Contest #{contest_id} finished. Winners: {[w['user_id'] for w in winners]}")
     return winners
 

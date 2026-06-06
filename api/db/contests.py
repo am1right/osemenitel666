@@ -43,6 +43,27 @@ def get_active_contests() -> List[Dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
+def get_unannounced_finished_contests(min_age_sec: int = 300) -> List[Dict[str, Any]]:
+    """Завершённые соревнования без отправленного итога, старше min_age_sec."""
+    conn = get_connection()
+    cur = _cursor(conn)
+    cur.execute(
+        "SELECT * FROM contests WHERE status = 'finished' AND COALESCE(result_announced,0) = 0 "
+        "AND ends_at <= NOW() - (%s * INTERVAL '1 second')",
+        (min_age_sec,),
+    )
+    rows = cur.fetchall()
+    cur.close(); conn.close()
+    return [dict(r) for r in rows]
+
+
+def mark_contest_announced(contest_id: int) -> None:
+    conn = get_connection()
+    cur = _cursor(conn)
+    cur.execute("UPDATE contests SET result_announced = 1 WHERE id = %s", (contest_id,))
+    conn.commit(); cur.close(); conn.close()
+
+
 def get_contest(contest_id: int) -> Optional[Dict[str, Any]]:
     conn = get_connection()
     cur = _cursor(conn)
