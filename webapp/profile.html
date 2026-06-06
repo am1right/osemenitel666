@@ -238,6 +238,14 @@
             <div class="profile-info">
                 <div class="profile-name" id="profile-name">Загрузка...</div>
                 <div class="profile-tag" id="profile-tag">Chin Games</div>
+                <button id="withdraw-btn" disabled
+                    onclick="(window.Telegram?.WebApp?.showAlert||alert)('Вывод станет доступен в скором времени.')"
+                    style="margin-top:8px;padding:8px 16px;border:1px solid rgba(255,215,0,0.35);border-radius:10px;
+                           background:rgba(255,215,0,0.07);color:rgba(255,215,0,0.7);font-family:'Orbitron',sans-serif;
+                           font-size:0.72rem;font-weight:700;letter-spacing:0.5px;cursor:not-allowed;display:inline-flex;
+                           align-items:center;gap:6px;">
+                    🔒 Вывод <span style="font-family:'Rajdhani',sans-serif;font-weight:500;font-size:0.7rem;color:rgba(255,255,255,0.4);">· скоро</span>
+                </button>
             </div>
         </div>
 
@@ -273,16 +281,6 @@
             </div>
             <div class="wallet-card__arrow">›</div>
         </div>
-
-        <!-- Вывод (пока недоступен) -->
-        <button id="withdraw-btn" disabled
-            onclick="(window.Telegram?.WebApp?.showAlert||alert)('Вывод станет доступен через 21 день.')"
-            style="width:100%;margin-top:10px;padding:13px;border:1px solid rgba(255,215,0,0.25);border-radius:14px;
-                   background:rgba(255,215,0,0.05);color:rgba(255,215,0,0.55);font-family:'Orbitron',sans-serif;
-                   font-size:0.85rem;font-weight:700;letter-spacing:0.5px;cursor:not-allowed;display:flex;
-                   align-items:center;justify-content:center;gap:8px;opacity:0.7;">
-            🔒 Вывод <span style="font-family:'Rajdhani',sans-serif;font-weight:500;font-size:0.78rem;color:rgba(255,255,255,0.4);">· доступен через 21 день</span>
-        </button>
 
         <!-- Реферальная программа -->
         <div class="ref-card" id="ref-card" style="display:none;">
