@@ -170,7 +170,6 @@
     <div class="scroll-area" id="scroll-area">
         <!-- Header -->
         <div class="page-header">
-            <div class="back-btn" onclick="history.back()">‹</div>
             <div style="flex:1;">
                 <div class="page-title">🛡️ Панель администратора</div>
                 <div class="page-subtitle" id="admin-name">Chin Games</div>
@@ -241,6 +240,11 @@
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready();
+        // Нативная кнопка «назад» Mini App (вместо своей в шапке)
+        if (tg.BackButton) {
+            tg.BackButton.show();
+            tg.BackButton.onClick(() => { window.location.href = 'profile.html'; });
+        }
         // Полный экран только на телефоне
         if (typeof window.initTelegramFullscreen === 'function') {
           window.initTelegramFullscreen();
