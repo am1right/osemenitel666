@@ -166,7 +166,8 @@
         <div style="font-size:62px;font-weight:900;color:var(--neon-blue);text-shadow:0 0 20px var(--neon-blue);margin:20px 0;">
             <span id="final-score">0</span>
         </div>
-        <button class="restart-btn" onclick="tryStartGame()">ИГРАТЬ СНОВА</button>
+        <button class="restart-btn js-continue" onclick="continueGame()" style="background:linear-gradient(135deg,#ffd700,#ff9500);color:#1a1a1a;">▶ Продолжить · 10 ⭐</button>
+        <button class="restart-btn" onclick="tryStartGame()" style="margin-top:10px;">ИГРАТЬ СНОВА</button>
     </div>
 
     <script>
@@ -308,6 +309,21 @@
 
             render();
         }
+
+        // Продолжить после проигрыша за 10⭐ — счёт сохраняется, змейка возрождается
+        function continueGame() {
+            window.continueForStars(() => {
+                snake = [{x:7,y:7}];
+                dx = 1; dy = 0;
+                dirQueue = [];
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                document.getElementById('game-screen').classList.add('active');
+                placeFood();
+                render();
+                applySpeed();
+            });
+        }
+        window.continueGame = continueGame;
 
         function startGame() {
             if (window.GameGuard) GameGuard.start('snake');

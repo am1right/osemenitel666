@@ -409,7 +409,8 @@
         <div style="font-size: 60px; font-weight: 900; color: var(--neon-blue); text-shadow: 0 0 20px var(--neon-blue); margin: 20px 0;">
             <span id="final-score">0</span>
         </div>
-        <button class="restart-btn" onclick="tryStartGame()">ИГРАТЬ СНОВА</button>
+        <button class="restart-btn js-continue" onclick="continueGame()" style="background:linear-gradient(135deg,#ffd700,#ff9500);color:#1a1a1a;">▶ Продолжить · 10 ⭐</button>
+        <button class="restart-btn" onclick="tryStartGame()" style="margin-top:10px;">ИГРАТЬ СНОВА</button>
     </div>
 
     <script>
@@ -739,6 +740,23 @@
             }
         }
     
+        // Продолжить за 10⭐ — счёт сохраняется, освобождаем место (убираем 4 младшие плитки)
+        function continueGame() {
+            window.continueForStars(() => {
+                const sorted = [...tiles].sort((a, b) => a.val - b.val).slice(0, 4);
+                sorted.forEach((t) => {
+                    grid[t.r][t.c] = null;
+                    if (t.el && t.el.parentNode) t.el.remove();
+                });
+                tiles = tiles.filter((t) => !sorted.includes(t));
+                syncBoard();
+                gameOver = false;
+                document.querySelectorAll('.screen').forEach((el) => el.classList.remove('active'));
+                document.getElementById('game-screen').classList.add('active');
+            });
+        }
+        window.continueGame = continueGame;
+
         function startGame() {
             if (window.GameGuard) GameGuard.start('2048');
             score = 0;

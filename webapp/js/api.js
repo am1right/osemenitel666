@@ -51,6 +51,64 @@
   // Optional: expose the original fetch if someone really needs it
   window._originalFetch = ORIGINAL_FETCH;
 
+  // ── Продолжить игру за 10⭐ ──────────────────────────────────────
+  // Списывает 10⭐ с кошелька; при успехе зовёт onSuccess() (ревайв игры),
+  // при нехватке — предлагает магазин.
+  // Купить полный заряд (100% за 32⭐) прямо с экрана поражения.
+  window.buyFullEnergy = async function buyFullEnergy(onDone) {
+    const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!userId) return;
+    const AMOUNT = 100, STARS = 32;
+    try {
+      const res = await window.apiFetch('/api/shop/buy_energy', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, amount: AMOUNT, stars: STARS })
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { alert(d.detail || 'Ошибка покупки'); return; }
+      if (d.method === 'wallet') {
+        if (window.Energy && Energy.pull) await Energy.pull();
+        if (typeof onDone === 'function') onDone();
+        return;
+      }
+      if (d.method === 'invoice' && d.invoice_url && window.Telegram?.WebApp?.openInvoice) {
+        window.Telegram.WebApp.openInvoice(d.invoice_url, async (status) => {
+          if (status === 'paid') {
+            if (window.Energy && Energy.pull) await Energy.pull();
+            if (typeof onDone === 'function') onDone();
+          }
+        });
+      }
+    } catch (e) { alert('Ошибка покупки'); }
+  };
+
+  window.continueForStars = async function continueForStars(onSuccess) {
+    // Продолжить можно только при достаточной энергии — иначе показываем нехватку
+    try {
+      const E = window.Energy;
+      if (E && E.get && (E.get().current < (E.minStart || 30))) {
+        // Энергии мало — предлагаем сразу докупить полный заряд
+        window.buyFullEnergy();
+        return false;
+      }
+    } catch (e) {}
+    try {
+      const res = await window.apiFetch('/api/game/continue', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
+      });
+      if (res.status === 402) {
+        const inGames = location.pathname.includes('/games/');
+        if (confirm('Недостаточно ⭐ на кошельке. Перейти в магазин?')) {
+          location.href = inGames ? '../shop.html' : 'shop.html';
+        }
+        return false;
+      }
+      if (!res.ok) { alert('Не удалось продолжить'); return false; }
+      if (typeof onSuccess === 'function') onSuccess();
+      return true;
+    } catch (e) { alert('Ошибка продолжения'); return false; }
+  };
+
   // ── Синтвейв-фон (динамическая сетка) на всех страницах ─────────
   (function injectSynthwaveBg() {
     function add() {

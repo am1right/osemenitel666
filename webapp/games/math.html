@@ -347,7 +347,8 @@
         <div style="font-size: 60px; font-weight: 900; color: var(--neon-blue); text-shadow: 0 0 20px var(--neon-blue); margin: 20px 0;">
             <span id="final-score">0</span>
         </div>
-        <button id="math-restart-btn" class="restart-btn" onclick="tryStartGame()">ИГРАТЬ СНОВА</button>
+        <button class="restart-btn js-continue" onclick="continueGame()" style="background:linear-gradient(135deg,#ffd700,#ff9500);color:#1a1a1a;">▶ Продолжить · 10 ⭐</button>
+        <button id="math-restart-btn" class="restart-btn" onclick="tryStartGame()" style="margin-top:10px;">ИГРАТЬ СНОВА</button>
     </div>
 
     <script>
@@ -589,6 +590,24 @@
                 loadMiniLeaderboard();
             }
         }
+
+        // Продолжить за 10⭐ — счёт/уровень сохраняются, добавляем время
+        function continueGame() {
+            window.continueForStars(() => {
+                timeLeft = 20;
+                updateUI();
+                document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+                document.getElementById('game-screen').classList.add('active');
+                generateProblem();
+                clearInterval(timerInterval);
+                timerInterval = setInterval(() => {
+                    timeLeft--;
+                    document.getElementById('time').innerText = timeLeft;
+                    if (timeLeft <= 0) endGame();
+                }, 1000);
+            });
+        }
+        window.continueGame = continueGame;
 
         function startGame() {
             if (window.GameGuard) GameGuard.start('math');

@@ -129,18 +129,13 @@ def _verify_game_token(token: str, uid: int, game: str, score: int) -> tuple[boo
     age = now - int(p_ts)
     if age < 0 or age > _GAME_TOKEN_TTL:
         return False, "expired"
-    # Одноразовость
-    # чистка протухших
-    for n, exp in list(_used_game_nonces.items()):
-        if exp < now:
-            _used_game_nonces.pop(n, None)
-    if p_nonce in _used_game_nonces:
-        return False, "reused"
+    # Допускаем несколько сохранений по одному токену (смерть → «продолжить» →
+    # снова конец): защищает rate-проверка ниже (счёт растёт пропорционально
+    # реально прошедшему времени), поэтому жёсткой одноразовости нет.
     # Скорость: счёт должен быть правдоподобен для прошедшего времени
     rc = _SCORE_RATE.get(game)
     if rc and score > rc["base"] + rc["rate"] * age:
         return False, f"too fast ({score} in {int(age)}s)"
-    _used_game_nonces[p_nonce] = now + _GAME_TOKEN_TTL
     return True, "ok"
 
 
@@ -163,6 +158,22 @@ def get_bot() -> Bot:
 
 
 # ── Scores ─────────────────────────────────────────────────────────
+
+CONTINUE_COST_STARS = 10
+
+
+@app.post("/api/game/continue")
+async def api_game_continue(tg_user: dict = Depends(require_webapp_user)):
+    """Продолжить игру после проигрыша за 10 ⭐ (списание с кошелька)."""
+    uid = int(tg_user["id"])
+    res = spend_wallet(uid, CONTINUE_COST_STARS, "Продолжение игры")
+    if not res.get("ok"):
+        raise HTTPException(status_code=402, detail={
+            "reason": "insufficient_funds", "need": CONTINUE_COST_STARS,
+            "balance": res.get("balance", 0),
+        })
+    return {"ok": True, "balance": res["balance"], "cost": CONTINUE_COST_STARS}
+
 
 @app.post("/api/game/start")
 async def api_game_start(request: Request, tg_user: dict = Depends(require_webapp_user)):
@@ -367,6 +378,7 @@ async def api_buy_energy(request: Request, tg_user: dict = Depends(require_webap
                 description=f"Покупка {amount} ⚡ энергии"
             )
             if result["ok"]:
+                admin_adjust_energy(user_id, amount)   # зачисляем энергию на сервере
                 logger.info(f"[SHOP] wallet buy: user={user_id} -{stars}⭐ +{amount}⚡ balance={result['balance']}")
                 return {
                     "method": "wallet",

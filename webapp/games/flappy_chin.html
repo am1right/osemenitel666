@@ -165,7 +165,8 @@
             <span id="final-score">0</span>
         </div>
         <p style="font-size:16px;color:rgba(255,255,255,0.6);">Рекорд: <span id="final-best" style="color:var(--neon-pink)"></span></p>
-        <button class="restart-btn" onclick="tryStartGame()">ИГРАТЬ СНОВА</button>
+        <button class="restart-btn js-continue" onclick="continueGame()" style="background:linear-gradient(135deg,#ffd700,#ff9500);color:#1a1a1a;">▶ Продолжить · 10 ⭐</button>
+        <button class="restart-btn" onclick="tryStartGame()" style="margin-top:10px;">ИГРАТЬ СНОВА</button>
     </div>
 
     <nav class="chin-navbar">
@@ -444,6 +445,25 @@
             bird.velocity = flapStrength;
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         }
+
+        // Продолжить за 10⭐ — счёт сохраняется, птица возрождается по центру
+        function continueGame() {
+            window.continueForStars(() => {
+                bird.y = canvas.height / 2;
+                bird.velocity = 0;
+                pipes = pipes.filter((p) => p.x > bird.x + 140);  // убираем ближние трубы
+                waitingForStart = true;
+                gameRunning = true;
+                startOverlay.classList.remove('hidden');
+                document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
+                document.getElementById('game-screen').classList.add('active');
+                canvas.addEventListener('touchstart', flap, { passive: false });
+                canvas.addEventListener('mousedown', flap);
+                drawBackground(); drawPipes(); drawBird();
+                gameLoop();
+            });
+        }
+        window.continueGame = continueGame;
 
         function startGame() {
             if (window.GameGuard) GameGuard.start('flappy');

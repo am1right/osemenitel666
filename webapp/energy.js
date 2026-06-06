@@ -30,7 +30,7 @@ const Energy = (() => {
     // батарея тает — DRAIN_UNIT_MS на 1%. 100% / (30с) ≈ 50 минут игры.
     // Кончилась посреди игры — даём доиграть, новый старт блокируется.
     const DRAIN_UNIT_MS = 7 * 1000;      // 1% за 7 секунд активной игры (~12 мин на заряд)
-    const MIN_START     = 50;            // минимум % заряда, чтобы начать партию
+    const MIN_START     = 30;            // минимум % заряда, чтобы начать/продолжить партию
 
     // Состояние сессии расхода
     let _sessionOn   = false;
@@ -451,6 +451,13 @@ const Energy = (() => {
                 <span class="ew-batt-cap"></span>
                 ${timerHtml}
             `;
+
+            // Кнопки «Продолжить» (.js-continue): если энергии мало — меняем подпись
+            document.querySelectorAll('.js-continue').forEach((b) => {
+                const ok = current >= MIN_START;
+                b.disabled = false;   // если мало энергии — кнопка предложит докупить заряд
+                b.textContent = ok ? '▶ Продолжить · 10 ⭐' : '⚡ Купить заряд · 32 ⭐';
+            });
         }
 
         wrap._refresh = refresh;          // чтобы дренаж мог обновлять виджет на лету
@@ -571,5 +578,6 @@ const Energy = (() => {
     }
 
     return { get, canPlay, spend, showWidget, init, pull, startSession, endSession,
+             minStart: MIN_START, showNeedEnergy: () => _showNoEnergyOverlay('min'),
              MAX, API, iconHtml, iconSrc: _iconSrc };
 })();
