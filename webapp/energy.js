@@ -22,14 +22,14 @@ const Energy = (() => {
     // Батарея 0..100%. Заряда хватает на ~50 мин игры; восстановление с 0 до
     // 100% ≈ 3 часа (база, ускоряется апгрейдом из магазина).
     const MAX         = 100;             // проценты (= бэкенд ENERGY_MAX)
-    let   REGEN_MS    = 108 * 1000;      // 108с на 1% → 100% за 3ч (база; сервер уточняет)
+    let   REGEN_MS    = 180 * 1000;      // 180с на 1% → 100% за 5ч (база; сервер уточняет)
     const STORAGE_KEY = 'cg_energy_v1';
     const API         = 'https://chingames.duckdns.org';
 
     // Плавный расход: на входе списывается cost%, дальше пока идёт партия
     // батарея тает — DRAIN_UNIT_MS на 1%. 100% / (30с) ≈ 50 минут игры.
     // Кончилась посреди игры — даём доиграть, новый старт блокируется.
-    const DRAIN_UNIT_MS = 12 * 1000;     // 1% за 12 секунд активной игры (~20 мин на заряд)
+    const DRAIN_UNIT_MS = 7 * 1000;      // 1% за 7 секунд активной игры (~12 мин на заряд)
 
     // Состояние сессии расхода
     let _sessionOn   = false;
@@ -144,11 +144,8 @@ const Energy = (() => {
         let s = _applyRegen(_load());
         if (s.amount < cost) { _save(s); return false; }
         s.amount -= cost;
-        if (s.amount < MAX) {
-            if (s.lastRegen <= Date.now() - REGEN_MS) {
-                s.lastRegen = Date.now();
-            }
-        }
+        // Любая трата сбрасывает таймер регена → во время игры не восстанавливается
+        if (s.amount < MAX) s.lastRegen = Date.now();
         _save(s);
         return true;
     }

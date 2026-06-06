@@ -9,7 +9,7 @@ from api.db.connection import get_connection, _cursor
 # игры. Восстановление с нуля до 100% ≈ 3 часа (база), ускоряется апгрейдом
 # скорости регена из магазина (regen_mult: 1.0, 2.0, 3.0 …).
 ENERGY_MAX      = 100                 # проценты заряда
-ENERGY_REGEN_MS = 108 * 1000          # база: 108с на 1% → 100% за 3 часа
+ENERGY_REGEN_MS = 180 * 1000          # база: 180с на 1% → 100% за 5 часов
 
 
 def _effective_regen_ms(mult: float) -> int:
@@ -85,9 +85,9 @@ def spend_energy(user_id: int, cost: int) -> Dict[str, Any]:
         return {"ok": False, "amount": amount, "last_regen": last_regen}
     amount -= cost
     if amount < ENERGY_MAX:
-        now = int(time.time() * 1000)
-        if last_regen <= now - _effective_regen_ms(mult):
-            last_regen = now
+        # Любая трата сбрасывает таймер регена → пока идёт игра (частые списания
+        # расхода) энергия не восстанавливается; реген стартует после остановки.
+        last_regen = int(time.time() * 1000)
     cur.execute(
         "UPDATE energy SET amount = %s, last_regen = %s, updated_at = NOW() WHERE user_id = %s",
         (amount, last_regen, user_id),
