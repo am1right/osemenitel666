@@ -516,7 +516,12 @@
             if (urlJoin) inviteLobbyId = parseInt(urlJoin, 10);
             else if (startParam && startParam.startsWith('durak_lobby_')) inviteLobbyId = parseInt(startParam.replace('durak_lobby_', ''), 10);
 
-            if (inviteLobbyId) {
+            // Авто-джойн по приглашению — ТОЛЬКО один раз за сессию.
+            // Иначе после игры возврат в меню (start_param сохраняется в TG)
+            // снова дёргает join завершённого лобби → «Lobby not available».
+            const inviteHandledKey = 'durak_invite_handled_' + inviteLobbyId;
+            if (inviteLobbyId && !sessionStorage.getItem(inviteHandledKey)) {
+                sessionStorage.setItem(inviteHandledKey, '1');
                 if (typeof joinLobby === 'function') joinLobby(inviteLobbyId);
                 else window.location.href = `durak-room.html?lobby=${inviteLobbyId}`;
                 return; // не грузим список
