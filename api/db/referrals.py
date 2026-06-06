@@ -4,7 +4,7 @@ from api.db.connection import get_connection, _cursor
 from api.db.energy import ENERGY_MAX
 
 REFERRAL_STARS        = 2
-REFERRAL_ENERGY       = 2
+REFERRAL_ENERGY       = 10   # +10% заряда батареи
 REFERRAL_GAMES_NEEDED = 3
 FRAUD_DAILY_LIMIT     = 8
 FRAUD_INACTIVE_RATIO  = 0.70
