@@ -636,7 +636,10 @@ async def api_active_contests():
         now = datetime.now(timezone.utc)
         result = []
         for c in contests:
-            ends_at = datetime.fromisoformat(c["ends_at"].replace("Z", "+00:00"))
+            ev = c["ends_at"]
+            ends_at = ev if isinstance(ev, datetime) else datetime.fromisoformat(str(ev).replace("Z", "+00:00"))
+            if ends_at.tzinfo is None:
+                ends_at = ends_at.replace(tzinfo=timezone.utc)
             if ends_at <= now:
                 # Автофиниш просроченных
                 await _finish_contest_auto(c["id"])
