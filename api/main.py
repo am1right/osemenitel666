@@ -90,6 +90,17 @@ ADMIN_TG_IDS  = [int(x) for x in os.getenv("ADMIN_ID", "").split(",") if x.strip
 
 VALID_GAMES = ("math", "2048", "snake", "flappy")
 GAME_LABELS = {"math": "Math Master", "2048": "2048", "snake": "Snake", "flappy": "Flappy Chin"}
+
+TG_GIFT_EMOJI = {
+    "bear": "🧸", "rose": "🌹", "cake": "🎂", "heart": "❤️",
+    "star": "⭐", "fire": "🔥", "diamond": "💎", "crown": "👑",
+    "gift": "🎁", "balloon": "🎈", "trophy": "🏆", "flower": "🌸",
+    "cookie": "🍪", "candy": "🍬", "ring": "💍", "kiss": "💋",
+}
+
+def _tg_gift_label(gift_id: str) -> str:
+    g = (gift_id or "").lower().strip()
+    return TG_GIFT_EMOJI.get(g, f"🎀 {gift_id}")
 # Постим в канал (он сам пересылает в связанный чат, если он есть)
 ANNOUNCE_CHATS = ["@tesssstttttt111"] + \
     [c.strip() for c in os.getenv("ANNOUNCE_CHATS", "").split(",") if c.strip()]
@@ -845,7 +856,7 @@ async def _contest_reminder_loop():
                         gid = c.get("gift_id") or ""
                         prize = f'🎁 <a href="{gid}">NFT-приз</a>' if gid else "🎁 NFT-приз"
                     elif c["prize_type"] == "tg_gift":
-                        prize = f"🎀 Подарок Telegram ({c.get('gift_id') or '—'})"
+                        prize = _tg_gift_label(c.get('gift_id') or '')
                     else:
                         prize = f"⭐ {c['prize_value']} Stars"
                     lines.append(f"• {label} — {prize} (≈{int(left // 60)} мин)")
@@ -875,7 +886,7 @@ async def _contest_reminder_loop():
                         gid = c.get("gift_id") or ""
                         prize = f'🎁 <a href="{gid}">NFT-приз</a>' if gid else "🎁 NFT-приз"
                     elif c["prize_type"] == "tg_gift":
-                        prize = f"🎀 Подарок Telegram ({c.get('gift_id') or '—'})"
+                        prize = _tg_gift_label(c.get('gift_id') or '')
                     else:
                         prize = f"⭐ {c['prize_value']} Stars"
                     lb = get_leaderboard(c["game_name"], 1)
@@ -895,7 +906,7 @@ async def _announce_contest(game_name, prize_type, prize_value, gift_id, duratio
     if prize_type == "gift":
         prize = f'🎁 <a href="{gift_id}">NFT-приз</a>' if gift_id else "🎁 NFT-приз"
     elif prize_type == "tg_gift":
-        prize = f"🎀 Подарок Telegram ({gift_id})"
+        prize = _tg_gift_label(gift_id or '')
     else:
         prize = f"⭐ {prize_value} Stars"
     text = (
@@ -1207,12 +1218,12 @@ async def _finish_contest_auto(contest_id: int) -> list:
                     logger.info(f"🎁 Gift (manual) prize_link={gift_link} → user {w['user_id']} (place {w['place']})")
 
                 elif prize_type == "tg_gift":
-                    gift_name = c["gift_id"] or "подарок"
+                    gift_name = _tg_gift_label(c["gift_id"] or '')
                     await bot.send_message(
                         chat_id=w["user_id"],
                         text=(
                             f"🏆 Поздравляем! Ты занял {w['place']} место в соревновании по {c['game_name']}!\n"
-                            f"🎀 Твой приз — подарок Telegram «{gift_name}». Администратор отправит его тебе в ближайшее время."
+                            f"Твой приз — {gift_name}. Администратор отправит его тебе в ближайшее время."
                         )
                     )
                     logger.info(f"🎀 TG Gift ({gift_name}) → user {w['user_id']} (place {w['place']})")

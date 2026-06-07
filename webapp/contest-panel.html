@@ -174,16 +174,24 @@
         <div class="section">
             <div class="section-label">Длительность соревнования</div>
             <div class="pill-group" id="dur-pills">
-                <div class="pill" data-val="60"   onclick="selectPill('dur',this)">1ч</div>
                 <div class="pill" data-val="180"  onclick="selectPill('dur',this)">3ч</div>
                 <div class="pill" data-val="720"  onclick="selectPill('dur',this)">12ч</div>
                 <div class="pill" data-val="1440" onclick="selectPill('dur',this)">1д</div>
+                <div class="pill" data-val="4320" onclick="selectPill('dur',this)">3д</div>
                 <div class="pill" data-val="custom" onclick="selectPill('dur',this)">Своё</div>
             </div>
             <div id="custom-dur" style="display:none;margin-top:12px;">
                 <div class="field">
-                    <label>Минуты</label>
-                    <input type="number" id="dur-custom" min="1" max="43200" placeholder="например 90" inputmode="numeric">
+                    <label id="dur-custom-label">Значение</label>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input type="number" id="dur-custom" min="1" max="99999" placeholder="например 90" inputmode="numeric" style="flex:1;">
+                        <div style="display:flex;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.15);">
+                            <button type="button" id="dur-unit-min" onclick="setDurUnit('min')"
+                                style="padding:8px 12px;border:none;cursor:pointer;font-size:12px;font-weight:700;background:rgba(0,180,255,0.3);color:#00b4ff;">мин</button>
+                            <button type="button" id="dur-unit-hr" onclick="setDurUnit('hr')"
+                                style="padding:8px 12px;border:none;cursor:pointer;font-size:12px;font-weight:700;background:transparent;color:rgba(255,255,255,0.4);">ч</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -193,6 +201,7 @@
             <div class="section-label" style="margin-bottom:10px;">Сводка</div>
             <div class="summary-row"><span>Игра</span><span id="sum-game">—</span></div>
             <div class="summary-row"><span>Победители</span><span id="sum-winners">—</span></div>
+            <div class="summary-row"><span>Призовые места</span><span id="sum-places">—</span></div>
             <div class="summary-row"><span>Приз</span><span id="sum-prize">—</span></div>
             <div class="summary-row"><span>Длительность</span><span id="sum-dur">—</span></div>
         </div>
@@ -306,7 +315,10 @@
         }
 
         function getDurationMinutes() {
-            if (state.dur === 'custom') return parseInt(document.getElementById('dur-custom').value || 0);
+            if (state.dur === 'custom') {
+            const v = parseInt(document.getElementById('dur-custom').value || 0);
+            return window._durUnit === 'hr' ? v * 60 : v;
+        }
             return parseInt(state.dur || 0);
         }
 
@@ -348,8 +360,11 @@
                 } else {
                     prizeText = winners === 1 ? 'NFT Топ 1' : giftIds.map((_, i) => `NFT Топ ${i+1}`).join(', ');
                 }
+                const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
+                const places = Array.from({length: winners}, (_,i) => medals[i] || `#${i+1}`).join(' ');
                 document.getElementById('sum-game').textContent = GAME_LABELS[state.game] || state.game;
                 document.getElementById('sum-winners').textContent = winners === 1 ? 'Топ 1' : `Топ 1–${winners}`;
+                document.getElementById('sum-places').textContent = places;
                 document.getElementById('sum-prize').textContent = prizeText;
                 document.getElementById('sum-dur').textContent = getDurationLabel(dur);
                 document.getElementById('summary').style.display = 'block';
@@ -359,6 +374,16 @@
         }
 
         // Следим за инпутами
+        window._durUnit = 'min';
+        function setDurUnit(unit) {
+            window._durUnit = unit;
+            document.getElementById('dur-unit-min').style.background = unit === 'min' ? 'rgba(0,180,255,0.3)' : 'transparent';
+            document.getElementById('dur-unit-min').style.color      = unit === 'min' ? '#00b4ff' : 'rgba(255,255,255,0.4)';
+            document.getElementById('dur-unit-hr').style.background  = unit === 'hr'  ? 'rgba(0,180,255,0.3)' : 'transparent';
+            document.getElementById('dur-unit-hr').style.color       = unit === 'hr'  ? '#00b4ff' : 'rgba(255,255,255,0.4)';
+            validate();
+        }
+
         document.getElementById('stars-amount').addEventListener('input', () => { updateHints(); validate(); });
         document.getElementById('dur-custom').addEventListener('input', validate);
         document.getElementById('tg-gift-name').addEventListener('input', validate);
