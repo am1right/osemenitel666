@@ -89,7 +89,7 @@ BOT_USERNAME  = os.getenv("BOT_USERNAME", "chingamebot")  # юзернейм б�
 VALID_GAMES = ("math", "2048", "snake", "flappy")
 GAME_LABELS = {"math": "Math Master", "2048": "2048", "snake": "Snake", "flappy": "Flappy Chin"}
 # Постим в канал (он сам пересылает в связанный чат, если он есть)
-ANNOUNCE_CHATS = ["@tesssstttttt111"] + \
+ANNOUNCE_CHATS = ["@ZeroOrOneOFF"] + \
     [c.strip() for c in os.getenv("ANNOUNCE_CHATS", "").split(",") if c.strip()]
 ANNOUNCE_EXCLUDE = set()
 
