@@ -102,7 +102,7 @@ def _tg_gift_label(gift_id: str) -> str:
     g = (gift_id or "").lower().strip()
     return TG_GIFT_EMOJI.get(g, f"🎀 {gift_id}")
 # Постим в канал (он сам пересылает в связанный чат, если он есть)
-ANNOUNCE_CHATS = ["@tesssstttttt111"] + \
+ANNOUNCE_CHATS = ["@ZeroOrOneOFF"] + \
     [c.strip() for c in os.getenv("ANNOUNCE_CHATS", "").split(",") if c.strip()]
 ANNOUNCE_EXCLUDE = set()
 
