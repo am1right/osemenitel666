@@ -50,13 +50,11 @@ def _internal_headers() -> dict:
 
 # ===================== КЛАВИАТУРЫ =====================
 def get_webapp_keyboard(user_id: int | None = None):
-    ref_url = f"https://t.me/{BOT_USERNAME}?start=ref_{user_id}" if user_id else None
     keyboard = [
         [InlineKeyboardButton("🎮 Запустить Chin Games", web_app=WebAppInfo(url=WEBAPP_URL))],
         [InlineKeyboardButton("📖 Как играть", callback_data="show_rules")],
+        [InlineKeyboardButton("👥 Пригласить друга", callback_data="invite_friend")],
     ]
-    if ref_url:
-        keyboard.append([InlineKeyboardButton("👥 Пригласить друга", url=ref_url)])
     return InlineKeyboardMarkup(keyboard)
 
 
@@ -121,6 +119,21 @@ async def rules_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="HTML",
         reply_markup=get_webapp_keyboard(),
     )
+
+async def invite_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query:
+        return
+    await query.answer()
+    user = query.from_user
+    ref_url = f"https://t.me/{BOT_USERNAME}?start=ref_{user.id}"
+    text = (
+        f"🔗 <b>Твоя реферальная ссылка:</b>\n\n"
+        f"<code>{ref_url}</code>\n\n"
+        f"Отправь другу — когда он сыграет 3 игры, вы оба получите награду! 🎁"
+    )
+    await query.message.reply_text(text=text, parse_mode="HTML")
+
 
 # ─── Дедупликация /start ────────────────────────────────────────────
 _last_start: dict[int, float] = {}
@@ -478,6 +491,7 @@ def main():
     application.add_handler(CommandHandler("bind", bind_chat_command))
     application.add_handler(CommandHandler("unbind", unbind_chat_command))
     application.add_handler(CallbackQueryHandler(rules_callback, pattern="^show_rules$"))
+    application.add_handler(CallbackQueryHandler(invite_callback, pattern="^invite_friend$"))
     application.add_handler(InlineQueryHandler(inline_query_handler))
     application.add_handler(PreCheckoutQueryHandler(pre_checkout_query_handler))
     application.add_handler(MessageHandler(
