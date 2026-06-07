@@ -121,6 +121,8 @@
                 <div class="pill" data-val="1" onclick="selectPill('winners',this)">Топ 1</div>
                 <div class="pill" data-val="2" onclick="selectPill('winners',this)">Топ 2</div>
                 <div class="pill" data-val="3" onclick="selectPill('winners',this)">Топ 3</div>
+                <div class="pill" data-val="4" onclick="selectPill('winners',this)" style="display:none;">Топ 4</div>
+                <div class="pill" data-val="5" onclick="selectPill('winners',this)" style="display:none;">Топ 5</div>
             </div>
         </div>
 
@@ -128,8 +130,9 @@
         <div class="section">
             <div class="section-label">Тип приза</div>
             <div class="pill-group" id="prize-pills">
-                <div class="pill prize-pill" data-val="stars" onclick="selectPill('prize',this)">Звёзды Telegram</div>
-                <div class="pill prize-pill" data-val="gift"  onclick="selectPill('prize',this)"><img src="icons/shop.png" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 0 4px rgba(255,255,255,0.3))"> NFT-подарок</div>
+                <div class="pill prize-pill" data-val="stars"    onclick="selectPill('prize',this)">⭐ Звёзды</div>
+                <div class="pill prize-pill" data-val="gift"     onclick="selectPill('prize',this)">🎁 NFT-подарок</div>
+                <div class="pill prize-pill" data-val="tg_gift"  onclick="selectPill('prize',this)">🎀 TG-подарок</div>
             </div>
 
             <!-- Звёзды -->
@@ -152,6 +155,17 @@
                 <div class="hint warn" id="gift-hint"></div>
                 <div class="hint" style="margin-top:8px;padding:10px 12px;background:rgba(255,170,0,0.08);border:1px solid rgba(255,170,0,0.25);border-radius:8px;color:rgba(255,200,80,0.85);line-height:1.5;">
                     Призы отправляются вручную после завершения соревнования. Бот уведомит победителей, а ты увидишь список в результатах.
+                </div>
+            </div>
+
+            <!-- TG-подарок (роза, мишка и тд) -->
+            <div id="tg-gift-section" style="display:none;margin-top:14px;">
+                <div class="field">
+                    <label>Название подарка</label>
+                    <input type="text" id="tg-gift-name" placeholder="например: rose, bear, cake…" autocomplete="off">
+                </div>
+                <div class="hint" style="margin-top:8px;padding:10px 12px;background:rgba(255,170,0,0.08);border:1px solid rgba(255,170,0,0.25);border-radius:8px;color:rgba(255,200,80,0.85);line-height:1.5;">
+                    Подарок отправляется вручную. Бот уведомит победителей (до топ 5), ты отправишь подарок сам.
                 </div>
             </div>
         </div>
@@ -219,10 +233,18 @@
             state[group] = el.dataset.val;
 
             if (group === 'prize') {
-                document.getElementById('stars-section').style.display = state.prize === 'stars' ? 'block' : 'none';
-                document.getElementById('gift-section').style.display  = state.prize === 'gift'  ? 'block' : 'none';
+                document.getElementById('stars-section').style.display    = state.prize === 'stars'   ? 'block' : 'none';
+                document.getElementById('gift-section').style.display     = state.prize === 'gift'    ? 'block' : 'none';
+                document.getElementById('tg-gift-section').style.display  = state.prize === 'tg_gift' ? 'block' : 'none';
                 if (state.prize === 'gift') buildGiftFields();
                 updateSplitVisibility();
+                updateWinnerPills();
+                // сбросить winners если выбрано > max
+                const maxW = state.prize === 'tg_gift' ? 5 : 3;
+                if (state.winners && parseInt(state.winners) > maxW) {
+                    state.winners = null;
+                    document.querySelectorAll('#winners-pills .pill').forEach(p => p.classList.remove('selected'));
+                }
             }
             if (group === 'winners') {
                 updateSplitVisibility();
@@ -234,6 +256,14 @@
 
             updateHints();
             validate();
+        }
+
+        function updateWinnerPills() {
+            const isTgGift = state.prize === 'tg_gift';
+            document.querySelectorAll('#winners-pills .pill').forEach(p => {
+                const val = parseInt(p.dataset.val);
+                p.style.display = (val <= 3 || isTgGift) ? '' : 'none';
+            });
         }
 
         function updateSplitVisibility() {
@@ -290,14 +320,16 @@
         function validate() {
             const giftIds = state.prize === 'gift' ? getGiftIds() : [];
             const allGiftsFilled = giftIds.every(u => u.startsWith('http'));
+            const tgGiftName = (document.getElementById('tg-gift-name').value || '').trim();
 
             const ok =
                 state.game &&
                 state.winners &&
                 state.prize &&
-                (state.prize !== 'stars' || parseInt(document.getElementById('stars-amount').value || 0) > 0) &&
-                (state.prize !== 'gift'  || allGiftsFilled) &&
-                (state.prize !== 'stars' || parseInt(state.winners) <= 1 || state.split) &&
+                (state.prize !== 'stars'   || parseInt(document.getElementById('stars-amount').value || 0) > 0) &&
+                (state.prize !== 'gift'    || allGiftsFilled) &&
+                (state.prize !== 'tg_gift' || tgGiftName.length > 0) &&
+                (state.prize !== 'stars'   || parseInt(state.winners) <= 1 || state.split) &&
                 getDurationMinutes() > 0;
 
             document.getElementById('launch-btn').disabled = !ok;
@@ -311,6 +343,8 @@
                     prizeText = state.split === 'split'
                         ? `${amt} ⭐ поровну`
                         : `${amt} ⭐ каждому`;
+                } else if (state.prize === 'tg_gift') {
+                    prizeText = `🎀 ${tgGiftName} (топ ${winners})`;
                 } else {
                     prizeText = winners === 1 ? 'NFT Топ 1' : giftIds.map((_, i) => `NFT Топ ${i+1}`).join(', ');
                 }
@@ -327,6 +361,7 @@
         // Следим за инпутами
         document.getElementById('stars-amount').addEventListener('input', () => { updateHints(); validate(); });
         document.getElementById('dur-custom').addEventListener('input', validate);
+        document.getElementById('tg-gift-name').addEventListener('input', validate);
 
         // ── Динамические поля NFT ─────────────────────────────
         const PLACE_LABELS = [
@@ -424,6 +459,7 @@
             const dur = getDurationMinutes();
             const starsAmt = parseInt(document.getElementById('stars-amount').value || 0);
             const giftIds = getGiftIds();
+            const tgGiftName = (document.getElementById('tg-gift-name').value || '').trim();
 
             const body = {
                 username: user.username,
@@ -431,8 +467,8 @@
                 game_name: state.game,
                 prize_type: state.prize,
                 prize_value: starsAmt,
-                gift_id: giftIds[0] || null,
-                gift_ids: giftIds.length > 0 ? giftIds : null,
+                gift_id: state.prize === 'tg_gift' ? tgGiftName : (giftIds[0] || null),
+                gift_ids: state.prize === 'gift' && giftIds.length > 0 ? giftIds : null,
                 split_prize: state.split === 'split',
                 winners_count: winners,
                 duration_minutes: dur,
@@ -477,7 +513,7 @@
                     <div class="active-card">
                         <div class="active-card__info">
                             <div class="active-card__title" style="display:flex;align-items:center;gap:6px;"><img src="icons/${GAME_ICONS[c.game_name] || c.game_name}.png" style="width:14px;height:14px;object-fit:contain;filter:drop-shadow(0 0 4px rgba(224,0,255,0.5))"> ${GAME_LABELS[c.game_name] || c.game_name} · Топ ${c.winners_count}</div>
-                            <div class="active-card__sub">${c.prize_type === 'stars' ? c.prize_value + ' звёзд' : 'NFT-подарок (вручную)'} · ${formatTimer(c.seconds_left)}</div>
+                            <div class="active-card__sub">${c.prize_type === 'stars' ? c.prize_value + ' звёзд' : c.prize_type === 'tg_gift' ? '🎀 ' + (c.gift_id || 'TG-подарок') + ' (вручную)' : '🎁 NFT-подарок (вручную)'} · ${formatTimer(c.seconds_left)}</div>
                         </div>
                         <div class="cancel-btn" onclick="cancelContest(${c.id})">ОТМЕНА</div>
                     </div>

@@ -61,13 +61,16 @@ def get_leaderboard(game_name: str, limit: int = 10) -> List[Dict[str, Any]]:
     conn = get_connection()
     cur = _cursor(conn)
     cur.execute('''
-        SELECT user_id, first_name, score FROM scores
-        WHERE game_name = %s ORDER BY score DESC LIMIT %s
+        SELECT s.user_id, s.first_name, s.score, tu.username
+        FROM scores s
+        LEFT JOIN tg_users tu ON tu.user_id = s.user_id
+        WHERE s.game_name = %s ORDER BY s.score DESC LIMIT %s
     ''', (game_name, limit))
     rows = cur.fetchall()
     cur.close()
     conn.close()
     return [
-        {"user_id": r["user_id"], "first_name": r["first_name"] or "Игрок", "score": r["score"]}
+        {"user_id": r["user_id"], "first_name": r["first_name"] or "Игрок",
+         "score": r["score"], "username": r["username"] or ""}
         for r in rows
     ]

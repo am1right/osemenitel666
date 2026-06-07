@@ -85,6 +85,8 @@ async def _start_background_tasks():
 WEBAPP_URL    = os.getenv("WEBAPP_URL", "http://localhost:8000")
 BOT_TOKEN     = os.getenv("BOT_TOKEN", "")
 BOT_USERNAME  = os.getenv("BOT_USERNAME", "chingamebot")  # юзернейм бота без @
+# Числовые TG ID админов для дублирования уведомлений о призах
+ADMIN_TG_IDS  = [int(x) for x in os.getenv("ADMIN_ID", "").split(",") if x.strip().lstrip("-").isdigit()]
 
 VALID_GAMES = ("math", "2048", "snake", "flappy")
 GAME_LABELS = {"math": "Math Master", "2048": "2048", "snake": "Snake", "flappy": "Flappy Chin"}
@@ -842,6 +844,8 @@ async def _contest_reminder_loop():
                     if c["prize_type"] == "gift":
                         gid = c.get("gift_id") or ""
                         prize = f'🎁 <a href="{gid}">NFT-приз</a>' if gid else "🎁 NFT-приз"
+                    elif c["prize_type"] == "tg_gift":
+                        prize = f"🎀 Подарок Telegram ({c.get('gift_id') or '—'})"
                     else:
                         prize = f"⭐ {c['prize_value']} Stars"
                     lines.append(f"• {label} — {prize} (≈{int(left // 60)} мин)")
@@ -870,6 +874,8 @@ async def _contest_reminder_loop():
                     if c["prize_type"] == "gift":
                         gid = c.get("gift_id") or ""
                         prize = f'🎁 <a href="{gid}">NFT-приз</a>' if gid else "🎁 NFT-приз"
+                    elif c["prize_type"] == "tg_gift":
+                        prize = f"🎀 Подарок Telegram ({c.get('gift_id') or '—'})"
                     else:
                         prize = f"⭐ {c['prize_value']} Stars"
                     lb = get_leaderboard(c["game_name"], 1)
@@ -888,6 +894,8 @@ async def _announce_contest(game_name, prize_type, prize_value, gift_id, duratio
     label = GAME_LABELS.get(game_name, game_name)
     if prize_type == "gift":
         prize = f'🎁 <a href="{gift_id}">NFT-приз</a>' if gift_id else "🎁 NFT-приз"
+    elif prize_type == "tg_gift":
+        prize = f"🎀 Подарок Telegram ({gift_id})"
     else:
         prize = f"⭐ {prize_value} Stars"
     text = (
@@ -1003,6 +1011,8 @@ async def api_repost_reminder(request: Request):
         if c["prize_type"] == "gift":
             gid = c.get("gift_id") or ""
             prize = f'🎁 <a href="{gid}">NFT-приз</a>' if gid else "🎁 NFT-приз"
+        elif c["prize_type"] == "tg_gift":
+            prize = f"🎀 Подарок Telegram ({c.get('gift_id') or '—'})"
         else:
             prize = f"⭐ {c['prize_value']} Stars"
         lines.append(f"• {label} — {prize} (≈{int(left // 60)} мин)")
@@ -1036,6 +1046,8 @@ async def api_repost_last_result(request: Request):
     if c["prize_type"] == "gift":
         gid = c.get("gift_id") or ""
         prize = f'🎁 <a href="{gid}">NFT-приз</a>' if gid else "🎁 NFT-приз"
+    elif c["prize_type"] == "tg_gift":
+        prize = f"🎀 Подарок Telegram ({c.get('gift_id') or '—'})"
     else:
         prize = f"⭐ {c['prize_value']} Stars"
     lb = get_leaderboard(c["game_name"], 1)
@@ -1066,13 +1078,14 @@ async def api_create_contest(request: Request):
 
         if game_name not in VALID_GAMES:
             raise HTTPException(status_code=400, detail="Unknown game")
-        if prize_type not in ("stars", "gift"):
-            raise HTTPException(status_code=400, detail="prize_type must be stars or gift")
-        if winners_count not in (1, 2, 3):
-            raise HTTPException(status_code=400, detail="winners_count must be 1-3")
+        if prize_type not in ("stars", "gift", "tg_gift"):
+            raise HTTPException(status_code=400, detail="prize_type must be stars, gift or tg_gift")
+        max_winners = 5 if prize_type == "tg_gift" else 3
+        if winners_count < 1 or winners_count > max_winners:
+            raise HTTPException(status_code=400, detail=f"winners_count must be 1-{max_winners}")
         if prize_type == "stars" and prize_value <= 0:
             raise HTTPException(status_code=400, detail="prize_value required for stars")
-        if prize_type == "gift":
+        if prize_type in ("gift", "tg_gift"):
             if not gift_id:
                 raise HTTPException(status_code=400, detail="gift_id required for gift prize")
         if duration_min < 1 or duration_min > 43200:  # max 30 дней
@@ -1150,26 +1163,13 @@ async def _finish_contest_auto(contest_id: int) -> list:
     if not c or c["status"] != "active":
         return []
 
-    import json as _json
-    snapshot_start = _json.loads(c["snapshot_start"] or "[]")
-    current_lb = get_leaderboard(c["game_name"], 50)
+    current_lb = get_leaderboard(c["game_name"], c["winners_count"])
 
-    # Считаем прирост очков за время соревнования
-    start_scores = {p["user_id"]: p["score"] for p in snapshot_start}
-    delta = []
-    for p in current_lb:
-        uid = p["user_id"]
-        gained = p["score"] - start_scores.get(uid, p["score"])
-        delta.append({"user_id": uid, "first_name": p["first_name"],
-                      "score": gained, "total": p["score"]})
-
-    delta.sort(key=lambda x: x["score"], reverse=True)
-    winners_count = min(c["winners_count"], len(delta))
+    winners_count = min(c["winners_count"], len(current_lb))
     winners = []
-    for i, p in enumerate(delta[:winners_count]):
-        if p["score"] <= 0:
-            break
-        winners.append({**p, "place": i + 1})
+    for i, p in enumerate(current_lb[:winners_count]):
+        winners.append({"user_id": p["user_id"], "first_name": p["first_name"],
+                        "score": p["score"], "place": i + 1})
 
     finish_contest(contest_id, winners)
 
@@ -1206,7 +1206,43 @@ async def _finish_contest_auto(contest_id: int) -> list:
                     )
                     logger.info(f"🎁 Gift (manual) prize_link={gift_link} → user {w['user_id']} (place {w['place']})")
 
+                elif prize_type == "tg_gift":
+                    gift_name = c["gift_id"] or "подарок"
+                    await bot.send_message(
+                        chat_id=w["user_id"],
+                        text=(
+                            f"🏆 Поздравляем! Ты занял {w['place']} место в соревновании по {c['game_name']}!\n"
+                            f"🎀 Твой приз — подарок Telegram «{gift_name}». Администратор отправит его тебе в ближайшее время."
+                        )
+                    )
+                    logger.info(f"🎀 TG Gift ({gift_name}) → user {w['user_id']} (place {w['place']})")
+
                 mark_prize_sent(contest_id, w["user_id"])
+
+                # Дублируем уведомление админам
+                uname = w.get("username") or ""
+                user_ref = f'<a href="tg://user?id={w["user_id"]}">{w["first_name"]}</a>'
+                if uname:
+                    user_ref += f' (@{uname})'
+                game_label = GAME_LABELS.get(c["game_name"], c["game_name"])
+                if prize_type == "stars":
+                    prize_admin = f"⭐ {amount} Stars"
+                elif prize_type == "gift":
+                    prize_admin = f'🎁 NFT: {c["gift_id"] or "—"}'
+                else:
+                    prize_admin = f'🎀 {c["gift_id"] or "—"}'
+                admin_text = (
+                    f"📋 <b>Приз выдан</b>\n"
+                    f"🎮 {game_label} · Топ {w['place']}\n"
+                    f"👤 {user_ref}\n"
+                    f"🆔 <code>{w['user_id']}</code>\n"
+                    f"🏅 {prize_admin}"
+                )
+                for admin_id in ADMIN_TG_IDS:
+                    try:
+                        await bot.send_message(chat_id=admin_id, text=admin_text, parse_mode="HTML")
+                    except Exception as ae:
+                        logger.warning(f"Admin notify failed {admin_id}: {ae}")
 
             except Exception as e:
                 logger.error(f"Prize send error for user {w['user_id']}: {e}")
