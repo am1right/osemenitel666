@@ -66,6 +66,30 @@ def admin_reset_all_scores() -> Dict[str, Any]:
     return {"ok": True, "affected": affected}
 
 
+def admin_reset_player_scores_game(user_id: int, game_name: str) -> Dict[str, Any]:
+    """Обнуляет очки игрока в конкретной игре."""
+    conn = get_connection(); cur = _cursor(conn)
+    cur.execute(
+        "UPDATE scores SET score = 0, last_score = 0, updated_at = NOW() WHERE user_id = %s AND game_name = %s",
+        (user_id, game_name)
+    )
+    affected = cur.rowcount
+    conn.commit(); cur.close(); conn.close()
+    return {"ok": True, "affected": affected}
+
+
+def admin_reset_all_scores_game(game_name: str) -> Dict[str, Any]:
+    """Обнуляет очки всех игроков в конкретной игре."""
+    conn = get_connection(); cur = _cursor(conn)
+    cur.execute(
+        "UPDATE scores SET score = 0, last_score = 0, updated_at = NOW() WHERE game_name = %s",
+        (game_name,)
+    )
+    affected = cur.rowcount
+    conn.commit(); cur.close(); conn.close()
+    return {"ok": True, "affected": affected}
+
+
 def admin_set_energy(user_id: int, amount: int = 8) -> Dict[str, Any]:
     """Устанавливает энергию игрока в абсолютное значение (по умолчанию 8)."""
     conn = get_connection(); cur = _cursor(conn)

@@ -94,6 +94,8 @@ from api.db.admin import (
     admin_get_summary_stats,
     admin_reset_player_scores,
     admin_reset_all_scores,
+    admin_reset_player_scores_game,
+    admin_reset_all_scores_game,
     admin_set_energy,
     admin_set_all_energy,
     admin_zero_wallet,

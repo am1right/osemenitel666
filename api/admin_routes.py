@@ -165,6 +165,11 @@ try:
         _check_admin(req.username)
         return db.admin_reset_player_scores(user_id)
 
+    @router.post("/player/{user_id}/reset_scores/{game_name}")
+    async def admin_reset_scores_game(user_id: int, game_name: str, req: AdminActionRequest):
+        _check_admin(req.username)
+        return db.admin_reset_player_scores_game(user_id, game_name)
+
     @router.post("/player/{user_id}/reset_durak")
     async def admin_reset_player_durak(user_id: int, req: AdminActionRequest):
         _check_admin(req.username)
@@ -190,6 +195,11 @@ try:
     async def admin_reset_all_scores_ep(username: str):
         _check_admin(username)
         return db.admin_reset_all_scores()
+
+    @router.post("/reset_all/scores/{game_name}")
+    async def admin_reset_all_scores_game_ep(game_name: str, username: str):
+        _check_admin(username)
+        return db.admin_reset_all_scores_game(game_name)
 
     @router.post("/reset_all/durak")
     async def admin_reset_all_durak_ep(username: str):

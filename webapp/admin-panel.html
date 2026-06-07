@@ -188,7 +188,11 @@
         <!-- Массовые сбросы (для всех игроков) -->
         <div class="section-title" style="color:rgba(255,68,102,0.7);">⚠️ Массовые сбросы (для ВСЕХ игроков)</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-            <button type="button" onclick="globalReset('scores')" class="bulk-reset-btn">🎮 Обнулить очки</button>
+            <button type="button" onclick="globalReset('scores')" class="bulk-reset-btn" style="grid-column:1/-1;">🎮 Обнулить очки (все игры)</button>
+            <button type="button" onclick="globalResetGame('snake')" class="bulk-reset-btn">🐍 Snake</button>
+            <button type="button" onclick="globalResetGame('2048')" class="bulk-reset-btn">🔢 2048</button>
+            <button type="button" onclick="globalResetGame('math')" class="bulk-reset-btn">➗ Math</button>
+            <button type="button" onclick="globalResetGame('flappy')" class="bulk-reset-btn">🐦 Flappy</button>
             <button type="button" onclick="globalReset('durak')" class="bulk-reset-btn">🃏 Сброс рейтинга Дурака</button>
             <button type="button" onclick="globalReset('energy')" class="bulk-reset-btn">⚡ Заряд = 100%</button>
             <button type="button" onclick="globalReset('wallets')" class="bulk-reset-btn">⭐ Обнулить балансы</button>
@@ -578,7 +582,11 @@
                 <!-- Quick resets (этот игрок) -->
                 <div class="section-sep">🧹 Быстрые сбросы (этот игрок)</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                    <button type="button" onclick="quickReset(${p.user_id},'scores')" class="bulk-reset-btn">🎮 Обнулить очки</button>
+                    <button type="button" onclick="quickReset(${p.user_id},'scores')" class="bulk-reset-btn" style="grid-column:1/-1;">🎮 Обнулить очки (все игры)</button>
+                    <button type="button" onclick="quickResetGame(${p.user_id},'snake')" class="bulk-reset-btn">🐍 Snake</button>
+                    <button type="button" onclick="quickResetGame(${p.user_id},'2048')" class="bulk-reset-btn">🔢 2048</button>
+                    <button type="button" onclick="quickResetGame(${p.user_id},'math')" class="bulk-reset-btn">➗ Math</button>
+                    <button type="button" onclick="quickResetGame(${p.user_id},'flappy')" class="bulk-reset-btn">🐦 Flappy</button>
                     <button type="button" onclick="quickReset(${p.user_id},'durak')" class="bulk-reset-btn">🃏 Сброс Дурака</button>
                     <button type="button" onclick="quickReset(${p.user_id},'energy')" class="bulk-reset-btn">⚡ Заряд = 100%</button>
                     <button type="button" onclick="quickReset(${p.user_id},'wallet')" class="bulk-reset-btn">⭐ Обнулить баланс</button>
@@ -755,6 +763,37 @@
                 showToast('Готово', 'success');
                 await openPlayerModal(userId);
                 loadPlayers(true);
+            } catch(e) { showToast('Ошибка: ' + (e.message || ''), 'error'); }
+        }
+
+        const GAME_LABELS_MAP = { snake: 'Snake', '2048': '2048', math: 'Math', flappy: 'Flappy' };
+
+        async function quickResetGame(userId, game) {
+            const label = GAME_LABELS_MAP[game] || game;
+            if (!confirm(`Игрок ${userId}: обнулить очки в ${label}?`)) return;
+            try {
+                const res = await fetch(`${API}/api/admin/player/${userId}/reset_scores/${game}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user.username }),
+                });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(d.detail || `HTTP ${res.status}`);
+                showToast(`Очки ${label} обнулены`, 'success');
+                await openPlayerModal(userId);
+                loadPlayers(true);
+            } catch(e) { showToast('Ошибка: ' + (e.message || ''), 'error'); }
+        }
+
+        async function globalResetGame(game) {
+            const label = GAME_LABELS_MAP[game] || game;
+            if (!confirm(`⚠️ ОБНУЛИТЬ очки в ${label} у ВСЕХ игроков?\nДействие необратимо.`)) return;
+            if (!confirm(`Подтверди ещё раз: ${label} — сбросить всем?`)) return;
+            try {
+                const res = await fetch(`${API}/api/admin/reset_all/scores/${game}?username=${encodeURIComponent(user.username)}`, { method: 'POST' });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(d.detail || `HTTP ${res.status}`);
+                showToast(`Очки ${label} обнулены у всех`, 'success');
             } catch(e) { showToast('Ошибка: ' + (e.message || ''), 'error'); }
         }
 
