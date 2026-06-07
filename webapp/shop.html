@@ -1018,9 +1018,8 @@
                         <div class="pack-featured-mid">
                             <div class="pack-featured-name">Случайный кейс</div>
                             <div class="pack-featured-desc case-desc">
-                                <p class="case-desc__lead">Внутри может ждать энергия, звёзды или неожиданный NFT — угадай, что выпадет тебе.</p>
+                                <p class="case-desc__lead">Внутри могут ждать звёзды или редкий NFT-подарок — угадай, что выпадет тебе.</p>
                                 <div class="case-desc__tags">
-                                    <span class="case-desc__tag"><img src="icons/enegry.png" alt="">энергия</span>
                                     <span class="case-desc__tag case-desc__tag--stars">⭐ звёзды</span>
                                     <span class="case-desc__tag case-desc__tag--nft">NFT-подарок</span>
                                 </div>
@@ -1272,7 +1271,7 @@
             toastTimer = setTimeout(() => { el.className = 'toast'; }, 2800);
         }
 
-        const CASE_PRICE = 600;
+        const CASE_PRICE = 500;
         const SHOP_API = 'https://chingames.duckdns.org';
         let _shopNftLottie = null;
 
@@ -1358,11 +1357,7 @@
         function applyCaseReward(reward) {
             if (!reward) return;
             if (reward.type === 'nft') return;
-            if (reward.type === 'energy') {
-                _addEnergy(reward.amount);
-                updateStatus();
-                Energy.pull().then(() => updateStatus()).catch(() => {});
-            } else if (reward.type === 'stars' && reward.balance != null) {
+            if (reward.type === 'stars' && reward.balance != null) {
                 _walletBalance = reward.balance;
                 document.getElementById('walletBalance').textContent = _walletBalance;
             }

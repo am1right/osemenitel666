@@ -4,9 +4,8 @@ from typing import Dict, Any, List, Optional
 
 from api.db.connection import get_connection, _cursor
 from api.db.wallet import topup_wallet
-from api.db.energy import admin_adjust_energy
 
-CASE_PRICE                         = 600
+CASE_PRICE                         = 500
 CASE_REWARD_DEDUP_SEC              = 20
 CASE_VALUABLE_CHANCE_DEFAULT       = 0.4
 CASE_NFT_IN_VALUABLE_SHARE         = 0.45
@@ -86,18 +85,15 @@ def save_case_settings(
 
 def _roll_common_stars() -> int:
     r = random.random()
-    if r < 0.04: return 200
-    if r < 0.14: return random.randint(100, 199)
+    if r < 0.04: return 250
+    if r < 0.14: return random.randint(100, 249)
     if r < 0.38: return random.randint(40, 99)
     return random.randint(5, 39)
 
 
 def _pick_common_reward() -> Dict[str, Any]:
-    if random.random() < 0.5:
-        amount = random.randint(1, 20)
-        return {"type": "energy", "amount": amount, "title": f"+{amount} энергии"}
     amount = _roll_common_stars()
-    title  = "Джекпот +200 ⭐" if amount >= 200 else f"+{amount} ⭐"
+    title  = "Джекпот +250 ⭐" if amount >= 250 else f"+{amount} ⭐"
     return {"type": "stars", "amount": amount, "title": title}
 
 
@@ -105,14 +101,10 @@ def _pick_valuable_reward(nft_gifts: List[str], allow_nft: bool = True) -> Dict[
     if allow_nft and nft_gifts and random.random() < CASE_NFT_IN_VALUABLE_SHARE:
         url = random.choice(nft_gifts)
         return {"type": "nft", "gift_url": url, "amount": 0, "title": "NFT-подарок!"}
-    roll = random.random()
-    if roll < 0.34:
-        amount = random.randint(15, 20)
-        return {"type": "energy", "amount": amount, "title": f"+{amount} энергии"}
-    if roll < 0.67:
-        amount = random.randint(100, 199)
+    if random.random() < 0.5:
+        amount = random.randint(100, 249)
         return {"type": "stars", "amount": amount, "title": f"+{amount} ⭐"}
-    return {"type": "stars", "amount": 200, "title": "Джекпот +200 ⭐"}
+    return {"type": "stars", "amount": 250, "title": "Джекпот +250 ⭐"}
 
 
 def _is_global_valuable_on_cooldown(cooldown_sec: int) -> bool:
@@ -178,9 +170,6 @@ def _apply_case_pick(user_id: int, first_name: str, pick: Dict[str, Any]) -> Dic
     title       = pick["title"]
     if reward_type == "nft":
         return {"type": "nft", "gift_url": pick["gift_url"], "amount": 0, "title": title}
-    if reward_type == "energy":
-        result = admin_adjust_energy(user_id, amount)
-        return {"type": "energy", "amount": amount, "title": title, "energy": result["amount"]}
     wallet = topup_wallet(user_id, first_name or "Игрок", amount, description="Награда из кейса")
     return {"type": "stars", "amount": amount, "title": title, "balance": wallet["balance"]}
 
