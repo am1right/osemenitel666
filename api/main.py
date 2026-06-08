@@ -95,21 +95,32 @@ ADMIN_TG_IDS  = [int(x) for x in os.getenv("ADMIN_ID", "").split(",") if x.strip
 REQUIRED_CHANNEL = os.getenv("REQUIRED_CHANNEL", "@ZeroOrOneOFF")
 REQUIRED_CHAT    = os.getenv("REQUIRED_CHAT",    "@zeroandonechat")
 
+_sub_cache: Dict[int, Any] = {}  # user_id -> (timestamp, result)
+_SUB_CACHE_TTL = 120  # секунд
+
 async def _check_subscription(user_id: int) -> Dict[str, bool]:
-    """Проверяет подписку пользователя на канал и чат через Bot API."""
+    """Проверяет подписку пользователя на канал и чат через Bot API (кеш 2 мин)."""
+    import time
+    now = time.monotonic()
+    cached = _sub_cache.get(user_id)
+    if cached and now - cached[0] < _SUB_CACHE_TTL:
+        return cached[1]
+
     result = {"channel": False, "chat": False}
     if not BOT_TOKEN:
         return {"channel": True, "chat": True}  # dev-режим
     try:
         bot = Bot(token=BOT_TOKEN)
-        for key, chat_id in [("channel", REQUIRED_CHANNEL), ("chat", REQUIRED_CHAT)]:
-            try:
-                member = await bot.get_chat_member(chat_id=chat_id, user_id=user_id)
-                result[key] = member.status not in ("left", "kicked", "banned")
-            except Exception:
-                result[key] = False
+        async with asyncio.timeout(5):
+            for key, chat_id in [("channel", REQUIRED_CHANNEL), ("chat", REQUIRED_CHAT)]:
+                try:
+                    member = await bot.get_chat_member(chat_id=chat_id, user_id=user_id)
+                    result[key] = member.status not in ("left", "kicked", "banned")
+                except Exception:
+                    result[key] = False
     except Exception:
         pass
+    _sub_cache[user_id] = (now, result)
     return result
 
 VALID_GAMES = ("math", "2048", "snake", "flappy")
