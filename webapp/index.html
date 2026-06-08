@@ -395,6 +395,13 @@
 
         const API = 'https://chingames.duckdns.org';
 
+        async function _markSubVerified(uid) {
+            try {
+                await fetch(`${API}/api/bonuses/check_subscription/${uid}`); // side-effect: cache warm
+                await fetch(`${API}/api/sub_verified_webapp/${uid}`, { method: 'POST' });
+            } catch(e) {}
+        }
+
         async function checkSubAndEnter() {
             const uid = tg.initDataUnsafe?.user?.id;
             if (!uid) return;
@@ -404,6 +411,7 @@
                 const res = await fetch(`${API}/api/bonuses/check_subscription/${uid}`);
                 const d = await res.json();
                 if (d.allowed) {
+                    await _markSubVerified(uid);
                     document.getElementById('sub-gate').style.display = 'none';
                 } else {
                     const what = !d.channel ? 'канал (@ZeroOrOneOFF)' : 'чат (@zeroandonechat)';
@@ -418,9 +426,18 @@
             const uid = tg.initDataUnsafe?.user?.id;
             if (!uid) return; // dev / no user
             try {
+                // Сначала проверяем флаг verified — если уже прошёл, не показываем gate
+                const vres = await fetch(`${API}/api/sub_verified_check/${uid}`);
+                if (vres.ok) {
+                    const vd = await vres.json();
+                    if (vd.verified) return; // уже проверен — пускаем
+                }
+                // Не верифицирован — проверяем реальную подписку
                 const res = await fetch(`${API}/api/bonuses/check_subscription/${uid}`);
                 const d = await res.json();
-                if (!d.allowed) {
+                if (d.allowed) {
+                    await _markSubVerified(uid); // подписан — сразу помечаем
+                } else {
                     document.getElementById('sub-gate').style.display = 'flex';
                 }
             } catch(e) { /* сеть недоступна — пускаем */ }

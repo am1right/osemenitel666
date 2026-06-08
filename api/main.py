@@ -858,6 +858,18 @@ async def api_set_sub_verified(user_id: int, request: Request):
     return {"ok": True}
 
 
+# Публичные эндпоинты для webapp (без internal secret)
+@app.get("/api/sub_verified_check/{user_id}")
+async def api_sub_verified_check(user_id: int):
+    return {"verified": get_sub_verified(user_id)}
+
+
+@app.post("/api/sub_verified_webapp/{user_id}")
+async def api_sub_verified_webapp(user_id: int):
+    set_sub_verified(user_id, True)
+    return {"ok": True}
+
+
 @app.get("/api/referral/stats/{user_id}")
 async def api_referral_stats(user_id: int):
     """Статистика рефералов и реферальная ссылка для пользователя."""
