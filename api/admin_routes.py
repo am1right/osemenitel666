@@ -216,6 +216,13 @@ try:
         _check_admin(username)
         return db.admin_zero_all_wallets()
 
+    @router.post("/reset_sub_verified")
+    async def admin_reset_sub_verified(username: str):
+        """Сбросить sub_verified у всех — при следующем /start все увидят gate."""
+        _check_admin(username)
+        count = db.reset_all_sub_verified()
+        return {"ok": True, "reset_count": count}
+
     @router.get("/star_balance")
     async def admin_star_balance(username: str):
         """Баланс Stars бота + транзакции по дням (только для админов)."""

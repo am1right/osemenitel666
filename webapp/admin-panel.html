@@ -221,6 +221,13 @@
             <button type="button" onclick="globalReset('wallets')" class="bulk-reset-btn">⭐ Обнулить балансы</button>
         </div>
 
+        <!-- Проверка подписок -->
+        <div class="section-title" style="margin-top:14px;">🔐 Подписки</div>
+        <div style="margin-bottom:12px;">
+            <button type="button" onclick="resetSubVerified()" class="bulk-reset-btn" style="width:100%;background:rgba(255,100,0,0.15);border-color:rgba(255,100,0,0.4);color:rgba(255,140,0,0.9);">🔄 Потребовать переподтверждение подписок (все юзеры)</button>
+            <div id="sub-reset-msg" style="margin-top:6px;font-size:11px;color:rgba(255,255,255,0.4);text-align:center;min-height:16px;"></div>
+        </div>
+
         <!-- Анонсы соревнований -->
         <div class="section-title">📣 Соревнования</div>
         <div style="margin-bottom:8px;">
@@ -891,6 +898,18 @@
                 if (!res.ok) throw new Error(d.detail || `HTTP ${res.status}`);
                 showToast(`Отправлено анонсов: ${d.reposted ?? 0}`, 'success');
             } catch(e) { showToast('Ошибка: ' + (e.message || ''), 'error'); }
+        }
+
+        async function resetSubVerified() {
+            if (!confirm('Сбросить верификацию подписок у всех пользователей?\nПри следующем /start они увидят запрос подписки.')) return;
+            const msg = document.getElementById('sub-reset-msg');
+            msg.textContent = 'Сбрасываю…';
+            try {
+                const res = await fetch(`${API}/api/admin/reset_sub_verified?username=${encodeURIComponent(user.username)}`, { method: 'POST' });
+                const d = await res.json();
+                if (d.ok) msg.textContent = `✅ Сброшено у ${d.reset_count} пользователей`;
+                else msg.textContent = '❌ Ошибка';
+            } catch(e) { msg.textContent = '❌ Ошибка: ' + e.message; }
         }
 
         async function repostReminder() {

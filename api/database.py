@@ -11,6 +11,10 @@ from api.db.connection import (
     DATABASE_URL,
     TEST_PLAYER_IDS,
     TEST_ID_RANGE,
+    set_sub_verified,
+    get_sub_verified,
+    reset_all_sub_verified,
+    get_all_user_ids,
 )
 
 from api.db.scores import (

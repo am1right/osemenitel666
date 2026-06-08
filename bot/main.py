@@ -147,6 +147,13 @@ async def check_sub_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await query.answer()
     user = query.from_user
     if await _is_subscribed(context.bot, user.id):
+        # Ставим verified
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                await client.post(f"{API_BASE}/api/sub_verified/{user.id}",
+                                  headers={"X-Internal-Secret": INTERNAL_SECRET})
+        except Exception:
+            pass
         await query.message.edit_text(
             text=f"✅ Отлично, <b>{user.first_name or 'Игрок'}</b>! Добро пожаловать в <b>Chin Games</b> 🎮",
             parse_mode="HTML",
@@ -324,25 +331,44 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except (ValueError, Exception) as e:
             logger.warning(f"[REF] bad ref param '{ref_param}': {e}")
 
-    # ── Проверка подписки ───────────────────────────────────────────
-    if not await _is_subscribed(context.bot, user.id):
-        sub_keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("📢 Подписаться на канал", url=f"https://t.me/{REQUIRED_CHANNEL.lstrip('@')}")],
-            [InlineKeyboardButton("💬 Вступить в чат",      url=f"https://t.me/{REQUIRED_CHAT.lstrip('@')}")],
-            [InlineKeyboardButton("✅ Я подписался",         callback_data="check_sub")],
-        ])
-        await update.message.reply_text(
-            text=(
-                f"👋 Привет, <b>{user.first_name or 'Игрок'}</b>!\n\n"
-                f"Чтобы использовать <b>Chin Games</b>, нужно:\n\n"
-                f"1️⃣ Подписаться на канал {REQUIRED_CHANNEL}\n"
-                f"2️⃣ Вступить в чат {REQUIRED_CHAT}\n\n"
-                f"После подписки нажми <b>✅ Я подписался</b>"
-            ),
-            parse_mode="HTML",
-            reply_markup=sub_keyboard
-        )
-        return
+    # ── Проверка подписки (только если ещё не верифицирован) ───────
+    sub_ok = True
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            r = await client.get(f"{API_BASE}/api/sub_verified/{user.id}",
+                                 headers={"X-Internal-Secret": INTERNAL_SECRET})
+            if r.status_code == 200:
+                sub_ok = r.json().get("verified", False)
+    except Exception:
+        sub_ok = True  # при ошибке не блокируем
+
+    if not sub_ok:
+        if not await _is_subscribed(context.bot, user.id):
+            sub_keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("📢 Подписаться на канал", url=f"https://t.me/{REQUIRED_CHANNEL.lstrip('@')}")],
+                [InlineKeyboardButton("💬 Вступить в чат",      url=f"https://t.me/{REQUIRED_CHAT.lstrip('@')}")],
+                [InlineKeyboardButton("✅ Я подписался",         callback_data="check_sub")],
+            ])
+            await update.message.reply_text(
+                text=(
+                    f"👋 Привет, <b>{user.first_name or 'Игрок'}</b>!\n\n"
+                    f"Чтобы использовать <b>Chin Games</b>, нужно:\n\n"
+                    f"1️⃣ Подписаться на канал {REQUIRED_CHANNEL}\n"
+                    f"2️⃣ Вступить в чат {REQUIRED_CHAT}\n\n"
+                    f"После подписки нажми <b>✅ Я подписался</b>"
+                ),
+                parse_mode="HTML",
+                reply_markup=sub_keyboard
+            )
+            return
+        else:
+            # Подписан — ставим verified
+            try:
+                async with httpx.AsyncClient(timeout=5) as client:
+                    await client.post(f"{API_BASE}/api/sub_verified/{user.id}",
+                                      headers={"X-Internal-Secret": INTERNAL_SECRET})
+            except Exception:
+                pass
 
     # ── Приветственное сообщение ────────────────────────────────────
     text = f"👋 Привет, <b>{user.first_name or 'Игрок'}</b>!\n\nДобро пожаловать в <b>Chin Games</b> 🎮"

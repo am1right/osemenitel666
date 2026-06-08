@@ -378,9 +378,47 @@ def init_db():
         )
     ''')
 
+    # Миграция: добавить sub_verified если нет
+    cur.execute('''
+        ALTER TABLE tg_users ADD COLUMN IF NOT EXISTS sub_verified BOOLEAN DEFAULT FALSE
+    ''')
+
     _purge_test_players(cur)
 
     conn.commit()
     cur.close()
     conn.close()
     print("✅ База данных инициализирована (PostgreSQL)")
+
+
+def set_sub_verified(user_id: int, verified: bool = True) -> None:
+    conn = get_connection(); cur = _cursor(conn)
+    cur.execute(
+        "INSERT INTO tg_users (user_id, sub_verified) VALUES (%s, %s) "
+        "ON CONFLICT (user_id) DO UPDATE SET sub_verified = EXCLUDED.sub_verified",
+        (user_id, verified)
+    )
+    conn.commit(); cur.close(); conn.close()
+
+
+def get_sub_verified(user_id: int) -> bool:
+    conn = get_connection(); cur = _cursor(conn)
+    cur.execute("SELECT sub_verified FROM tg_users WHERE user_id = %s", (user_id,))
+    row = cur.fetchone(); cur.close(); conn.close()
+    return bool(row and row["sub_verified"])
+
+
+def reset_all_sub_verified() -> int:
+    """Сбросить sub_verified у всех — вернёт кол-во затронутых строк."""
+    conn = get_connection(); cur = _cursor(conn)
+    cur.execute("UPDATE tg_users SET sub_verified = FALSE")
+    count = cur.rowcount
+    conn.commit(); cur.close(); conn.close()
+    return count
+
+
+def get_all_user_ids() -> list:
+    conn = get_connection(); cur = _cursor(conn)
+    cur.execute("SELECT user_id FROM tg_users")
+    rows = cur.fetchall(); cur.close(); conn.close()
+    return [r["user_id"] for r in rows]

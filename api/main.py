@@ -29,6 +29,7 @@ from api.database import (
     get_user_bonus_status, grant_bonus, daily_checkin, get_daily_checkin_status,
     BONUS_CHANNEL, BONUS_CHAT, BONUS_SHARE,
     BONUS_CHANNEL_STARS, BONUS_CHAT_STARS, BONUS_SHARE_STARS, DAILY_CHECKIN_STARS,
+    set_sub_verified, get_sub_verified, reset_all_sub_verified, get_all_user_ids,
 )
 
 try:
@@ -842,6 +843,19 @@ async def api_check_subscription(user_id: int):
     sub = await _check_subscription(user_id)
     allowed = sub["channel"] and sub["chat"]
     return {"allowed": allowed, **sub}
+
+
+@app.get("/api/sub_verified/{user_id}")
+async def api_get_sub_verified(user_id: int, request: Request):
+    require_internal(request)
+    return {"verified": get_sub_verified(user_id)}
+
+
+@app.post("/api/sub_verified/{user_id}")
+async def api_set_sub_verified(user_id: int, request: Request):
+    require_internal(request)
+    set_sub_verified(user_id, True)
+    return {"ok": True}
 
 
 @app.get("/api/referral/stats/{user_id}")
