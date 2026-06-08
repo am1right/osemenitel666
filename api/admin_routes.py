@@ -227,44 +227,52 @@ try:
     async def admin_star_balance(username: str):
         """Баланс Stars бота + транзакции по дням (только для админов)."""
         _check_admin(username)
-        import os
-        from telegram import Bot
+        import os, httpx
         from collections import defaultdict
-        from datetime import timezone
 
         bot_token = os.getenv("BOT_TOKEN", "")
         if not bot_token:
             raise HTTPException(status_code=503, detail="BOT_TOKEN not set")
 
-        bot = Bot(token=bot_token)
-        # Telegram даёт max 100 транзакций за раз; берём последние 500
+        # Используем Bot API напрямую через httpx — надёжнее чем ptb-обёртка
         all_tx = []
         offset = 0
-        while True:
-            result = await bot.get_star_transactions(offset=offset, limit=100)
-            txs = result.transactions
-            if not txs:
-                break
-            all_tx.extend(txs)
-            if len(txs) < 100:
-                break
-            offset += 100
-            if offset >= 500:
-                break
+        async with httpx.AsyncClient(timeout=15) as client:
+            while offset < 500:
+                resp = await client.get(
+                    f"https://api.telegram.org/bot{bot_token}/getStarTransactions",
+                    params={"offset": offset, "limit": 100}
+                )
+                data = resp.json()
+                if not data.get("ok"):
+                    raise HTTPException(status_code=502, detail=data.get("description", "TG API error"))
+                txs = data["result"].get("transactions", [])
+                if not txs:
+                    break
+                all_tx.extend(txs)
+                if len(txs) < 100:
+                    break
+                offset += 100
 
-        # Считаем баланс и группируем по дням
         total_in = 0
         total_out = 0
         by_day: dict = defaultdict(int)
 
         for tx in all_tx:
-            dt = tx.date  # datetime
-            day = dt.astimezone(timezone.utc).strftime("%Y-%m-%d")
-            amount = tx.nanostar_amount // 1_000_000_000 if hasattr(tx, 'nanostar_amount') else tx.amount
-            if tx.source is not None:
+            # amount в nanostar (1 star = 1_000_000_000) в новых версиях API,
+            # но в старых — целые звёзды. Нормализуем:
+            raw = tx.get("nanostar_amount") or tx.get("amount", 0)
+            # если > 1_000_000 — это nanostar
+            amount = raw // 1_000_000_000 if raw > 1_000_000 else raw
+
+            import datetime
+            dt = datetime.datetime.fromtimestamp(tx["date"], tz=datetime.timezone.utc)
+            day = dt.strftime("%Y-%m-%d")
+
+            if tx.get("source") is not None:
                 total_in += amount
                 by_day[day] += amount
-            elif tx.receiver is not None:
+            elif tx.get("receiver") is not None:
                 total_out += amount
                 by_day[day] -= amount
 
