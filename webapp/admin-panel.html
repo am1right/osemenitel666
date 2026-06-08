@@ -185,6 +185,29 @@
             <div class="stat-box"><div class="loading-spinner" style="width:20px;height:20px;margin:4px auto;"></div></div>
         </div>
 
+        <!-- Баланс Stars бота -->
+        <div class="section-title" style="margin-top:14px;">⭐ Баланс Stars бота</div>
+        <div id="star-balance-block" style="background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.2);border-radius:12px;padding:14px;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <div>
+                    <div style="font-family:'Orbitron',sans-serif;font-size:9px;color:rgba(255,215,0,0.5);margin-bottom:2px;">ТЕКУЩИЙ БАЛАНС</div>
+                    <div id="star-bal-value" style="font-family:'Orbitron',sans-serif;font-size:22px;font-weight:900;color:#ffd700;">—</div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:11px;color:rgba(255,255,255,0.35);">Получено: <span id="star-bal-in" style="color:rgba(100,255,100,0.8);">—</span></div>
+                    <div style="font-size:11px;color:rgba(255,255,255,0.35);">Выведено: <span id="star-bal-out" style="color:rgba(255,100,100,0.7);">—</span></div>
+                    <div style="font-size:10px;color:rgba(255,255,255,0.25);margin-top:2px;">транз.: <span id="star-bal-txcount">—</span></div>
+                </div>
+            </div>
+            <!-- Мини-график по дням -->
+            <div id="star-chart-wrap" style="margin-top:6px;display:none;">
+                <div style="font-family:'Orbitron',sans-serif;font-size:8px;color:rgba(255,215,0,0.4);margin-bottom:6px;letter-spacing:1px;">ПОСТУПЛЕНИЯ ПО ДНЯМ</div>
+                <div id="star-chart" style="display:flex;align-items:flex-end;gap:3px;height:50px;overflow:hidden;"></div>
+                <div id="star-chart-labels" style="display:flex;gap:3px;margin-top:3px;overflow:hidden;"></div>
+            </div>
+            <button onclick="loadStarBalance()" style="margin-top:10px;width:100%;padding:8px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:8px;color:#ffd700;font-size:11px;cursor:pointer;">🔄 Обновить</button>
+        </div>
+
         <!-- Массовые сбросы (для всех игроков) -->
         <div class="section-title" style="color:rgba(255,68,102,0.7);">⚠️ Массовые сбросы (для ВСЕХ игроков)</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
@@ -350,9 +373,47 @@
             _players.unshift(entry);
         }
 
+        async function loadStarBalance() {
+            const val = document.getElementById('star-bal-value');
+            const inEl = document.getElementById('star-bal-in');
+            const outEl = document.getElementById('star-bal-out');
+            const txEl = document.getElementById('star-bal-txcount');
+            val.textContent = '…';
+            try {
+                const res = await fetch(`${API}/api/admin/star_balance?username=${encodeURIComponent(user.username)}`);
+                if (!res.ok) { val.textContent = 'Ошибка'; return; }
+                const d = await res.json();
+                val.textContent = `⭐ ${d.balance}`;
+                inEl.textContent = `+${d.total_in}`;
+                outEl.textContent = `-${d.total_out}`;
+                txEl.textContent = d.tx_count;
+
+                // График
+                if (d.by_day && d.by_day.length > 0) {
+                    const chartWrap = document.getElementById('star-chart-wrap');
+                    const chart = document.getElementById('star-chart');
+                    const labels = document.getElementById('star-chart-labels');
+                    chartWrap.style.display = 'block';
+                    const days = d.by_day.slice(-30); // последние 30 дней
+                    const maxVal = Math.max(...days.map(x => Math.abs(x.amount)), 1);
+                    chart.innerHTML = days.map(x => {
+                        const h = Math.max(3, Math.round((Math.abs(x.amount) / maxVal) * 46));
+                        const color = x.amount >= 0 ? 'rgba(100,255,100,0.7)' : 'rgba(255,100,100,0.7)';
+                        return `<div title="${x.date}: ${x.amount > 0 ? '+' : ''}${x.amount}⭐" style="flex:1;min-width:4px;height:${h}px;background:${color};border-radius:2px 2px 0 0;"></div>`;
+                    }).join('');
+                    labels.innerHTML = days.map((x, i) => {
+                        const show = days.length <= 10 || i % Math.ceil(days.length / 10) === 0;
+                        const d2 = x.date.slice(5); // MM-DD
+                        return `<div style="flex:1;font-size:7px;color:rgba(255,215,0,0.35);text-align:center;overflow:hidden;">${show ? d2 : ''}</div>`;
+                    }).join('');
+                }
+            } catch(e) { val.textContent = 'Ошибка'; }
+        }
+
         async function init() {
             await ensureSelfRegistered();
             loadSummaryStats();
+            loadStarBalance();
             loadPlayers(true);
             document.getElementById('search-input').addEventListener('input', e => {
                 clearTimeout(_searchTimer);

@@ -216,6 +216,61 @@ try:
         _check_admin(username)
         return db.admin_zero_all_wallets()
 
+    @router.get("/star_balance")
+    async def admin_star_balance(username: str):
+        """Баланс Stars бота + транзакции по дням (только для админов)."""
+        _check_admin(username)
+        import os
+        from telegram import Bot
+        from collections import defaultdict
+        from datetime import timezone
+
+        bot_token = os.getenv("BOT_TOKEN", "")
+        if not bot_token:
+            raise HTTPException(status_code=503, detail="BOT_TOKEN not set")
+
+        bot = Bot(token=bot_token)
+        # Telegram даёт max 100 транзакций за раз; берём последние 500
+        all_tx = []
+        offset = 0
+        while True:
+            result = await bot.get_star_transactions(offset=offset, limit=100)
+            txs = result.transactions
+            if not txs:
+                break
+            all_tx.extend(txs)
+            if len(txs) < 100:
+                break
+            offset += 100
+            if offset >= 500:
+                break
+
+        # Считаем баланс и группируем по дням
+        total_in = 0
+        total_out = 0
+        by_day: dict = defaultdict(int)
+
+        for tx in all_tx:
+            dt = tx.date  # datetime
+            day = dt.astimezone(timezone.utc).strftime("%Y-%m-%d")
+            amount = tx.nanostar_amount // 1_000_000_000 if hasattr(tx, 'nanostar_amount') else tx.amount
+            if tx.source is not None:
+                total_in += amount
+                by_day[day] += amount
+            elif tx.receiver is not None:
+                total_out += amount
+                by_day[day] -= amount
+
+        days_sorted = sorted(by_day.items())
+
+        return {
+            "total_in": total_in,
+            "total_out": total_out,
+            "balance": total_in - total_out,
+            "by_day": [{"date": d, "amount": a} for d, a in days_sorted],
+            "tx_count": len(all_tx),
+        }
+
 except ImportError as e:
     router = None
     logger.error("[ADMIN_ROUTES] FastAPI не найден: %s", e)
