@@ -361,8 +361,9 @@
     <!-- Оверлей подписки -->
     <div id="sub-gate" style="position:fixed;inset:0;z-index:99999;
         background:linear-gradient(160deg,#0d0820 0%,#1a0a35 100%);
-        display:flex;flex-direction:column;align-items:center;justify-content:center;
-        padding:32px 24px;text-align:center;font-family:'Orbitron',sans-serif;">
+        flex-direction:column;align-items:center;justify-content:center;
+        padding:32px 24px;text-align:center;font-family:'Orbitron',sans-serif;
+        display:none;">
         <div style="font-size:48px;margin-bottom:16px;">🎮</div>
         <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:8px;">Chin Games</div>
         <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:28px;line-height:1.6;">
@@ -438,10 +439,10 @@
                 const d = await res.json();
                 if (d.allowed) {
                     await _markSubVerified(uid);
-                    gate.style.display = 'none';
+                } else {
+                    gate.style.display = 'flex';
                 }
-                // иначе gate остаётся видимым
-            } catch(e) { gate.style.display = 'none'; /* сеть недоступна — пускаем */ }
+            } catch(e) { /* сеть недоступна — пускаем, gate остаётся скрытым */ }
         }
         initSubGate();
 
