@@ -359,7 +359,7 @@
     </nav>
 
     <!-- Оверлей подписки -->
-    <div id="sub-gate" style="display:none;position:fixed;inset:0;z-index:99999;
+    <div id="sub-gate" style="position:fixed;inset:0;z-index:99999;
         background:linear-gradient(160deg,#0d0820 0%,#1a0a35 100%);
         display:flex;flex-direction:column;align-items:center;justify-content:center;
         padding:32px 24px;text-align:center;font-family:'Orbitron',sans-serif;">
@@ -423,24 +423,25 @@
         }
 
         async function initSubGate() {
+            const gate = document.getElementById('sub-gate');
             const uid = tg.initDataUnsafe?.user?.id;
-            if (!uid) return; // dev / no user
+            if (!uid) { gate.style.display = 'none'; return; }
             try {
-                // Сначала проверяем флаг verified — если уже прошёл, не показываем gate
+                // Проверяем флаг verified
                 const vres = await fetch(`${API}/api/sub_verified_check/${uid}`);
                 if (vres.ok) {
                     const vd = await vres.json();
-                    if (vd.verified) return; // уже проверен — пускаем
+                    if (vd.verified) { gate.style.display = 'none'; return; }
                 }
                 // Не верифицирован — проверяем реальную подписку
                 const res = await fetch(`${API}/api/bonuses/check_subscription/${uid}`);
                 const d = await res.json();
                 if (d.allowed) {
-                    await _markSubVerified(uid); // подписан — сразу помечаем
-                } else {
-                    document.getElementById('sub-gate').style.display = 'flex';
+                    await _markSubVerified(uid);
+                    gate.style.display = 'none';
                 }
-            } catch(e) { /* сеть недоступна — пускаем */ }
+                // иначе gate остаётся видимым
+            } catch(e) { gate.style.display = 'none'; /* сеть недоступна — пускаем */ }
         }
         initSubGate();
 
