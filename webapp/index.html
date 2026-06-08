@@ -358,9 +358,74 @@
         </a>
     </nav>
 
+    <!-- Оверлей подписки -->
+    <div id="sub-gate" style="display:none;position:fixed;inset:0;z-index:99999;
+        background:linear-gradient(160deg,#0d0820 0%,#1a0a35 100%);
+        display:flex;flex-direction:column;align-items:center;justify-content:center;
+        padding:32px 24px;text-align:center;font-family:'Orbitron',sans-serif;">
+        <div style="font-size:48px;margin-bottom:16px;">🎮</div>
+        <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:8px;">Chin Games</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:28px;line-height:1.6;">
+            Для доступа к игре подпишись на наш канал и чат
+        </div>
+        <a id="sub-channel-btn" href="https://t.me/ZeroOrOneOFF" target="_blank"
+            style="display:block;width:100%;max-width:320px;margin-bottom:12px;padding:14px 20px;
+            background:linear-gradient(135deg,#7b2ff7,#e060ff);border-radius:14px;
+            color:#fff;font-size:14px;font-weight:700;text-decoration:none;letter-spacing:0.5px;">
+            📢 Подписаться на канал
+        </a>
+        <a id="sub-chat-btn" href="https://t.me/zeroandonechat" target="_blank"
+            style="display:block;width:100%;max-width:320px;margin-bottom:24px;padding:14px 20px;
+            background:linear-gradient(135deg,#0f4c9e,#00b4ff);border-radius:14px;
+            color:#fff;font-size:14px;font-weight:700;text-decoration:none;letter-spacing:0.5px;">
+            💬 Вступить в чат
+        </a>
+        <button onclick="checkSubAndEnter()"
+            style="width:100%;max-width:320px;padding:14px 20px;border:2px solid rgba(255,255,255,0.3);
+            border-radius:14px;background:transparent;color:rgba(255,255,255,0.7);
+            font-size:13px;font-family:'Orbitron',sans-serif;cursor:pointer;">
+            ✅ Я подписался — проверить
+        </button>
+        <div id="sub-gate-msg" style="margin-top:14px;font-size:12px;color:rgba(255,100,100,0.8);min-height:18px;"></div>
+    </div>
+
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready();
+
+        const API = 'https://chingames.duckdns.org';
+
+        async function checkSubAndEnter() {
+            const uid = tg.initDataUnsafe?.user?.id;
+            if (!uid) return;
+            const msg = document.getElementById('sub-gate-msg');
+            msg.textContent = 'Проверяем…';
+            try {
+                const res = await fetch(`${API}/api/bonuses/check_subscription/${uid}`);
+                const d = await res.json();
+                if (d.allowed) {
+                    document.getElementById('sub-gate').style.display = 'none';
+                } else {
+                    const what = !d.channel ? 'канал (@ZeroOrOneOFF)' : 'чат (@zeroandonechat)';
+                    msg.textContent = `Не найдена подписка на ${what}`;
+                }
+            } catch(e) {
+                msg.textContent = 'Ошибка проверки, попробуй ещё раз';
+            }
+        }
+
+        async function initSubGate() {
+            const uid = tg.initDataUnsafe?.user?.id;
+            if (!uid) return; // dev / no user
+            try {
+                const res = await fetch(`${API}/api/bonuses/check_subscription/${uid}`);
+                const d = await res.json();
+                if (!d.allowed) {
+                    document.getElementById('sub-gate').style.display = 'flex';
+                }
+            } catch(e) { /* сеть недоступна — пускаем */ }
+        }
+        initSubGate();
 
         // Пригласительная ссылка (durak_lobby_X) → сразу в Дурака, минуя меню игр
         (function () {
@@ -478,7 +543,6 @@
     </script>
     <script>
         // ── Активные соревнования → баджи + NFT-модал ────────────
-        const API = 'https://chingames.duckdns.org';
         let currentLottie = null;
 
         function formatTimer(s) {

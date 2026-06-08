@@ -102,6 +102,12 @@ from api.db.admin import (
     admin_zero_all_wallets,
 )
 
+from api.db.bonuses import (
+    BONUS_CHANNEL, BONUS_CHAT, BONUS_SHARE,
+    BONUS_CHANNEL_STARS, BONUS_CHAT_STARS, BONUS_SHARE_STARS, DAILY_CHECKIN_STARS,
+    get_user_bonus_status, grant_bonus, daily_checkin, get_daily_checkin_status,
+)
+
 from api.db.durak import (
     create_durak_lobby,
     get_active_durak_lobbies,

@@ -35,6 +35,8 @@ INLINE_IMAGE_URL = f"{BASE_STATIC}/icons/inline.png"  # используется
 # ID владельца бота для уведомлений о подозрительной активности
 ADMIN_ID          = int(os.getenv("ADMIN_ID", "0"))
 INTERNAL_SECRET   = os.getenv("INTERNAL_SECRET", "")
+REQUIRED_CHANNEL  = os.getenv("REQUIRED_CHANNEL", "@ZeroOrOneOFF")
+REQUIRED_CHAT     = os.getenv("REQUIRED_CHAT", "@zeroandonechat")
 # Тот же фоллбэк, что и в api/tg_auth.py — выводим секрет из BOT_TOKEN,
 # чтобы bot↔API совпадали без отдельной env-переменной.
 if not INTERNAL_SECRET and BOT_TOKEN:
@@ -49,6 +51,24 @@ def _internal_headers() -> dict:
     return {"X-Internal-Secret": INTERNAL_SECRET}
 
 # ===================== КЛАВИАТУРЫ =====================
+async def _is_subscribed(bot, user_id: int) -> bool:
+    """True если юзер подписан на канал И есть в чате."""
+    from telegram.error import TelegramError
+    try:
+        ch = await bot.get_chat_member(REQUIRED_CHANNEL, user_id)
+        if ch.status in ("left", "kicked"):
+            return False
+    except TelegramError:
+        return False
+    try:
+        ct = await bot.get_chat_member(REQUIRED_CHAT, user_id)
+        if ct.status in ("left", "kicked"):
+            return False
+    except TelegramError:
+        return False
+    return True
+
+
 def get_webapp_keyboard(user_id: int | None = None):
     keyboard = [
         [InlineKeyboardButton("🎮 Запустить Chin Games", web_app=WebAppInfo(url=WEBAPP_URL))],
@@ -119,6 +139,34 @@ async def rules_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="HTML",
         reply_markup=get_webapp_keyboard(),
     )
+
+async def check_sub_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query:
+        return
+    await query.answer()
+    user = query.from_user
+    if await _is_subscribed(context.bot, user.id):
+        await query.message.edit_text(
+            text=f"✅ Отлично, <b>{user.first_name or 'Игрок'}</b>! Добро пожаловать в <b>Chin Games</b> 🎮",
+            parse_mode="HTML",
+            reply_markup=get_webapp_keyboard(user.id)
+        )
+    else:
+        sub_keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📢 Подписаться на канал", url=f"https://t.me/{REQUIRED_CHANNEL.lstrip('@')}")],
+            [InlineKeyboardButton("💬 Вступить в чат",      url=f"https://t.me/{REQUIRED_CHAT.lstrip('@')}")],
+            [InlineKeyboardButton("✅ Я подписался",         callback_data="check_sub")],
+        ])
+        await query.message.edit_text(
+            text=(
+                f"❌ Не вижу подписки. Убедись, что подписался на {REQUIRED_CHANNEL} и вступил в {REQUIRED_CHAT}.\n\n"
+                f"Затем нажми <b>✅ Я подписался</b> снова."
+            ),
+            parse_mode="HTML",
+            reply_markup=sub_keyboard
+        )
+
 
 async def invite_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -275,6 +323,26 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         logger.warning(f"[REF] register failed: {resp.status_code} {resp.text}")
         except (ValueError, Exception) as e:
             logger.warning(f"[REF] bad ref param '{ref_param}': {e}")
+
+    # ── Проверка подписки ───────────────────────────────────────────
+    if not await _is_subscribed(context.bot, user.id):
+        sub_keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📢 Подписаться на канал", url=f"https://t.me/{REQUIRED_CHANNEL.lstrip('@')}")],
+            [InlineKeyboardButton("💬 Вступить в чат",      url=f"https://t.me/{REQUIRED_CHAT.lstrip('@')}")],
+            [InlineKeyboardButton("✅ Я подписался",         callback_data="check_sub")],
+        ])
+        await update.message.reply_text(
+            text=(
+                f"👋 Привет, <b>{user.first_name or 'Игрок'}</b>!\n\n"
+                f"Чтобы использовать <b>Chin Games</b>, нужно:\n\n"
+                f"1️⃣ Подписаться на канал {REQUIRED_CHANNEL}\n"
+                f"2️⃣ Вступить в чат {REQUIRED_CHAT}\n\n"
+                f"После подписки нажми <b>✅ Я подписался</b>"
+            ),
+            parse_mode="HTML",
+            reply_markup=sub_keyboard
+        )
+        return
 
     # ── Приветственное сообщение ────────────────────────────────────
     text = f"👋 Привет, <b>{user.first_name or 'Игрок'}</b>!\n\nДобро пожаловать в <b>Chin Games</b> 🎮"
@@ -491,6 +559,7 @@ def main():
     application.add_handler(CommandHandler("bind", bind_chat_command))
     application.add_handler(CommandHandler("unbind", unbind_chat_command))
     application.add_handler(CallbackQueryHandler(rules_callback, pattern="^show_rules$"))
+    application.add_handler(CallbackQueryHandler(check_sub_callback, pattern="^check_sub$"))
     application.add_handler(CallbackQueryHandler(invite_callback, pattern="^invite_friend$"))
     application.add_handler(InlineQueryHandler(inline_query_handler))
     application.add_handler(PreCheckoutQueryHandler(pre_checkout_query_handler))

@@ -25,6 +25,9 @@ from api.database import (
     get_case_settings, save_case_settings, get_case_valuable_cooldown_status,
     add_announce_chat, remove_announce_chat, get_announce_chats,
     upsert_tg_username, admin_get_all_players,
+    get_user_bonus_status, grant_bonus, daily_checkin, get_daily_checkin_status,
+    BONUS_CHANNEL, BONUS_CHAT, BONUS_SHARE,
+    BONUS_CHANNEL_STARS, BONUS_CHAT_STARS, BONUS_SHARE_STARS, DAILY_CHECKIN_STARS,
 )
 
 try:
@@ -88,6 +91,26 @@ BOT_USERNAME  = os.getenv("BOT_USERNAME", "chingamebot")  # юзернейм б�
 # Числовые TG ID админов для дублирования уведомлений о призах
 ADMIN_TG_IDS  = [int(x) for x in os.getenv("ADMIN_ID", "").split(",") if x.strip().lstrip("-").isdigit()]
 
+REQUIRED_CHANNEL = os.getenv("REQUIRED_CHANNEL", "@ZeroOrOneOFF")
+REQUIRED_CHAT    = os.getenv("REQUIRED_CHAT",    "@zeroandonechat")
+
+async def _check_subscription(user_id: int) -> Dict[str, bool]:
+    """Проверяет подписку пользователя на канал и чат через Bot API."""
+    result = {"channel": False, "chat": False}
+    if not BOT_TOKEN:
+        return {"channel": True, "chat": True}  # dev-режим
+    try:
+        bot = Bot(token=BOT_TOKEN)
+        for key, chat_id in [("channel", REQUIRED_CHANNEL), ("chat", REQUIRED_CHAT)]:
+            try:
+                member = await bot.get_chat_member(chat_id=chat_id, user_id=user_id)
+                result[key] = member.status not in ("left", "kicked", "banned")
+            except Exception:
+                result[key] = False
+    except Exception:
+        pass
+    return result
+
 VALID_GAMES = ("math", "2048", "snake", "flappy")
 GAME_LABELS = {"math": "Math Master", "2048": "2048", "snake": "Snake", "flappy": "Flappy Chin"}
 
@@ -100,7 +123,7 @@ TG_GIFT_EMOJI = {
 
 def _tg_gift_label(gift_id: str) -> str:
     g = (gift_id or "").lower().strip()
-    return TG_GIFT_EMOJI.get(g, f"🎀 {gift_id}")
+    return TG_GIFT_EMOJI.get(g, gift_id or "подарок")
 # Постим в канал (он сам пересылает в связанный чат, если он есть)
 ANNOUNCE_CHATS = ["@ZeroOrOneOFF"] + \
     [c.strip() for c in os.getenv("ANNOUNCE_CHATS", "").split(",") if c.strip()]
@@ -753,6 +776,62 @@ async def api_wallet_transactions(user_id: int, limit: int = 20):
 
 # ── Referrals ───────────────────────────────────────────────────────
 
+@app.get("/api/bonuses/status/{user_id}")
+async def api_bonus_status(user_id: int):
+    sub = await _check_subscription(user_id)
+    bonuses = get_user_bonus_status(user_id)
+    checkin = get_daily_checkin_status(user_id)
+    return {
+        "subscribed_channel": sub["channel"],
+        "subscribed_chat":    sub["chat"],
+        "bonuses": bonuses,
+        "daily": checkin,
+        "config": {
+            "channel": REQUIRED_CHANNEL,
+            "chat":    REQUIRED_CHAT,
+            "channel_stars": BONUS_CHANNEL_STARS,
+            "chat_stars":    BONUS_CHAT_STARS,
+            "share_stars":   BONUS_SHARE_STARS,
+            "daily_stars":   DAILY_CHECKIN_STARS,
+        }
+    }
+
+
+@app.post("/api/bonuses/claim")
+async def api_bonus_claim(request: Request):
+    data = await request.json()
+    tg_user = require_webapp_user(request)
+    user_id    = tg_user["id"]
+    first_name = tg_user.get("first_name", "Игрок")
+    bonus_type = data.get("bonus_type", "")
+    if bonus_type not in (BONUS_CHANNEL, BONUS_CHAT, BONUS_SHARE):
+        raise HTTPException(status_code=400, detail="Unknown bonus_type")
+    # Для sub-бонусов проверяем реальную подписку
+    if bonus_type in (BONUS_CHANNEL, BONUS_CHAT):
+        sub = await _check_subscription(user_id)
+        key = "channel" if bonus_type == BONUS_CHANNEL else "chat"
+        if not sub[key]:
+            raise HTTPException(status_code=403, detail="Not subscribed")
+    result = grant_bonus(user_id, first_name, bonus_type)
+    return result
+
+
+@app.post("/api/bonuses/daily_checkin")
+async def api_daily_checkin(request: Request):
+    tg_user = require_webapp_user(request)
+    user_id    = tg_user["id"]
+    first_name = tg_user.get("first_name", "Игрок")
+    return daily_checkin(user_id, first_name)
+
+
+@app.get("/api/bonuses/check_subscription/{user_id}")
+async def api_check_subscription(user_id: int):
+    """Проверка подписки — для гейтинга доступа."""
+    sub = await _check_subscription(user_id)
+    allowed = sub["channel"] and sub["chat"]
+    return {"allowed": allowed, **sub}
+
+
 @app.get("/api/referral/stats/{user_id}")
 async def api_referral_stats(user_id: int):
     """Статистика рефералов и реферальная ссылка для пользователя."""
@@ -1023,7 +1102,7 @@ async def api_repost_reminder(request: Request):
             gid = c.get("gift_id") or ""
             prize = f'🎁 <a href="{gid}">NFT-приз</a>' if gid else "🎁 NFT-приз"
         elif c["prize_type"] == "tg_gift":
-            prize = f"🎀 Подарок Telegram ({c.get('gift_id') or '—'})"
+            prize = _tg_gift_label(c.get('gift_id') or '')
         else:
             prize = f"⭐ {c['prize_value']} Stars"
         lines.append(f"• {label} — {prize} (≈{int(left // 60)} мин)")

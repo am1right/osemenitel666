@@ -132,6 +132,23 @@
         }
         .ref-invite-btn:active { transform:scale(0.97);box-shadow:0 0 20px rgba(0,255,100,0.25); }
 
+        /* ── Бонусы ── */
+        .bonus-card { background:rgba(255,255,255,0.03);border:1px solid rgba(0,180,255,0.2);border-radius:16px;padding:16px;margin-bottom:16px; }
+        .bonus-row { display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06); }
+        .bonus-row:last-child { border-bottom:none; }
+        .bonus-icon { font-size:1.5rem;flex-shrink:0;width:36px;text-align:center; }
+        .bonus-info { flex:1;min-width:0; }
+        .bonus-title { font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;color:rgba(255,255,255,0.85);letter-spacing:0.5px; }
+        .bonus-desc { font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px; }
+        .bonus-reward { font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;color:#ffd700;white-space:nowrap; }
+        .bonus-btn { padding:7px 14px;border-radius:9px;border:none;font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;cursor:pointer;transition:all 0.15s;white-space:nowrap; }
+        .bonus-btn--claim { background:linear-gradient(135deg,#7b2ff7,#e060ff);color:#fff; }
+        .bonus-btn--done { background:rgba(0,255,100,0.1);border:1px solid rgba(0,255,100,0.3);color:#00ff64;cursor:default; }
+        .bonus-btn--sub { background:linear-gradient(135deg,#0f4c9e,#00b4ff);color:#fff; }
+        .daily-btn { width:100%;padding:13px;margin-top:12px;background:linear-gradient(135deg,rgba(255,180,0,0.15),rgba(255,120,0,0.08));border:1px solid rgba(255,180,0,0.4);border-radius:12px;font-family:'Orbitron',sans-serif;font-size:0.72rem;font-weight:700;color:#ffb400;cursor:pointer;letter-spacing:0.5px;transition:all 0.2s; }
+        .daily-btn:disabled { opacity:0.4;cursor:default; }
+        .daily-btn:active:not(:disabled) { transform:scale(0.97); }
+
         /* ── Список рефералов ── */
         .ref-list { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
         .ref-list__title { font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(0,255,100,0.5);margin-bottom:4px; }
@@ -296,6 +313,51 @@
             </div>
         </div>
 
+        <!-- Бонусы и подписки -->
+        <div class="section-title">⭐ Бонусы</div>
+        <div class="bonus-card" id="bonus-card">
+            <!-- Ежедневный вход -->
+            <div class="bonus-row">
+                <div class="bonus-icon">📅</div>
+                <div class="bonus-info">
+                    <div class="bonus-title">Ежедневный вход</div>
+                    <div class="bonus-desc">Streak: <span id="daily-streak">—</span> дн.</div>
+                </div>
+                <div class="bonus-reward">+2 ⭐</div>
+                <button class="bonus-btn daily-btn" id="daily-btn" onclick="claimDaily()" style="width:auto;margin-top:0;padding:7px 14px;">Забрать</button>
+            </div>
+            <!-- Канал -->
+            <div class="bonus-row">
+                <div class="bonus-icon">📢</div>
+                <div class="bonus-info">
+                    <div class="bonus-title">Подписка на канал</div>
+                    <div class="bonus-desc">@ZeroOrOneOFF — обязательно</div>
+                </div>
+                <div class="bonus-reward">+10 ⭐</div>
+                <button class="bonus-btn" id="bonus-channel-btn" onclick="claimBonus('sub_channel')">Получить</button>
+            </div>
+            <!-- Чат -->
+            <div class="bonus-row">
+                <div class="bonus-icon">💬</div>
+                <div class="bonus-info">
+                    <div class="bonus-title">Вступление в чат</div>
+                    <div class="bonus-desc">@zeroandonechat — обязательно</div>
+                </div>
+                <div class="bonus-reward">+10 ⭐</div>
+                <button class="bonus-btn" id="bonus-chat-btn" onclick="claimBonus('sub_chat')">Получить</button>
+            </div>
+            <!-- Поделиться -->
+            <div class="bonus-row">
+                <div class="bonus-icon">🔗</div>
+                <div class="bonus-info">
+                    <div class="bonus-title">Поделиться игрой</div>
+                    <div class="bonus-desc">Отправь другу ссылку на бота</div>
+                </div>
+                <div class="bonus-reward">+5 ⭐</div>
+                <button class="bonus-btn" id="bonus-share-btn" onclick="claimShareBonus()">Поделиться</button>
+            </div>
+        </div>
+
         <!-- Общая сводка -->
         <div class="section-title">Общая статистика</div>
         <div class="total-row">
@@ -433,6 +495,7 @@
 
         const ADMIN_USERNAMES = ['rostips', 'am1right'];
         const API = 'https://chingames.duckdns.org';
+        const BOT_USERNAME = 'chingamebot';
         const user = tg.initDataUnsafe?.user;
 
         // ── Профиль ──────────────────────────────────────────────
@@ -508,11 +571,28 @@
                     const gameIcon = `icons/${GAME_ICONS[c.game_name] || c.game_name}.png`;
                     const gameName = GAME_LABELS[c.game_name] || c.game_name;
 
+                    const TG_GIFT_EMOJI = {bear:'🐻',rose:'🌹',star:'⭐',heart:'❤️',cake:'🎂',balloon:'🎈',diamond:'💎',fire:'🔥',gift:'🎁'};
+                    function tgGiftLabel(slug) {
+                        if (!slug) return '🎁 Подарок';
+                        const s = String(slug).toLowerCase();
+                        for (const [k,v] of Object.entries(TG_GIFT_EMOJI)) { if (s.includes(k)) return v + ' ' + slug; }
+                        return '🎁 ' + slug;
+                    }
+
                     let prizeHtml = '';
                     if (c.prize_type === 'stars') {
                         prizeHtml = `<div class="contest-card__prize" style="color:#ffd700;">
                             <img src="icons/shop.png" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 0 4px rgba(255,215,0,0.6))">
                             ${c.prize_value} звёзд${c.split_prize ? ' (делится)' : ' каждому'}
+                        </div>`;
+                    } else if (c.prize_type === 'tg_gift') {
+                        const label = tgGiftLabel(c.gift_id);
+                        prizeHtml = `<div class="contest-card__prize" style="color:#e0b0ff;margin-top:6px;display:flex;align-items:center;gap:8px;">
+                            <span style="font-size:26px;line-height:1;">${label.split(' ')[0]}</span>
+                            <div>
+                                <div style="font-family:Orbitron,sans-serif;font-size:10px;font-weight:700;color:#e060ff;margin-bottom:1px;">TG-подарок</div>
+                                <div style="font-size:12px;color:rgba(255,255,255,0.7);">${label} · Топ ${c.winners_count}</div>
+                            </div>
                         </div>`;
                     } else {
                         // NFT gift — показываем превью-кнопку
@@ -948,12 +1028,95 @@
             }
         }
 
+        // ── Бонусы ──────────────────────────────────────────────────
+        async function loadBonuses() {
+            if (!user) return;
+            try {
+                const res = await fetch(`${API}/api/bonuses/status/${user.id}`);
+                const d = await res.json();
+                // Дейли
+                const dailyBtn = document.getElementById('daily-btn');
+                document.getElementById('daily-streak').textContent = d.daily.streak || 0;
+                if (d.daily.checked_in_today) {
+                    dailyBtn.textContent = '✅ Получено'; dailyBtn.disabled = true;
+                }
+                // Канал
+                const chBtn = document.getElementById('bonus-channel-btn');
+                if (d.bonuses.sub_channel) {
+                    chBtn.textContent = '✅'; chBtn.className = 'bonus-btn bonus-btn--done'; chBtn.onclick = null;
+                } else if (!d.subscribed_channel) {
+                    chBtn.textContent = 'Подписаться'; chBtn.className = 'bonus-btn bonus-btn--sub';
+                    chBtn.onclick = () => { tg.openLink('https://t.me/ZeroOrOneOFF'); setTimeout(loadBonuses, 3000); };
+                }
+                // Чат
+                const ctBtn = document.getElementById('bonus-chat-btn');
+                if (d.bonuses.sub_chat) {
+                    ctBtn.textContent = '✅'; ctBtn.className = 'bonus-btn bonus-btn--done'; ctBtn.onclick = null;
+                } else if (!d.subscribed_chat) {
+                    ctBtn.textContent = 'Вступить'; ctBtn.className = 'bonus-btn bonus-btn--sub';
+                    ctBtn.onclick = () => { tg.openLink('https://t.me/zeroandonechat'); setTimeout(loadBonuses, 3000); };
+                }
+                // Поделиться
+                const shBtn = document.getElementById('bonus-share-btn');
+                if (d.bonuses.share_game) {
+                    shBtn.textContent = '✅'; shBtn.className = 'bonus-btn bonus-btn--done'; shBtn.onclick = null;
+                }
+            } catch(e) {}
+        }
+
+        function _tgHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'X-Telegram-Init-Data': tg.initData || ''
+            };
+        }
+
+        async function claimDaily() {
+            const btn = document.getElementById('daily-btn');
+            btn.disabled = true;
+            try {
+                const res = await fetch(`${API}/api/bonuses/daily_checkin`, { method: 'POST', headers: _tgHeaders() });
+                const d = await res.json();
+                if (d.already_today) { btn.textContent = '✅ Уже получено'; return; }
+                btn.textContent = `✅ +${d.stars} ⭐`;
+                document.getElementById('daily-streak').textContent = d.streak;
+                loadWalletBalance();
+            } catch(e) { btn.disabled = false; }
+        }
+
+        async function claimBonus(type) {
+            const btnId = `bonus-${type === 'sub_channel' ? 'channel' : type === 'sub_chat' ? 'chat' : 'share'}-btn`;
+            const btn = document.getElementById(btnId);
+            btn.disabled = true;
+            try {
+                const res = await fetch(`${API}/api/bonuses/claim`, {
+                    method: 'POST',
+                    headers: _tgHeaders(),
+                    body: JSON.stringify({ bonus_type: type })
+                });
+                const d = await res.json();
+                if (d.already) { btn.textContent = '✅'; btn.className = 'bonus-btn bonus-btn--done'; return; }
+                if (!d.ok) { btn.disabled = false; btn.textContent = 'Сначала подпишись'; return; }
+                btn.textContent = `✅ +${d.stars} ⭐`; btn.className = 'bonus-btn bonus-btn--done';
+                loadWalletBalance();
+            } catch(e) { btn.disabled = false; }
+        }
+
+        async function claimShareBonus() {
+            // Сначала шарим, потом клеймим бонус
+            const shareUrl = `https://t.me/${BOT_USERNAME}?start=share`;
+            if (tg.shareUrl) tg.shareUrl(shareUrl, 'Играй в Chin Games! 🎮');
+            else if (navigator.share) navigator.share({ title: 'Chin Games', url: shareUrl }).catch(() => {});
+            await claimBonus('share_game');
+        }
+
         initProfile();
         loadWalletBalance();
         loadReferralStats();
         loadContests();
         loadStats();
         loadDurakStats();
+        loadBonuses();
 
         // Отключаем кнопку «Игры» в навигации, если пользователь забанен
         if (window.disableGamesNavIfBanned) {

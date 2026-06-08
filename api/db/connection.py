@@ -360,6 +360,24 @@ def init_db():
         )
     ''')
 
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS user_bonuses (
+            id         SERIAL PRIMARY KEY,
+            user_id    BIGINT NOT NULL,
+            bonus_type TEXT NOT NULL,
+            granted_at TIMESTAMP DEFAULT NOW(),
+            UNIQUE(user_id, bonus_type)
+        )
+    ''')
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS daily_checkins (
+            user_id      BIGINT PRIMARY KEY,
+            last_checkin DATE NOT NULL,
+            streak       INTEGER DEFAULT 1
+        )
+    ''')
+
     _purge_test_players(cur)
 
     conn.commit()
