@@ -358,6 +358,43 @@
         </a>
     </nav>
 
+    <!-- Реферальный оверлей (показывается если пришёл по ref_ ссылке и не принял политику) -->
+    <div id="ref-gate" style="display:none;position:fixed;inset:0;z-index:100000;
+        background:linear-gradient(160deg,#0d0820 0%,#1a0a35 100%);
+        flex-direction:column;align-items:center;justify-content:center;
+        padding:24px 20px;overflow-y:auto;font-family:'Orbitron',sans-serif;">
+        <div style="font-size:2.5rem;margin-bottom:12px;">🎁</div>
+        <div style="font-size:1rem;font-weight:900;color:#00ff64;text-shadow:0 0 12px rgba(0,255,100,0.6);margin-bottom:6px;">Тебя пригласил друг!</div>
+        <div style="font-size:0.78rem;color:rgba(255,255,255,0.45);margin-bottom:20px;text-align:center;">Прими правила реферальной программы и начни играть</div>
+
+        <div style="width:100%;max-width:400px;background:rgba(0,0,0,0.5);border:1px solid rgba(0,255,100,0.25);border-radius:16px;padding:16px;margin-bottom:14px;">
+            <div style="font-size:0.65rem;color:#00ff64;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">📋 Политика реферальной системы</div>
+            <div style="max-height:180px;overflow-y:auto;-webkit-overflow-scrolling:touch;" id="ref-policy-scroll">
+                <div style="font-size:0.82rem;color:rgba(255,255,255,0.7);line-height:1.5;">
+                    <p>1. Запрещено создавать несколько аккаунтов для получения наград.</p>
+                    <p>2. Запрещено использование ботов, скриптов и автоматизированного ПО.</p>
+                    <p>3. Запрещён самореферал — регистрировать себя по своей же ссылке.</p>
+                    <p>4. Награда начисляется после того, как ты <b style="color:rgba(255,255,255,0.9);">отыграешь 3 игры</b>.</p>
+                    <p>5. Администрация вправе заблокировать аккаунт при нарушении правил.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="ref-accept-row" onclick="toggleRefAccept()" style="width:100%;max-width:400px;display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(0,255,100,0.05);border:1px solid rgba(0,255,100,0.2);border-radius:10px;cursor:pointer;margin-bottom:16px;">
+            <div id="ref-accept-check" style="width:22px;height:22px;flex-shrink:0;border:2px solid rgba(0,255,100,0.4);border-radius:5px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;"></div>
+            <div style="font-size:0.82rem;color:rgba(255,255,255,0.7);">Я прочитал и принимаю <b style="color:rgba(255,255,255,0.9);">Политику реферальной системы</b></div>
+        </div>
+
+        <button id="ref-accept-btn" onclick="submitRefPolicy()" disabled style="width:100%;max-width:400px;padding:14px;background:linear-gradient(135deg,rgba(0,255,100,0.18),rgba(0,200,80,0.08));border:1px solid rgba(0,255,100,0.3);border-radius:12px;font-family:'Orbitron',sans-serif;font-size:0.75rem;font-weight:700;color:#00ff64;cursor:pointer;opacity:0.4;transition:all 0.2s;">
+            ✅ Принять и играть
+        </button>
+        <div id="ref-gate-msg" style="margin-top:10px;font-size:0.75rem;color:#ff5555;min-height:18px;text-align:center;"></div>
+
+        <div style="margin-top:16px;padding:12px 16px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.2);border-radius:10px;width:100%;max-width:400px;text-align:center;">
+            <div style="font-size:0.7rem;color:rgba(255,215,0,0.7);">🎁 Твой пригласитель получит награду когда ты отыграешь <b>3 игры</b></div>
+        </div>
+    </div>
+
     <!-- Оверлей подписки -->
     <div id="sub-gate" style="position:fixed;inset:0;z-index:99999;
         background:linear-gradient(160deg,#0d0820 0%,#1a0a35 100%);
@@ -445,6 +482,62 @@
             } catch(e) { /* сеть недоступна — пускаем, gate остаётся скрытым */ }
         }
         initSubGate();
+
+        // ── Реферальный overlay ──────────────────────────────────────
+        let _refAccepted = false;
+        function toggleRefAccept() {
+            _refAccepted = !_refAccepted;
+            const check = document.getElementById('ref-accept-check');
+            const btn = document.getElementById('ref-accept-btn');
+            check.style.background = _refAccepted ? '#00ff64' : 'transparent';
+            check.textContent = _refAccepted ? '✓' : '';
+            check.style.color = '#000';
+            check.style.fontWeight = '900';
+            btn.disabled = !_refAccepted;
+            btn.style.opacity = _refAccepted ? '1' : '0.4';
+            btn.style.cursor = _refAccepted ? 'pointer' : 'default';
+        }
+
+        async function submitRefPolicy() {
+            const uid = tg.initDataUnsafe?.user?.id;
+            if (!uid || !_refAccepted) return;
+            const btn = document.getElementById('ref-accept-btn');
+            const msg = document.getElementById('ref-gate-msg');
+            btn.disabled = true; btn.textContent = '⏳ Сохраняем…';
+            try {
+                const res = await fetch(`${API}/api/referral/accept_policy`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ invitee_id: uid, captcha_token: '' })
+                });
+                const d = await res.json();
+                if (res.ok || d.already) {
+                    document.getElementById('ref-gate').style.display = 'none';
+                } else {
+                    msg.textContent = 'Ошибка, попробуй ещё раз';
+                    btn.disabled = false; btn.textContent = '✅ Принять и играть';
+                }
+            } catch(e) {
+                msg.textContent = 'Нет соединения';
+                btn.disabled = false; btn.textContent = '✅ Принять и играть';
+            }
+        }
+
+        async function initRefGate() {
+            const uid = tg.initDataUnsafe?.user?.id;
+            const sp = tg.initDataUnsafe?.start_param || '';
+            if (!uid || !sp.startsWith('ref_')) return;
+            try {
+                const res = await fetch(`${API}/api/referral/status?invitee_id=${uid}`);
+                if (!res.ok) return;
+                const d = await res.json();
+                // Показываем только если реферал зарегистрирован но политика не принята
+                if (d.registered && !d.policy_accepted) {
+                    document.getElementById('ref-gate').style.display = 'flex';
+                }
+            } catch(e) {}
+        }
+        initRefGate();
 
         // Пригласительная ссылка (durak_lobby_X) → сразу в Дурака, минуя меню игр
         (function () {

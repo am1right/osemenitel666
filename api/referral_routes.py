@@ -130,10 +130,11 @@ try:
         Шаг 2: Принятие политики + проверка капчи.
         Вызывается с фронтенда (страница ref_policy.html).
         """
-        # Верифицируем капчу
-        captcha_ok = await verify_hcaptcha(req.captcha_token)
-        if not captcha_ok:
-            raise HTTPException(status_code=400, detail="captcha_failed")
+        # Верифицируем капчу (опционально — если токен передан)
+        if req.captcha_token:
+            captcha_ok = await verify_hcaptcha(req.captcha_token)
+            if not captcha_ok:
+                raise HTTPException(status_code=400, detail="captcha_failed")
 
         # Проверяем, есть ли такой реферал
         ref = db.get_referral_by_invitee(req.invitee_id)
