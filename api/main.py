@@ -813,7 +813,7 @@ async def api_bonus_status(user_id: int):
 @app.post("/api/bonuses/claim")
 async def api_bonus_claim(request: Request):
     data = await request.json()
-    tg_user = require_webapp_user(request)
+    tg_user = await require_webapp_user(request, request.headers.get("x-telegram-init-data"))
     user_id    = tg_user["id"]
     first_name = tg_user.get("first_name", "Игрок")
     bonus_type = data.get("bonus_type", "")
@@ -831,7 +831,7 @@ async def api_bonus_claim(request: Request):
 
 @app.post("/api/bonuses/daily_checkin")
 async def api_daily_checkin(request: Request):
-    tg_user = require_webapp_user(request)
+    tg_user = await require_webapp_user(request, request.headers.get("x-telegram-init-data"))
     user_id    = tg_user["id"]
     first_name = tg_user.get("first_name", "Игрок")
     return daily_checkin(user_id, first_name)
