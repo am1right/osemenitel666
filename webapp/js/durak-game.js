@@ -921,10 +921,12 @@
       return;
     }
     const cardStr = DRAG.cardStr;
+    // Текущая позиция клона (где карта была отпущена) — точка вылета анимации
+    const dropRect = DRAG.clone.getBoundingClientRect();
     DRAG.clone.style.display = 'none';
     const target = document.elementFromPoint(cx, cy);
     DRAG.clone.style.display = '';
-    const ok = resolveDropTarget(cardStr, target, cx, cy);
+    const ok = resolveDropTarget(cardStr, target, cx, cy, dropRect);
     if (ok) { _dragCleanup(); } else { flashInvalid(); _returnClone(); }
   }
 
@@ -965,7 +967,7 @@
 
   // ── Определяем куда упала карта и исполняем действие ─────
   // Возвращает true если ход принят
-  function resolveDropTarget(cardStr, targetEl, cx, cy) {
+  function resolveDropTarget(cardStr, targetEl, cx, cy, dropRect) {
     const s = DG.state;
     if (!s || DG.busy) return false;
 
@@ -979,7 +981,7 @@
       if (!_pointInEl(cx, cy, tableZone)) return false;
       DG.transferMode = false;
       hapticSuccess();
-      doAction('transfer', { card: cardStr });
+      doAction('transfer', { card: cardStr }, dropRect);
       return true;
     }
 
@@ -1001,7 +1003,7 @@
       }
       if (!attackCard) return false;
       hapticSuccess();
-      doAction('beat', { attack_card: attackCard, beat_card: cardStr });
+      doAction('beat', { attack_card: attackCard, beat_card: cardStr }, dropRect);
       return true;
     }
 
@@ -1011,7 +1013,7 @@
     if (!tableZone || !_pointInEl(cx, cy, tableZone)) return false;
     hapticSuccess();
     const action = s.attack_in_progress ? 'throw_in' : 'attack';
-    doAction(action, { card: cardStr });
+    doAction(action, { card: cardStr }, dropRect);
     return true;
   }
 
@@ -1083,14 +1085,15 @@
     setTimeout(() => { clone.remove(); if (tgt) tgt.style.visibility = ''; }, 280);
   }
 
-  async function doAction(action, extra) {
+  async function doAction(action, extra, flyFromRect) {
     const s = DG.state;
     if (DG.busy || !s || s.game_over) return;
     DG.busy = true;
-    // Запоминаем позицию сыгранной карты в руке ДО перерисовки
+    // Запоминаем позицию сыгранной карты ДО перерисовки.
+    // Если передан flyFromRect (drag&drop) — летим оттуда, иначе из руки.
     const playedCard = extra && (extra.card || extra.beat_card);
-    let srcRect = null;
-    if (playedCard) {
+    let srcRect = flyFromRect || null;
+    if (playedCard && !srcRect) {
       const hel = document.querySelector(`#dg-hand .dg-hand-card[data-card="${playedCard}"]`);
       if (hel) srcRect = hel.getBoundingClientRect();
     }
