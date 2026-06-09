@@ -1075,8 +1075,7 @@
   }
 
   // Анимация полёта карты к её месту на столе (FLIP клона).
-  // Если передан existingClone (drag&drop) — доводим его плавно до места,
-  // выравнивая поворот/масштаб, вместо резкой подмены новым клоном.
+  // Если передан existingClone (drag&drop) — доводим его плавно до места.
   function flyCardToTable(cardStr, fromRect, existingClone) {
     if (!fromRect) { if (existingClone) existingClone.remove(); return; }
     const tgt = document.querySelector(`#dg-table .dg-beat[data-card="${cardStr}"]`)
@@ -1088,17 +1087,25 @@
     if (!existingClone) {
       clone.style.cssText = `position:fixed;left:${fromRect.left}px;top:${fromRect.top}px;` +
         `width:${fromRect.width}px;height:${fromRect.height}px;margin:0;z-index:99999;pointer-events:none;` +
-        `transform-origin:top left;transform:scale(1) rotate(0deg);opacity:1;`;
+        `transform-origin:top left;transform:none;opacity:1;`;
       document.body.appendChild(clone);
     } else {
-      // Клон уже в drag-позиции (с возможным rotate/scale) — закрепим левый верхний угол
-      clone.style.left = fromRect.left + 'px';
-      clone.style.top  = fromRect.top + 'px';
-      clone.style.width = fromRect.width + 'px';
-      clone.style.height = fromRect.height + 'px';
+      // Сбрасываем drag-transform (scale/rotate) и фиксируем РЕАЛЬНЫЙ прямоугольник
+      // карты (без визуального наклона), чтобы анимация шла из настоящего места,
+      // а не из перекошенного bounding box.
+      clone.style.transition = 'none';
+      clone.style.transform = 'none';
+      clone.style.boxShadow = '0 4px 12px rgba(0,0,0,.4)';
+      const real = clone.getBoundingClientRect();
+      clone.style.left   = real.left + 'px';
+      clone.style.top    = real.top + 'px';
+      clone.style.width  = real.width + 'px';
+      clone.style.height = real.height + 'px';
       clone.style.transformOrigin = 'top left';
+      // force reflow перед стартом transition
+      void clone.offsetWidth;
+      fromRect = real;
     }
-    clone.style.transition = 'none';
 
     // Прячем реальную карту, пока летит клон. visibility (не opacity!) — иначе
     // её перебивает анимация появления dg-anim и видно «двойника».
@@ -1110,11 +1117,10 @@
     const sc = fromRect.width ? (to.width / fromRect.width) : 1;
 
     requestAnimationFrame(() => {
-      clone.style.transition = 'transform .32s cubic-bezier(.22,.85,.32,1.1), opacity .32s ease';
-      clone.style.transform = `translate(${dx}px,${dy}px) scale(${sc}) rotate(0deg)`;
-      clone.style.boxShadow = '0 4px 12px rgba(0,0,0,.4)';
+      clone.style.transition = 'transform .26s cubic-bezier(.25,.46,.45,.94), opacity .26s ease';
+      clone.style.transform = `translate(${dx}px,${dy}px) scale(${sc})`;
     });
-    setTimeout(() => { clone.remove(); if (tgt) tgt.style.visibility = ''; }, 340);
+    setTimeout(() => { clone.remove(); if (tgt) tgt.style.visibility = ''; }, 280);
   }
 
   async function doAction(action, extra, flyFromRect, dragClone) {
