@@ -202,6 +202,9 @@ class DurakGame:
         self.forfeited: List[int] = []            # сдавшиеся/выбывшие по отвалу (исключены из банка)
         self.durak: Optional[int] = None          # проигравший (остался с картами)
         self.game_type = game_type
+        # Переводной: защитник перевёл атаку — храним кому
+        self.transfer_target: Optional[int] = None  # кому перевели (новый защитник)
+        self.transfer_in_progress: bool = False      # идёт перевод (ожидаем новую защиту)
 
         self.deck = Deck(deck_size)
         self.hands: dict[int, List[Card]] = {}
@@ -273,6 +276,8 @@ class DurakGame:
             "attack_in_progress": self.attack_in_progress,
             "attack_finished": self.attack_finished,
             "last_action_at": self.last_action_at,
+            "transfer_target": self.transfer_target,
+            "transfer_in_progress": self.transfer_in_progress,
         }
 
     @classmethod
@@ -309,6 +314,8 @@ class DurakGame:
         g.attack_in_progress = bool(data.get("attack_in_progress", False))
         g.attack_finished = bool(data.get("attack_finished", False))
         g.last_action_at = float(data.get("last_action_at", time.time()))
+        g.transfer_target = data.get("transfer_target")
+        g.transfer_in_progress = bool(data.get("transfer_in_progress", False))
         return g
 
     def get_hand(self, player_id: int) -> List[Card]:
@@ -499,6 +506,69 @@ class DurakGame:
             self.winner = None
         return True
 
+    def can_transfer(self, player_id: int) -> bool:
+        """Может ли защитник перевести атаку (только perevodnoy)?"""
+        if self.game_type != "perevodnoy":
+            return False
+        if self.game_over:
+            return False
+        if player_id != self.current_defender:
+            return False
+        if not self.attack_in_progress:
+            return False
+        if self.transfer_in_progress:
+            return False  # уже переводится
+        # Нельзя переводить если уже отбивал карты в этом раунде
+        if any(bt is not None for _, bt in self.table):
+            return False
+        # Нужен следующий активный после текущего защитника
+        next_p = self._next_active_after(player_id)
+        if next_p is None or next_p == self.current_attacker:
+            return False  # некому переводить (2 игрока — у одного нет "следующего" кроме атакующего)
+        # У защитника должна быть карта того же ранга что хоть одна из атакующих
+        table_ranks = {atk.rank for atk, _ in self.table}
+        hand = self.hands.get(player_id, [])
+        return any(c.rank in table_ranks for c in hand)
+
+    def get_legal_transfers(self, player_id: int) -> List[Card]:
+        """Карты которыми защитник может перевести атаку."""
+        if not self.can_transfer(player_id):
+            return []
+        table_ranks = {atk.rank for atk, _ in self.table}
+        hand = self.hands.get(player_id, [])
+        return [c for c in hand if c.rank in table_ranks]
+
+    def transfer(self, player_id: int, card: Card) -> bool:
+        """
+        Переводной дурак: защитник кладёт карту того же ранга →
+        атака переходит следующему игроку, бывший защитник становится атакующим.
+        """
+        if not self.can_transfer(player_id):
+            return False
+        hand = self.hands.get(player_id, [])
+        if card not in hand:
+            return False
+        table_ranks = {atk.rank for atk, _ in self.table}
+        if card.rank not in table_ranks:
+            return False
+
+        # Кладём карту на стол как ещё одну атаку (не отбой)
+        hand.remove(card)
+        self.table.append((card, None))
+
+        # Новый защитник — следующий после текущего защитника
+        new_defender = self._next_active_after(player_id)
+        # Атакующий остаётся или переходит к бывшему защитнику
+        # В классическом переводном: бывший защитник становится атакующим
+        self.current_attacker = player_id
+        self.current_defender = new_defender
+        self.transfer_in_progress = True
+        self.transfer_target = new_defender
+        # Обнуляем wave — новый раунд подкидывания
+        self.players_who_threw_this_wave.clear()
+        self.players_who_threw_this_wave.add(player_id)
+        return True
+
     def take_table(self, player_id: int) -> bool:
         """Защищающийся забирает все карты со стола."""
         if player_id != self.current_defender:
@@ -641,6 +711,8 @@ class DurakGame:
         self.attack_in_progress = False
         self.attack_finished = False
         self.players_who_threw_this_wave.clear()
+        self.transfer_in_progress = False
+        self.transfer_target = None
 
     def _cleanup_round(self, to_discard: Optional[List[Card]] = None) -> None:
         """Общий код завершения раунда: сброс стола, добор, проверка конца игры."""
@@ -680,9 +752,10 @@ class DurakGame:
             if self.can_take_table():
                 actions.append("take_table")
             if self._get_unbeaten_count() > 0:
-                # Есть что отбивать и есть легальные биты
                 if self.get_legal_beats(player_id):
                     actions.append("beat")
+                if self.can_transfer(player_id):
+                    actions.append("transfer")
         else:
             # Атакующий или подкидывающий
             legal = self.get_legal_attacks(player_id)
@@ -912,6 +985,10 @@ class DurakGame:
                 {"attack": str(atk), "beat": str(beat)}
                 for atk, beat in self.get_legal_beats(viewer_id)
             ]
+            legal_transfers = [str(c) for c in self.get_legal_transfers(viewer_id)]
+
+        if viewer_id is None:
+            legal_transfers = []
 
         players_who_can_throw = []
         if self.attack_in_progress:
@@ -954,6 +1031,9 @@ class DurakGame:
             "allowed_actions": allowed_actions,
             "legal_attacks": legal_attacks,
             "legal_beats": legal_beats,
+            "legal_transfers": legal_transfers,
+            "transfer_in_progress": self.transfer_in_progress,
+            "transfer_target": self.transfer_target,
             "players_who_can_throw_in": players_who_can_throw,
             "players_who_already_threw_this_wave": list(self.players_who_threw_this_wave),
             "can_attack_more": self.can_attack_more(),

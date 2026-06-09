@@ -38,6 +38,7 @@
     socket: null,
     busy: false,            // защита от двойных кликов
     selectedHandCard: null, // выбранная карта руки (для отбоя защитником)
+    transferMode: false,    // режим выбора карты для перевода (perevodnoy)
     prevDeck: null,
     pollMs: 1500,
   };
@@ -206,6 +207,8 @@
     const prev = DG.state;
     DG.state = state;
     window.currentGameState = state;
+    // Сбрасываем режим перевода если мы больше не защитник
+    if (state.role !== 'defender') DG.transferMode = false;
 
     renderTopBar(state);
     updateTurnUI(state);
@@ -583,6 +586,7 @@
 
     const legalAttacks = new Set(state.legal_attacks || []);
     const beatable = new Set((state.legal_beats || []).map((b) => b.beat));
+    const legalTransfers = new Set(state.legal_transfers || []);
     const isDefender = state.role === 'defender';
 
     // Сортировка: от младшей к старшей, козыри правее всех
@@ -630,7 +634,13 @@
       card.style.transform = `translateY(${lift}px) rotate(${rot}deg)`;
       card.style.zIndex = String(10 + i);
 
-      const playable = isDefender ? beatable.has(cardStr) : legalAttacks.has(cardStr);
+      let playable;
+      if (DG.transferMode && isDefender) {
+        playable = legalTransfers.has(cardStr);
+        if (playable) card.classList.add('transfer-card');
+      } else {
+        playable = isDefender ? beatable.has(cardStr) : legalAttacks.has(cardStr);
+      }
       if (playable) card.classList.add('playable');
       else card.classList.add('dimmed');
 
@@ -653,6 +663,16 @@
     if (allowed.includes('finish_attack')) {
       bar.appendChild(makeActionBtn('Бито', 'bito', () => doAction('finish_attack')));
     }
+    if (allowed.includes('transfer')) {
+      const btn = makeActionBtn('Перевести ↪', 'transfer', () => {
+        // Включаем режим выбора карты для перевода
+        DG.transferMode = !DG.transferMode;
+        btn.classList.toggle('dg-action-active', DG.transferMode);
+        render(state);
+      });
+      if (DG.transferMode) btn.classList.add('dg-action-active');
+      bar.appendChild(btn);
+    }
     // подсказка-пас для подкидывающего, когда больше нечего делать
     if (state.role !== 'defender' &&
         state.attack_in_progress &&
@@ -661,6 +681,13 @@
       const hint = document.createElement('div');
       hint.className = 'dg-action-hint';
       hint.textContent = 'Ждём соперника…';
+      bar.appendChild(hint);
+    }
+    // подсказка при режиме перевода
+    if (DG.transferMode && (state.legal_transfers || []).length > 0) {
+      const hint = document.createElement('div');
+      hint.className = 'dg-action-hint';
+      hint.textContent = '↪ Выбери карту для перевода';
       bar.appendChild(hint);
     }
   }
@@ -701,6 +728,17 @@
     if (!s || DG.busy || s.game_over) return;
 
     if (s.role === 'defender') {
+      // Режим перевода (только perevodnoy)
+      if (DG.transferMode) {
+        const legalTransfers = new Set(s.legal_transfers || []);
+        if (legalTransfers.has(cardStr)) {
+          DG.transferMode = false;
+          doAction('transfer', { card: cardStr });
+          return;
+        }
+        flashInvalid();
+        return;
+      }
       // выбираем карту для отбоя; если ровно одна цель — бьём сразу
       DG.selectedHandCard = (DG.selectedHandCard === cardStr) ? null : cardStr;
       const targets = (s.table || [])

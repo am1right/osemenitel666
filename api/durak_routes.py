@@ -767,6 +767,15 @@ async def perform_game_action(lobby_id: int, req: GameActionRequest, tg_user: di
             success = game.finish_attack(caller_id=pid)
             message = "attack finished" if success else "cannot finish attack now"
 
+        elif action == "transfer":
+            card = _parse_card(req.card)
+            if not card:
+                raise HTTPException(status_code=400, detail="card is required for transfer")
+            if not game.can_transfer(pid):
+                raise HTTPException(status_code=400, detail="Transfer not allowed now")
+            success = game.transfer(pid, card)
+            message = "transferred" if success else "transfer failed"
+
         else:
             raise HTTPException(status_code=400, detail=f"Unknown action: {action}")
 
