@@ -189,7 +189,7 @@ class DurakGame:
     Поддерживает 2-6 игроков, 24/36/52 карты.
     """
 
-    def __init__(self, player_ids: List[int], deck_size: int = 36, game_type: str = "podkidnoy"):
+    def __init__(self, player_ids: List[int], deck_size: int = 36, game_type: str = "podkidnoy", cheating_enabled: bool = False):
         if len(player_ids) < 2 or len(player_ids) > 6:
             raise ValueError("Дурак поддерживает от 2 до 6 игроков")
         if game_type not in ("podkidnoy", "perevodnoy"):
@@ -202,6 +202,12 @@ class DurakGame:
         self.forfeited: List[int] = []            # сдавшиеся/выбывшие по отвалу (исключены из банка)
         self.durak: Optional[int] = None          # проигравший (остался с картами)
         self.game_type = game_type
+        # Шулерство: защитник может отбиться любой картой не по правилам.
+        # Если кто-то разоблачит (укажет на эту карту) — ход отменяется,
+        # и до конца текущей волны жульничать больше нельзя.
+        self.cheating_enabled = bool(cheating_enabled)
+        self.cheat_active: Optional[dict] = None   # {"attack": Card, "beat": Card} — текущий шулерский отбой, ещё не разоблачён
+        self.cheat_locked: bool = False            # True — в этой волне жульничество запрещено (поймали)
         # Переводной: защитник перевёл атаку — храним кому
         self.transfer_target: Optional[int] = None  # кому перевели (новый защитник)
         self.transfer_in_progress: bool = False      # идёт перевод (ожидаем новую защиту)
@@ -263,6 +269,7 @@ class DurakGame:
             "forfeited": self.forfeited,
             "durak": self.durak,
             "game_type": self.game_type,
+            "cheating_enabled": self.cheating_enabled,
             "deck_size": self.deck.size,
             "deck_cards": [str(c) for c in self.deck.cards],
             "trump_suit": self.trump_suit.value if self.trump_suit else None,
@@ -278,6 +285,9 @@ class DurakGame:
             "last_action_at": self.last_action_at,
             "transfer_target": self.transfer_target,
             "transfer_in_progress": self.transfer_in_progress,
+            "cheat_active": ({"attack": str(self.cheat_active["attack"]), "beat": str(self.cheat_active["beat"])}
+                             if self.cheat_active else None),
+            "cheat_locked": self.cheat_locked,
         }
 
     @classmethod
@@ -287,6 +297,7 @@ class DurakGame:
             list(data["all_player_ids"]),
             deck_size=int(data.get("deck_size", 36)),
             game_type=data.get("game_type", "podkidnoy"),
+            cheating_enabled=bool(data.get("cheating_enabled", False)),
         )
         g.player_ids = list(data["player_ids"])
         g.all_player_ids = list(data["all_player_ids"])
@@ -316,6 +327,10 @@ class DurakGame:
         g.last_action_at = float(data.get("last_action_at", time.time()))
         g.transfer_target = data.get("transfer_target")
         g.transfer_in_progress = bool(data.get("transfer_in_progress", False))
+        ca = data.get("cheat_active")
+        g.cheat_active = ({"attack": Card.from_str(ca["attack"]), "beat": Card.from_str(ca["beat"])}
+                          if ca else None)
+        g.cheat_locked = bool(data.get("cheat_locked", False))
         return g
 
     def get_hand(self, player_id: int) -> List[Card]:
@@ -436,6 +451,77 @@ class DurakGame:
 
                 defender_hand.remove(beat_card)
                 self.table[i] = (atk, beat_card)
+                return True
+
+        return False
+
+    def cheat_beat(self, player_id: int, attack_card: Card, beat_card: Card) -> bool:
+        """
+        Шулерский отбой: защитник кладёт ЛЮБУЮ карту из руки на неотбитую атаку,
+        не по правилам (не та масть/младше). Доступно только если cheating_enabled
+        и в текущей волне ещё не поймали на жульничестве (cheat_locked).
+        Если на столе уже есть неразоблачённый шулерский отбой — нельзя жульничать снова.
+        """
+        if self.game_over or not self.cheating_enabled:
+            return False
+        if self.cheat_locked or self.cheat_active is not None:
+            return False
+        if player_id != self.current_defender:
+            return False
+
+        defender_hand = self.hands.get(player_id, [])
+        if beat_card not in defender_hand:
+            return False
+
+        all_table_cards = [c for pair in self.table for c in pair if c is not None]
+        if beat_card in all_table_cards:
+            return False
+
+        unbeaten = self._get_unbeaten_count()
+        if len(defender_hand) < unbeaten:
+            return False
+
+        for i, (atk, bt) in enumerate(self.table):
+            if atk == attack_card and bt is None:
+                # Если карта на самом деле бьёт по правилам — это не шулерство, обычный отбой
+                if self._can_beat(atk, beat_card):
+                    defender_hand.remove(beat_card)
+                    self.table[i] = (atk, beat_card)
+                    return True
+
+                defender_hand.remove(beat_card)
+                self.table[i] = (atk, beat_card)
+                self.cheat_active = {"attack": atk, "beat": beat_card}
+                return True
+
+        return False
+
+    def challenge(self, challenger_id: int, attack_card: Card) -> bool:
+        """
+        Игрок указывает на карту на столе как на нелегальный отбой защитника.
+        Если это действительно шулерский отбой (cheat_active с тем же attack_card) —
+        откатываем: карта возвращается в руку защитника, отбой снимается,
+        жульничество запрещается до конца текущей волны.
+        Иначе ничего не происходит (false).
+        """
+        if self.game_over or not self.cheating_enabled:
+            return False
+        if challenger_id == self.current_defender:
+            return False
+        if challenger_id not in self.player_ids:
+            return False
+        if not self.cheat_active:
+            return False
+        if self.cheat_active["attack"] != attack_card:
+            return False
+
+        beat_card = self.cheat_active["beat"]
+        for i, (atk, bt) in enumerate(self.table):
+            if atk == attack_card and bt == beat_card:
+                self.table[i] = (atk, None)
+                self.hands.setdefault(self.current_defender, []).append(beat_card)
+                self.cheat_active = None
+                self.cheat_locked = True
                 return True
 
         return False
@@ -678,8 +764,12 @@ class DurakGame:
         legal_beats = self.get_legal_beats(defender)
         defender_cards = len(self.hands.get(defender, []))
 
+        # Шулерство: если есть карты в руке и можно подложить шулерский отбой — не форсим взятие
+        can_cheat = (self.cheating_enabled and not self.cheat_locked
+                      and self.cheat_active is None and defender_cards > 0)
+
         # Если защитнику нечем бить или у него 0 карт — он вынужден взять
-        if len(legal_beats) == 0 or defender_cards == 0:
+        if (len(legal_beats) == 0 or defender_cards == 0) and not can_cheat:
             if self.table:
                 self.take_table(defender)
                 return True
@@ -713,6 +803,8 @@ class DurakGame:
         self.players_who_threw_this_wave.clear()
         self.transfer_in_progress = False
         self.transfer_target = None
+        self.cheat_active = None
+        self.cheat_locked = False
 
     def _cleanup_round(self, to_discard: Optional[List[Card]] = None) -> None:
         """Общий код завершения раунда: сброс стола, добор, проверка конца игры."""
@@ -756,6 +848,11 @@ class DurakGame:
                     actions.append("beat")
                 if self.can_transfer(player_id):
                     actions.append("transfer")
+                # Шулерство: можно подложить любую карту, если ещё не поймали
+                # и нет неразоблачённого шулерского отбоя на столе
+                if (self.cheating_enabled and not self.cheat_locked
+                        and self.cheat_active is None and self.hands.get(player_id)):
+                    actions.append("cheat_beat")
         else:
             # Атакующий или подкидывающий
             legal = self.get_legal_attacks(player_id)
@@ -764,6 +861,9 @@ class DurakGame:
                     actions.append("attack")
                 elif self.attack_in_progress:
                     actions.append("throw_in")
+            # Шулерство: остальные могут оспорить подозрительный отбой защитника
+            if self.cheating_enabled and self.cheat_active is not None:
+                actions.append("challenge")
 
         # 'Бито' — объявляет только атакующий, когда все карты отбиты
         if player_id == self.current_attacker and self.can_finish_attack():
@@ -1015,6 +1115,7 @@ class DurakGame:
             # Реальная козырная карта (нижняя в колоде), пока колода не пуста — для отрисовки стопки
             "trump_card": str(self.deck.cards[-1]) if self.deck.cards else None,
             "game_type": self.game_type,
+            "cheating_enabled": self.cheating_enabled,
             "hands": hands,
             "table": table,
             "discard_count": len(self.discard_pile),
@@ -1034,6 +1135,8 @@ class DurakGame:
             "legal_transfers": legal_transfers,
             "transfer_in_progress": self.transfer_in_progress,
             "transfer_target": self.transfer_target,
+            "cheat_active": (str(self.cheat_active["attack"]) if self.cheat_active else None),
+            "cheat_locked": self.cheat_locked,
             "players_who_can_throw_in": players_who_can_throw,
             "players_who_already_threw_this_wave": list(self.players_who_threw_this_wave),
             "can_attack_more": self.can_attack_more(),

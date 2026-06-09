@@ -39,6 +39,7 @@
     busy: false,            // защита от двойных кликов
     selectedHandCard: null, // выбранная карта руки (для отбоя защитником)
     transferMode: false,    // режим выбора карты для перевода (perevodnoy)
+    cheatMode: false,       // режим шулерского отбоя (cheating_enabled)
     prevDeck: null,
     pollMs: 1500,
   };
@@ -209,6 +210,8 @@
     window.currentGameState = state;
     // Сбрасываем режим перевода если мы больше не защитник
     if (state.role !== 'defender') DG.transferMode = false;
+    // Сбрасываем режим шулера, если он недоступен (не наш ход / поймали / уже отбито)
+    if (!(state.allowed_actions || []).includes('cheat_beat')) DG.cheatMode = false;
 
     renderTopBar(state);
     updateTurnUI(state);
@@ -553,6 +556,14 @@
         bt.classList.add('dg-beat');
         bt.dataset.card = pair.beat;
         if (!prevBeats.has(pair.attack)) bt.classList.add('dg-anim');
+        // Шулерство: подозрительный отбой можно оспорить (кроме самого защитника)
+        if (state.cheat_active === pair.attack && state.role !== 'defender') {
+          bt.classList.add('dg-cheat-suspect');
+          bt.onclick = () => {
+            hapticSuccess();
+            doAction('challenge', { attack_card: pair.attack });
+          };
+        }
         slot.appendChild(bt);
       } else {
         atk.classList.add('unbeaten');
@@ -641,6 +652,10 @@
       if (DG.transferMode && isDefender) {
         playable = legalTransfers.has(cardStr);
         if (playable) card.classList.add('transfer-card');
+      } else if (DG.cheatMode && isDefender) {
+        // Шулерство: можно подложить любую карту
+        playable = true;
+        card.classList.add('cheat-card');
       } else {
         playable = isDefender ? beatable.has(cardStr) : legalAttacks.has(cardStr);
       }
@@ -686,6 +701,15 @@
         render(state);
       });
       if (DG.transferMode) btn.classList.add('dg-action-active');
+      bar.appendChild(btn);
+    }
+    if (allowed.includes('cheat_beat')) {
+      const btn = makeActionBtn('Шулер 🃏', 'cheat', () => {
+        DG.cheatMode = !DG.cheatMode;
+        btn.classList.toggle('dg-action-active', DG.cheatMode);
+        render(state);
+      });
+      if (DG.cheatMode) btn.classList.add('dg-action-active');
       bar.appendChild(btn);
     }
     // подсказка-пас для подкидывающего, когда больше нечего делать
@@ -869,7 +893,9 @@
     const legalTransfers = new Set(s.legal_transfers || []);
     const ok = DG.transferMode
       ? legalTransfers.has(cardStr)
-      : (isDefender ? beatable.has(cardStr) : legalAttacks.has(cardStr));
+      : (DG.cheatMode && isDefender)
+        ? true
+        : (isDefender ? beatable.has(cardStr) : legalAttacks.has(cardStr));
     if (!ok) return;
 
     const rect = srcEl.getBoundingClientRect();
@@ -999,6 +1025,23 @@
       return true;
     }
 
+    // ── Шулерский отбой (defender, cheatMode) ─────────────
+    if (isDefender && DG.cheatMode) {
+      let attackCard = null;
+      document.querySelectorAll('#dg-table .dg-attack.unbeaten').forEach(el => {
+        if (_pointInEl(cx, cy, el, 16)) attackCard = el.dataset.card;
+      });
+      if (!attackCard && tableZone && _pointInEl(cx, cy, tableZone)) {
+        const targets = (s.table || []).filter(p => !p.beat);
+        if (targets.length === 1) attackCard = targets[0].attack;
+      }
+      if (!attackCard) return false;
+      DG.cheatMode = false;
+      hapticSuccess();
+      doAction('cheat_beat', { attack_card: attackCard, beat_card: cardStr }, dropRect, dragClone);
+      return true;
+    }
+
     // ── Отбой (defender) ──────────────────────────────────
     if (isDefender) {
       // Ищем конкретную атакующую карту под точкой
@@ -1044,7 +1087,11 @@
     if (!s) return;
     const isDefender = s.role === 'defender';
 
-    if (isDefender && !DG.transferMode) {
+    if (isDefender && DG.cheatMode) {
+      document.querySelectorAll('#dg-table .dg-attack.unbeaten').forEach(el => {
+        if (_pointInEl(x, y, el, 16)) el.classList.add('drop-target');
+      });
+    } else if (isDefender && !DG.transferMode) {
       document.querySelectorAll('#dg-table .dg-attack.unbeaten').forEach(el => {
         if (_pointInEl(x, y, el, 16) && canBeat(DRAG.cardStr, el.dataset.card)) {
           el.classList.add('drop-target');

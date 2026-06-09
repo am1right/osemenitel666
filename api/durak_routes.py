@@ -395,9 +395,10 @@ async def start_game(lobby_id: int, req: StartGameRequest, tg_user: dict = Depen
         player_ids = [int(p["user_id"]) for p in players]
         deck_size = int(lobby.get("deck_size", 36))
         game_type = lobby.get("game_type", "podkidnoy")
+        cheating_enabled = bool(lobby.get("cheating_enabled", False))
 
         if player_ids:
-            game = DurakGame(player_ids, deck_size=deck_size, game_type=game_type)
+            game = DurakGame(player_ids, deck_size=deck_size, game_type=game_type, cheating_enabled=cheating_enabled)
             active_games[lobby_id] = game
             game.start_game()
             _persist(lobby_id, game)
@@ -766,6 +767,21 @@ async def perform_game_action(lobby_id: int, req: GameActionRequest, tg_user: di
             # "Бито" может объявить только атакующий
             success = game.finish_attack(caller_id=pid)
             message = "attack finished" if success else "cannot finish attack now"
+
+        elif action == "cheat_beat":
+            atk = _parse_card(req.attack_card)
+            bt = _parse_card(req.beat_card)
+            if not atk or not bt:
+                raise HTTPException(status_code=400, detail="attack_card and beat_card required for cheat_beat")
+            success = game.cheat_beat(pid, atk, bt)
+            message = "cheat beat" if success else "cheat beat failed"
+
+        elif action == "challenge":
+            atk = _parse_card(req.attack_card)
+            if not atk:
+                raise HTTPException(status_code=400, detail="attack_card required for challenge")
+            success = game.challenge(pid, atk)
+            message = "challenge succeeded" if success else "challenge failed"
 
         elif action == "transfer":
             card = _parse_card(req.card)
