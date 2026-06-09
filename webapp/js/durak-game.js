@@ -216,7 +216,10 @@
     renderDeckAndTrump(state);
     renderDiscard(state);
     renderTable(state, prev);
-    renderHand(state, prev);
+    // Пока карта в руках (drag активен) — не пересоздаём DOM руки,
+    // иначе DRAG.srcEl/clone теряют связь с актуальными элементами
+    // и карта "зависает" (это происходило каждые ~1.5с из-за поллинга).
+    if (!DRAG.active) renderHand(state, prev);
     renderActions(state);
 
     reactToChanges(state, prev);
