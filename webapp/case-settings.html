@@ -15,7 +15,6 @@
         @keyframes gridMove { 0%{transform:perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px)}100%{transform:perspective(500px) rotateX(60deg) translateY(40px) translateZ(-200px)} }
         .scroll-area { position:relative;z-index:1;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y!important;padding:16px 16px 40px; }
         html { --case-safe-top: 120px; }
-        .back-btn { display:flex;align-items:center;gap:6px;color:rgba(255,255,255,0.45);font-family:'Orbitron',sans-serif;font-size:10px;cursor:pointer;margin-bottom:20px;padding:6px 0; }
         .page-title { font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;color:#fff;text-align:center;margin-bottom:6px;text-shadow:0 0 10px rgba(188,19,254,0.6); }
         .page-sub { font-size:12px;color:rgba(255,255,255,0.4);text-align:center;margin-bottom:24px;line-height:1.5; }
         .section { background:rgba(0,0,0,0.5);border:1px solid rgba(188,19,254,0.25);border-radius:16px;padding:18px;margin-bottom:16px; }
@@ -49,7 +48,6 @@
     <div class="toast" id="toast"></div>
 
     <div class="scroll-area" id="scroll-area">
-        <div class="back-btn" onclick="history.back()">← Назад</div>
 
         <div class="page-title">📦 Настройка кейса</div>
         <div class="page-sub">NFT-подарки для случайного кейса (1000 ⭐)<br>Только для администраторов</div>
@@ -107,6 +105,14 @@
           tg.expand();
         }
         if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+
+        if (tg.BackButton) {
+            tg.BackButton.show();
+            tg.BackButton.onClick(() => {
+                tg.BackButton.hide();
+                history.back();
+            });
+        }
 
         function applyTopPadding() {
             const el = document.getElementById('scroll-area');

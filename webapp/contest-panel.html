@@ -77,8 +77,6 @@
         .cancel-btn:active { transform:scale(0.95); }
 
         /* Бэк */
-        .back-btn { display:flex;align-items:center;gap:6px;color:rgba(255,255,255,0.45);font-family:'Orbitron',sans-serif;font-size:10px;cursor:pointer;margin-bottom:20px;padding:6px 0; }
-        .back-btn:active { color:#00ffff; }
 
         /* Toast */
         .toast { position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(80px);background:rgba(0,0,0,0.9);border:1px solid rgba(0,255,255,0.3);border-radius:12px;padding:12px 20px;font-size:14px;color:#fff;z-index:9999;transition:transform 0.3s ease;white-space:nowrap; }
@@ -92,7 +90,6 @@
     <div class="toast" id="toast"></div>
 
     <div class="scroll-area" id="scroll-area">
-        <div class="back-btn" onclick="history.back()">← Назад</div>
 
         <div class="page-title">Настроить соревнование</div>
         <div class="page-sub">Только для администраторов</div>
@@ -219,6 +216,14 @@
           tg.expand();
         }
         if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+
+        if (tg.BackButton) {
+            tg.BackButton.show();
+            tg.BackButton.onClick(() => {
+                tg.BackButton.hide();
+                history.back();
+            });
+        }
 
         const API = 'https://chingames.duckdns.org';
         const ADMIN_USERNAMES = ['rostips', 'am1right'];
