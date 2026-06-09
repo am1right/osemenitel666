@@ -647,9 +647,14 @@
       if (DG.selectedHandCard === cardStr) card.classList.add('selected');
 
       if (playable) {
-        card.addEventListener('pointerdown', (e) => {
-          if (e.pointerType === 'mouse' && e.button !== 0) return;
-          dragStart(e, cardStr, card);
+        card.addEventListener('touchstart', (e) => {
+          const t = e.changedTouches[0];
+          dragStart(cardStr, card, t.clientX, t.clientY, t.identifier);
+          e.preventDefault();
+        }, { passive: false });
+        card.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) return;
+          dragStart(cardStr, card, e.clientX, e.clientY, null);
         });
       } else {
         card.addEventListener('click', () => onHandCardClick(cardStr));
@@ -805,48 +810,14 @@
   const DRAG = {
     active: false,
     cardStr: null,
-    clone: null,      // DOM-клон летит за пальцем
-    srcEl: null,      // оригинальный элемент (в руке)
-    homeRect: null,   // rect оригинала ДО тяги (для возврата)
+    clone: null,
+    srcEl: null,
+    homeRect: null,
+    touchId: null,    // Touch.identifier для фильтрации multi-touch
     startX: 0, startY: 0,
-    curX: 0, curY: 0,
     offsetX: 0, offsetY: 0,
     moved: false,
   };
-
-  // ── Хелперы позиции клона ─────────────────────────────────
-  function _clonePos(cx, cy) {
-    if (!DRAG.clone) return;
-    DRAG.clone.style.left = (cx - DRAG.offsetX) + 'px';
-    DRAG.clone.style.top  = (cy - DRAG.offsetY) + 'px';
-  }
-
-  // ── Анимированный возврат клона на место ──────────────────
-  function _returnClone() {
-    const clone = DRAG.clone;
-    const home  = DRAG.homeRect;
-    if (!clone || !home) { _dragCleanup(); return; }
-
-    // Сбрасываем все поля сразу, чтобы новый drag мог стартовать
-    DRAG.clone    = null;
-    DRAG.active   = false;
-    DRAG.cardStr  = null;
-    DRAG.homeRect = null;
-    DRAG.moved    = false;
-
-    // Включаем transition и летим обратно
-    clone.style.transition = 'left .22s cubic-bezier(.3,.8,.4,1), top .22s cubic-bezier(.3,.8,.4,1), transform .22s, opacity .22s';
-    clone.style.left      = home.left + 'px';
-    clone.style.top       = home.top  + 'px';
-    clone.style.transform = 'scale(1) rotate(0deg)';
-    clone.style.opacity   = '0.5';
-
-    setTimeout(() => {
-      clone.remove();
-      if (DRAG.srcEl) { DRAG.srcEl.style.opacity = ''; DRAG.srcEl = null; }
-      clearDropHighlights();
-    }, 230);
-  }
 
   function _dragCleanup() {
     if (DRAG.clone) { DRAG.clone.remove(); DRAG.clone = null; }
@@ -855,11 +826,32 @@
     DRAG.active   = false;
     DRAG.cardStr  = null;
     DRAG.homeRect = null;
+    DRAG.touchId  = null;
     DRAG.moved    = false;
   }
 
-  // ── dragStart (вызывается из pointerdown) ────────────────
-  function dragStart(e, cardStr, srcEl) {
+  function _returnClone() {
+    const clone = DRAG.clone;
+    const home  = DRAG.homeRect;
+    const srcEl = DRAG.srcEl;
+    // Сразу сбрасываем DRAG — новый drag может стартовать не дожидаясь анимации
+    DRAG.clone = null; DRAG.srcEl = null;
+    DRAG.active = false; DRAG.cardStr = null;
+    DRAG.homeRect = null; DRAG.touchId = null; DRAG.moved = false;
+    clearDropHighlights();
+    if (!clone) { if (srcEl) srcEl.style.opacity = ''; return; }
+    clone.style.transition = 'left .2s ease,top .2s ease,transform .2s ease,opacity .2s ease';
+    if (home) { clone.style.left = home.left + 'px'; clone.style.top = home.top + 'px'; }
+    clone.style.transform = 'scale(1) rotate(0deg)';
+    clone.style.opacity = '0.4';
+    setTimeout(() => {
+      clone.remove();
+      if (srcEl) srcEl.style.opacity = '';
+    }, 210);
+  }
+
+  // ── dragStart ─────────────────────────────────────────────
+  function dragStart(cardStr, srcEl, cx, cy, touchId) {
     const s = DG.state;
     if (!s || DG.busy || s.game_over) return;
     if (DRAG.active) _dragCleanup();
@@ -868,105 +860,93 @@
     const legalAttacks   = new Set(s.legal_attacks || []);
     const beatable       = new Set((s.legal_beats || []).map(b => b.beat));
     const legalTransfers = new Set(s.legal_transfers || []);
-    const draggable = DG.transferMode
+    const ok = DG.transferMode
       ? legalTransfers.has(cardStr)
       : (isDefender ? beatable.has(cardStr) : legalAttacks.has(cardStr));
-    if (!draggable) return;
+    if (!ok) return;
 
-    const cx = e.clientX, cy = e.clientY;
     const rect = srcEl.getBoundingClientRect();
-
     DRAG.active   = true;
     DRAG.cardStr  = cardStr;
     DRAG.srcEl    = srcEl;
+    DRAG.touchId  = touchId != null ? touchId : null;
     DRAG.homeRect = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
     DRAG.startX   = cx;
     DRAG.startY   = cy;
-    DRAG.curX     = cx;
-    DRAG.curY     = cy;
     DRAG.offsetX  = cx - rect.left;
     DRAG.offsetY  = cy - rect.top;
     DRAG.moved    = false;
 
-    // Клон — точная копия на месте оригинала
     const clone = srcEl.cloneNode(true);
-    clone.style.cssText = [
-      'position:fixed',
-      `left:${rect.left}px`,
-      `top:${rect.top}px`,
-      `width:${rect.width}px`,
-      `height:${rect.height}px`,
-      'z-index:99999',
-      'pointer-events:none',
-      'transition:none',
-      'transform:scale(1) rotate(0deg)',
-      'box-shadow:0 4px 12px rgba(0,0,0,.4)',
-      'opacity:1',
-      'margin:0',
-      'will-change:left,top,transform',
-    ].join(';');
+    clone.style.cssText =
+      `position:fixed;left:${rect.left}px;top:${rect.top}px;` +
+      `width:${rect.width}px;height:${rect.height}px;` +
+      `z-index:99999;pointer-events:none;transition:none;` +
+      `transform:scale(1.08) rotate(-3deg);` +
+      `box-shadow:0 8px 24px rgba(0,0,0,.55);opacity:1;margin:0;`;
     document.body.appendChild(clone);
     DRAG.clone = clone;
-
     srcEl.style.opacity = '0.25';
     hapticLight();
-    e.preventDefault();
   }
 
-  // ── dragMove (pointermove на srcEl) ───────────────────────
-  function dragMove(e) {
+  function _dragMove(cx, cy) {
     if (!DRAG.active || !DRAG.clone) return;
-    const cx = e.clientX, cy = e.clientY;
-    const dx = cx - DRAG.startX;
-    const dy = cy - DRAG.startY;
-
-    if (!DRAG.moved && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
-      DRAG.moved = true;
-      DRAG.clone.style.transition = 'transform .12s';
-      DRAG.clone.style.transform  = 'scale(1.15) rotate(-5deg)';
-      DRAG.clone.style.boxShadow  = '0 16px 40px rgba(0,0,0,.65)';
-      setTimeout(() => { if (DRAG.clone) DRAG.clone.style.transition = 'none'; }, 130);
+    DRAG.clone.style.left = (cx - DRAG.offsetX) + 'px';
+    DRAG.clone.style.top  = (cy - DRAG.offsetY) + 'px';
+    if (!DRAG.moved) {
+      const dx = cx - DRAG.startX, dy = cy - DRAG.startY;
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) DRAG.moved = true;
     }
-
-    DRAG.curX = cx;
-    DRAG.curY = cy;
-    _clonePos(cx, cy);
     highlightDropTarget(cx, cy);
-    e.preventDefault();
   }
 
-  // ── dragEnd (pointerup / pointercancel на srcEl) ──────────
-  function dragEnd(e) {
+  function _dragEnd(cx, cy) {
     if (!DRAG.active) return;
     clearDropHighlights();
-
     if (!DRAG.moved) {
-      const tappedCard = DRAG.cardStr;
+      const card = DRAG.cardStr;
       _dragCleanup();
-      onHandCardClick(tappedCard);
+      onHandCardClick(card);
       return;
     }
-
     const cardStr = DRAG.cardStr;
-    const cx = e.clientX, cy = e.clientY;
-
     DRAG.clone.style.display = 'none';
     const target = document.elementFromPoint(cx, cy);
     DRAG.clone.style.display = '';
-
-    const accepted = resolveDropTarget(cardStr, target, cx, cy);
-    if (accepted) {
-      _dragCleanup();
-    } else {
-      flashInvalid();
-      _returnClone();
-    }
+    const ok = resolveDropTarget(cardStr, target, cx, cy);
+    if (ok) { _dragCleanup(); } else { flashInvalid(); _returnClone(); }
   }
 
-  function dragCancel() {
+  // ── Touch handlers (на document, passive:false) ───────────
+  function _onTouchMove(e) {
+    if (!DRAG.active) return;
+    const t = DRAG.touchId != null
+      ? Array.from(e.changedTouches).find(x => x.identifier === DRAG.touchId)
+      : e.changedTouches[0];
+    if (!t) return;
+    e.preventDefault();
+    _dragMove(t.clientX, t.clientY);
+  }
+
+  function _onTouchEnd(e) {
+    if (!DRAG.active) return;
+    const t = DRAG.touchId != null
+      ? Array.from(e.changedTouches).find(x => x.identifier === DRAG.touchId)
+      : e.changedTouches[0];
+    if (!t) return;
+    e.preventDefault();
+    _dragEnd(t.clientX, t.clientY);
+  }
+
+  function _onTouchCancel(e) {
     if (!DRAG.active) return;
     _returnClone();
   }
+
+  // ── Mouse handlers (десктоп) ──────────────────────────────
+  function _onMouseMove(e) { if (DRAG.active && DRAG.touchId == null) _dragMove(e.clientX, e.clientY); }
+  function _onMouseUp(e)   { if (DRAG.active && DRAG.touchId == null) _dragEnd(e.clientX, e.clientY); }
 
   // ── Определяем куда упала карта и исполняем действие ─────
   // Возвращает true если ход принят
@@ -1052,11 +1032,12 @@
     document.getElementById('dg-table')?.classList.remove('drop-target-zone');
   }
 
-  // pointermove/pointerup висят на document — работают везде на экране без ограничений
   function initDragListeners() {
-    document.addEventListener('pointermove',   (e) => { if (DRAG.active) dragMove(e); },   { passive: false });
-    document.addEventListener('pointerup',     (e) => { if (DRAG.active) dragEnd(e); },    { passive: false });
-    document.addEventListener('pointercancel', (e) => { if (DRAG.active) dragCancel(); });
+    document.addEventListener('touchmove',   _onTouchMove,   { passive: false });
+    document.addEventListener('touchend',    _onTouchEnd,    { passive: false });
+    document.addEventListener('touchcancel', _onTouchCancel, { passive: true  });
+    document.addEventListener('mousemove',   _onMouseMove);
+    document.addEventListener('mouseup',     _onMouseUp);
   }
 
   // Анимация полёта карты от руки к её месту на столе (FLIP клона)
