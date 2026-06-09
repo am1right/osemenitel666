@@ -648,13 +648,9 @@
 
       if (playable) {
         card.addEventListener('pointerdown', (e) => {
-          if (e.button !== 0 && e.button !== undefined && e.pointerType !== 'touch') return;
+          if (e.pointerType === 'mouse' && e.button !== 0) return;
           dragStart(e, cardStr, card);
         });
-        // pointermove / pointerup / pointercancel вешаем в dragStart через setPointerCapture
-        card.addEventListener('pointermove',   dragMove);
-        card.addEventListener('pointerup',     dragEnd);
-        card.addEventListener('pointercancel', dragCancel);
       } else {
         card.addEventListener('click', () => onHandCardClick(cardStr));
       }
@@ -892,9 +888,6 @@
     DRAG.offsetY  = cy - rect.top;
     DRAG.moved    = false;
 
-    // Pointer Capture — все pointermove/pointerup идут на srcEl даже вне его bounds
-    try { srcEl.setPointerCapture(e.pointerId); } catch (_) {}
-
     // Клон — точная копия на месте оригинала
     const clone = srcEl.cloneNode(true);
     clone.style.cssText = [
@@ -1059,10 +1052,10 @@
     document.getElementById('dg-table')?.classList.remove('drop-target-zone');
   }
 
-  // Pointer Events полностью заменяют touch/mouse listeners.
-  // Все события идут на srcEl через setPointerCapture — document-level не нужны.
+  // pointermove/pointerup висят на document — работают везде на экране без ограничений
   function initDragListeners() {
-    // Запасной сброс на случай потери capture (напр. alert/focus-out)
+    document.addEventListener('pointermove',   (e) => { if (DRAG.active) dragMove(e); },   { passive: false });
+    document.addEventListener('pointerup',     (e) => { if (DRAG.active) dragEnd(e); },    { passive: false });
     document.addEventListener('pointercancel', (e) => { if (DRAG.active) dragCancel(); });
   }
 
