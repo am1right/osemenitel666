@@ -820,6 +820,8 @@
   };
 
   function _dragCleanup() {
+    document.body.style.touchAction = '';
+    document.documentElement.style.touchAction = '';
     if (DRAG.clone) { DRAG.clone.remove(); DRAG.clone = null; }
     if (DRAG.srcEl) { DRAG.srcEl.style.opacity = ''; DRAG.srcEl = null; }
     clearDropHighlights();
@@ -838,6 +840,8 @@
     DRAG.clone = null; DRAG.srcEl = null;
     DRAG.active = false; DRAG.cardStr = null;
     DRAG.homeRect = null; DRAG.touchId = null; DRAG.moved = false;
+    document.body.style.touchAction = '';
+    document.documentElement.style.touchAction = '';
     clearDropHighlights();
     if (!clone) { if (srcEl) srcEl.style.opacity = ''; return; }
     clone.style.transition = 'left .2s ease,top .2s ease,transform .2s ease,opacity .2s ease';
@@ -886,6 +890,9 @@
       `box-shadow:0 8px 24px rgba(0,0,0,.55);opacity:1;margin:0;`;
     document.body.appendChild(clone);
     DRAG.clone = clone;
+    // Запрещаем scroll на всём документе пока тянем карту
+    document.body.style.touchAction = 'none';
+    document.documentElement.style.touchAction = 'none';
     srcEl.style.opacity = '0.25';
     hapticLight();
   }
@@ -922,29 +929,30 @@
   // Вешаются на #dg-hand И на document — защита от двойного вызова через _handled флаг
   function _onTouchMove(e) {
     if (!DRAG.active) return;
-    if (e._dgHandled) return; e._dgHandled = true;
+    // touches — все активные пальцы (для move); changedTouches — только изменившиеся
+    const list = e.touches.length ? e.touches : e.changedTouches;
     const t = DRAG.touchId != null
-      ? Array.from(e.changedTouches).find(x => x.identifier === DRAG.touchId)
-      : e.changedTouches[0];
+      ? Array.from(list).find(x => x.identifier === DRAG.touchId)
+      : list[0];
     if (!t) return;
-    e.preventDefault();
+    // preventDefault блокирует scroll браузера на весь жест
+    if (e.cancelable) e.preventDefault();
     _dragMove(t.clientX, t.clientY);
   }
 
   function _onTouchEnd(e) {
     if (!DRAG.active) return;
-    if (e._dgHandled) return; e._dgHandled = true;
+    // touchend: палец ушёл — его нет в e.touches, только в changedTouches
     const t = DRAG.touchId != null
       ? Array.from(e.changedTouches).find(x => x.identifier === DRAG.touchId)
       : e.changedTouches[0];
     if (!t) return;
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     _dragEnd(t.clientX, t.clientY);
   }
 
   function _onTouchCancel(e) {
     if (!DRAG.active) return;
-    if (e._dgHandled) return; e._dgHandled = true;
     _returnClone();
   }
 
