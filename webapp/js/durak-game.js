@@ -889,10 +889,17 @@
       `position:fixed;left:${rect.left}px;top:${rect.top}px;` +
       `width:${rect.width}px;height:${rect.height}px;` +
       `z-index:99999;pointer-events:none;transition:none;` +
-      `transform:scale(1.08) rotate(-3deg);` +
-      `box-shadow:0 8px 24px rgba(0,0,0,.55);opacity:1;margin:0;`;
+      `transform:scale(1) rotate(0deg);` +
+      `box-shadow:0 4px 10px rgba(0,0,0,.3);opacity:1;margin:0;`;
     document.body.appendChild(clone);
     DRAG.clone = clone;
+    // Плавный «подъём» карты над рукой
+    requestAnimationFrame(() => {
+      clone.style.transition = 'transform .14s ease-out, box-shadow .14s ease-out';
+      clone.style.transform = 'scale(1.08) rotate(-3deg)';
+      clone.style.boxShadow = '0 8px 24px rgba(0,0,0,.55)';
+      setTimeout(() => { if (DRAG.clone === clone) clone.style.transition = 'none'; }, 150);
+    });
     // Запрещаем scroll на всём документе пока тянем карту
     document.body.style.touchAction = 'none';
     document.documentElement.style.touchAction = 'none';
@@ -923,11 +930,18 @@
     const cardStr = DRAG.cardStr;
     // Текущая позиция клона (где карта была отпущена) — точка вылета анимации
     const dropRect = DRAG.clone.getBoundingClientRect();
+    const dragClone = DRAG.clone;
     DRAG.clone.style.display = 'none';
     const target = document.elementFromPoint(cx, cy);
     DRAG.clone.style.display = '';
-    const ok = resolveDropTarget(cardStr, target, cx, cy, dropRect);
-    if (ok) { _dragCleanup(); } else { flashInvalid(); _returnClone(); }
+    const ok = resolveDropTarget(cardStr, target, cx, cy, dropRect, dragClone);
+    if (ok) {
+      // Клон передан в flyCardToTable — не удаляем здесь
+      DRAG.clone = null;
+      _dragCleanup();
+    } else {
+      flashInvalid(); _returnClone();
+    }
   }
 
   // ── Touch handlers ────────────────────────────────────────
@@ -967,7 +981,7 @@
 
   // ── Определяем куда упала карта и исполняем действие ─────
   // Возвращает true если ход принят
-  function resolveDropTarget(cardStr, targetEl, cx, cy, dropRect) {
+  function resolveDropTarget(cardStr, targetEl, cx, cy, dropRect, dragClone) {
     const s = DG.state;
     if (!s || DG.busy) return false;
 
@@ -981,7 +995,7 @@
       if (!_pointInEl(cx, cy, tableZone)) return false;
       DG.transferMode = false;
       hapticSuccess();
-      doAction('transfer', { card: cardStr }, dropRect);
+      doAction('transfer', { card: cardStr }, dropRect, dragClone);
       return true;
     }
 
@@ -1003,7 +1017,7 @@
       }
       if (!attackCard) return false;
       hapticSuccess();
-      doAction('beat', { attack_card: attackCard, beat_card: cardStr }, dropRect);
+      doAction('beat', { attack_card: attackCard, beat_card: cardStr }, dropRect, dragClone);
       return true;
     }
 
@@ -1013,7 +1027,7 @@
     if (!tableZone || !_pointInEl(cx, cy, tableZone)) return false;
     hapticSuccess();
     const action = s.attack_in_progress ? 'throw_in' : 'attack';
-    doAction(action, { card: cardStr }, dropRect);
+    doAction(action, { card: cardStr }, dropRect, dragClone);
     return true;
   }
 
@@ -1060,32 +1074,50 @@
     document.addEventListener('mouseup',     _onMouseUp,     { capture: true });
   }
 
-  // Анимация полёта карты от руки к её месту на столе (FLIP клона)
-  function flyCardToTable(cardStr, fromRect) {
-    if (!fromRect) return;
+  // Анимация полёта карты к её месту на столе (FLIP клона).
+  // Если передан existingClone (drag&drop) — доводим его плавно до места,
+  // выравнивая поворот/масштаб, вместо резкой подмены новым клоном.
+  function flyCardToTable(cardStr, fromRect, existingClone) {
+    if (!fromRect) { if (existingClone) existingClone.remove(); return; }
     const tgt = document.querySelector(`#dg-table .dg-beat[data-card="${cardStr}"]`)
              || document.querySelector(`#dg-table .dg-attack[data-card="${cardStr}"]`);
-    if (!tgt) return;
+    if (!tgt) { if (existingClone) existingClone.remove(); return; }
     const to = tgt.getBoundingClientRect();
-    const clone = createCard(cardStr);
-    clone.style.cssText = `position:fixed;left:${fromRect.left}px;top:${fromRect.top}px;` +
-      `width:${fromRect.width}px;height:${fromRect.height}px;margin:0;z-index:99999;pointer-events:none;` +
-      `transform-origin:top left;transition:transform .26s cubic-bezier(.25,.8,.3,1),opacity .26s;`;
-    document.body.appendChild(clone);
+
+    const clone = existingClone || createCard(cardStr);
+    if (!existingClone) {
+      clone.style.cssText = `position:fixed;left:${fromRect.left}px;top:${fromRect.top}px;` +
+        `width:${fromRect.width}px;height:${fromRect.height}px;margin:0;z-index:99999;pointer-events:none;` +
+        `transform-origin:top left;transform:scale(1) rotate(0deg);opacity:1;`;
+      document.body.appendChild(clone);
+    } else {
+      // Клон уже в drag-позиции (с возможным rotate/scale) — закрепим левый верхний угол
+      clone.style.left = fromRect.left + 'px';
+      clone.style.top  = fromRect.top + 'px';
+      clone.style.width = fromRect.width + 'px';
+      clone.style.height = fromRect.height + 'px';
+      clone.style.transformOrigin = 'top left';
+    }
+    clone.style.transition = 'none';
+
     // Прячем реальную карту, пока летит клон. visibility (не opacity!) — иначе
     // её перебивает анимация появления dg-anim и видно «двойника».
     tgt.classList.remove('dg-anim');
     tgt.style.animation = 'none';
     tgt.style.visibility = 'hidden';
+
     const dx = to.left - fromRect.left, dy = to.top - fromRect.top;
     const sc = fromRect.width ? (to.width / fromRect.width) : 1;
+
     requestAnimationFrame(() => {
-      clone.style.transform = `translate(${dx}px,${dy}px) scale(${sc})`;
+      clone.style.transition = 'transform .32s cubic-bezier(.22,.85,.32,1.1), opacity .32s ease';
+      clone.style.transform = `translate(${dx}px,${dy}px) scale(${sc}) rotate(0deg)`;
+      clone.style.boxShadow = '0 4px 12px rgba(0,0,0,.4)';
     });
-    setTimeout(() => { clone.remove(); if (tgt) tgt.style.visibility = ''; }, 280);
+    setTimeout(() => { clone.remove(); if (tgt) tgt.style.visibility = ''; }, 340);
   }
 
-  async function doAction(action, extra, flyFromRect) {
+  async function doAction(action, extra, flyFromRect, dragClone) {
     const s = DG.state;
     if (DG.busy || !s || s.game_over) return;
     DG.busy = true;
@@ -1108,13 +1140,18 @@
       if (!res.ok) {
         console.warn('[durak] action rejected:', data.detail || res.status);
         flashInvalid();
+        if (dragClone) dragClone.remove();
       } else if (data.state) {
         DG.selectedHandCard = null;
         render(data.state);
-        if (playedCard) flyCardToTable(playedCard, srcRect);
+        if (playedCard) flyCardToTable(playedCard, srcRect, dragClone);
+        else if (dragClone) dragClone.remove();
+      } else if (dragClone) {
+        dragClone.remove();
       }
     } catch (e) {
       console.error('[durak] action error', e);
+      if (dragClone) dragClone.remove();
     } finally {
       DG.busy = false;
     }
