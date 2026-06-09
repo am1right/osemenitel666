@@ -918,9 +918,11 @@
     if (ok) { _dragCleanup(); } else { flashInvalid(); _returnClone(); }
   }
 
-  // ── Touch handlers (на document, passive:false) ───────────
+  // ── Touch handlers ────────────────────────────────────────
+  // Вешаются на #dg-hand И на document — защита от двойного вызова через _handled флаг
   function _onTouchMove(e) {
     if (!DRAG.active) return;
+    if (e._dgHandled) return; e._dgHandled = true;
     const t = DRAG.touchId != null
       ? Array.from(e.changedTouches).find(x => x.identifier === DRAG.touchId)
       : e.changedTouches[0];
@@ -931,6 +933,7 @@
 
   function _onTouchEnd(e) {
     if (!DRAG.active) return;
+    if (e._dgHandled) return; e._dgHandled = true;
     const t = DRAG.touchId != null
       ? Array.from(e.changedTouches).find(x => x.identifier === DRAG.touchId)
       : e.changedTouches[0];
@@ -941,6 +944,7 @@
 
   function _onTouchCancel(e) {
     if (!DRAG.active) return;
+    if (e._dgHandled) return; e._dgHandled = true;
     _returnClone();
   }
 
@@ -1033,6 +1037,16 @@
   }
 
   function initDragListeners() {
+    // touchmove/touchend вешаем на #dg-hand — он ближайший стабильный предок карт.
+    // Telegram WebApp перехватывает document-level touchmove для своего scroll,
+    // но NOT-passive listener на конкретном элементе работает надёжно.
+    const hand = document.getElementById('dg-hand');
+    if (hand) {
+      hand.addEventListener('touchmove',   _onTouchMove,   { passive: false });
+      hand.addEventListener('touchend',    _onTouchEnd,    { passive: false });
+      hand.addEventListener('touchcancel', _onTouchCancel, { passive: true  });
+    }
+    // touchend/touchcancel может прийти вне hand (палец ушёл на стол) — дублируем на document
     document.addEventListener('touchmove',   _onTouchMove,   { passive: false });
     document.addEventListener('touchend',    _onTouchEnd,    { passive: false });
     document.addEventListener('touchcancel', _onTouchCancel, { passive: true  });
