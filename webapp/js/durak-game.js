@@ -646,15 +646,18 @@
 
       if (DG.selectedHandCard === cardStr) card.classList.add('selected');
 
-      // Drag start (touch + mouse)
       if (playable) {
-        card.addEventListener('touchstart', (e) => dragStart(e, cardStr, card), { passive: false });
-        card.addEventListener('mousedown',  (e) => { if (e.button === 0) dragStart(e, cardStr, card); });
+        card.addEventListener('pointerdown', (e) => {
+          if (e.button !== 0 && e.button !== undefined && e.pointerType !== 'touch') return;
+          dragStart(e, cardStr, card);
+        });
+        // pointermove / pointerup / pointercancel вешаем в dragStart через setPointerCapture
+        card.addEventListener('pointermove',   dragMove);
+        card.addEventListener('pointerup',     dragEnd);
+        card.addEventListener('pointercancel', dragCancel);
+      } else {
+        card.addEventListener('click', () => onHandCardClick(cardStr));
       }
-      // Tap fallback (для недоступных карт — просто клик)
-      card.addEventListener('click', () => {
-        if (!DRAG.moved && !DRAG.active) onHandCardClick(cardStr);
-      });
       handEl.appendChild(card);
     });
   }
@@ -806,14 +809,13 @@
   const DRAG = {
     active: false,
     cardStr: null,
-    clone: null,          // DOM-клон летит за пальцем
-    srcEl: null,          // оригинальный элемент (в руке)
-    homeRect: null,       // rect оригинала ДО начала тяги (для возврата)
+    clone: null,      // DOM-клон летит за пальцем
+    srcEl: null,      // оригинальный элемент (в руке)
+    homeRect: null,   // rect оригинала ДО тяги (для возврата)
     startX: 0, startY: 0,
     curX: 0, curY: 0,
     offsetX: 0, offsetY: 0,
     moved: false,
-    timeoutId: null,      // страховочный таймер — авто-отмена если touchend потерян
   };
 
   // ── Хелперы позиции клона ─────────────────────────────────
@@ -830,7 +832,6 @@
     if (!clone || !home) { _dragCleanup(); return; }
 
     // Сбрасываем все поля сразу, чтобы новый drag мог стартовать
-    if (DRAG.timeoutId) { clearTimeout(DRAG.timeoutId); DRAG.timeoutId = null; }
     DRAG.clone    = null;
     DRAG.active   = false;
     DRAG.cardStr  = null;
@@ -852,7 +853,6 @@
   }
 
   function _dragCleanup() {
-    if (DRAG.timeoutId) { clearTimeout(DRAG.timeoutId); DRAG.timeoutId = null; }
     if (DRAG.clone) { DRAG.clone.remove(); DRAG.clone = null; }
     if (DRAG.srcEl) { DRAG.srcEl.style.opacity = ''; DRAG.srcEl = null; }
     clearDropHighlights();
@@ -862,14 +862,13 @@
     DRAG.moved    = false;
   }
 
-  // ── dragStart ─────────────────────────────────────────────
+  // ── dragStart (вызывается из pointerdown) ────────────────
   function dragStart(e, cardStr, srcEl) {
     const s = DG.state;
     if (!s || DG.busy || s.game_over) return;
-    // Если предыдущий drag завис — принудительно сбросить
     if (DRAG.active) _dragCleanup();
 
-    const isDefender = s.role === 'defender';
+    const isDefender     = s.role === 'defender';
     const legalAttacks   = new Set(s.legal_attacks || []);
     const beatable       = new Set((s.legal_beats || []).map(b => b.beat));
     const legalTransfers = new Set(s.legal_transfers || []);
@@ -878,21 +877,23 @@
       : (isDefender ? beatable.has(cardStr) : legalAttacks.has(cardStr));
     if (!draggable) return;
 
-    const touch = e.touches ? e.touches[0] : e;
-    const rect  = srcEl.getBoundingClientRect();
+    const cx = e.clientX, cy = e.clientY;
+    const rect = srcEl.getBoundingClientRect();
 
     DRAG.active   = true;
     DRAG.cardStr  = cardStr;
     DRAG.srcEl    = srcEl;
     DRAG.homeRect = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
-    DRAG.startX   = touch.clientX;
-    DRAG.startY   = touch.clientY;
-    DRAG.curX     = touch.clientX;
-    DRAG.curY     = touch.clientY;
-    // Захват — пальцем не обязательно в центр, берём откуда нажал
-    DRAG.offsetX  = touch.clientX - rect.left;
-    DRAG.offsetY  = touch.clientY - rect.top;
+    DRAG.startX   = cx;
+    DRAG.startY   = cy;
+    DRAG.curX     = cx;
+    DRAG.curY     = cy;
+    DRAG.offsetX  = cx - rect.left;
+    DRAG.offsetY  = cy - rect.top;
     DRAG.moved    = false;
+
+    // Pointer Capture — все pointermove/pointerup идут на srcEl даже вне его bounds
+    try { srcEl.setPointerCapture(e.pointerId); } catch (_) {}
 
     // Клон — точная копия на месте оригинала
     const clone = srcEl.cloneNode(true);
@@ -914,55 +915,39 @@
     document.body.appendChild(clone);
     DRAG.clone = clone;
 
-    // Клон сам ловит touchend/touchcancel — на случай если document-listener не сработает
-    clone.style.pointerEvents = 'none'; // клон не блокирует hit-test
-    // Слушаем на srcEl напрямую (он под пальцем до первого движения)
-    srcEl.addEventListener('touchend',    dragEnd,      { once: true, passive: false });
-    srcEl.addEventListener('touchcancel', _dragCleanup, { once: true });
-
-    // Страховочный таймер: если через 8 сек touchend так и не пришёл — отмена
-    DRAG.timeoutId = setTimeout(() => {
-      if (DRAG.active) _returnClone();
-    }, 8000);
-
-    // Оригинал — полупрозрачный «слот»
     srcEl.style.opacity = '0.25';
-
     hapticLight();
-    if (e.cancelable) e.preventDefault();
+    e.preventDefault();
   }
 
-  // ── dragMove ──────────────────────────────────────────────
+  // ── dragMove (pointermove на srcEl) ───────────────────────
   function dragMove(e) {
     if (!DRAG.active || !DRAG.clone) return;
-    const touch = e.touches ? e.touches[0] : e;
-    const dx = touch.clientX - DRAG.startX;
-    const dy = touch.clientY - DRAG.startY;
+    const cx = e.clientX, cy = e.clientY;
+    const dx = cx - DRAG.startX;
+    const dy = cy - DRAG.startY;
 
     if (!DRAG.moved && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
       DRAG.moved = true;
-      // Карта «поднимается» при первом движении
       DRAG.clone.style.transition = 'transform .12s';
       DRAG.clone.style.transform  = 'scale(1.15) rotate(-5deg)';
       DRAG.clone.style.boxShadow  = '0 16px 40px rgba(0,0,0,.65)';
       setTimeout(() => { if (DRAG.clone) DRAG.clone.style.transition = 'none'; }, 130);
     }
 
-    DRAG.curX = touch.clientX;
-    DRAG.curY = touch.clientY;
-    _clonePos(touch.clientX, touch.clientY);
-    highlightDropTarget(touch.clientX, touch.clientY);
-    if (e.cancelable) e.preventDefault();
+    DRAG.curX = cx;
+    DRAG.curY = cy;
+    _clonePos(cx, cy);
+    highlightDropTarget(cx, cy);
+    e.preventDefault();
   }
 
-  // ── dragEnd ───────────────────────────────────────────────
+  // ── dragEnd (pointerup / pointercancel на srcEl) ──────────
   function dragEnd(e) {
     if (!DRAG.active) return;
-    const touch = e.changedTouches ? e.changedTouches[0] : e;
     clearDropHighlights();
 
     if (!DRAG.moved) {
-      // Короткий тап — клик
       const tappedCard = DRAG.cardStr;
       _dragCleanup();
       onHandCardClick(tappedCard);
@@ -970,23 +955,24 @@
     }
 
     const cardStr = DRAG.cardStr;
-    const cx = touch.clientX, cy = touch.clientY;
+    const cx = e.clientX, cy = e.clientY;
 
-    // Временно скрываем клон, чтобы elementFromPoint работал без помех
     DRAG.clone.style.display = 'none';
     const target = document.elementFromPoint(cx, cy);
     DRAG.clone.style.display = '';
 
     const accepted = resolveDropTarget(cardStr, target, cx, cy);
     if (accepted) {
-      // Карта принята — быстрый fly-to-table, потом cleanup
       _dragCleanup();
     } else {
-      // Промах — возвращаем карту обратно в руку
       flashInvalid();
       _returnClone();
-      if (DRAG.srcEl) { DRAG.srcEl.style.opacity = ''; }
     }
+  }
+
+  function dragCancel() {
+    if (!DRAG.active) return;
+    _returnClone();
   }
 
   // ── Определяем куда упала карта и исполняем действие ─────
@@ -1073,13 +1059,11 @@
     document.getElementById('dg-table')?.classList.remove('drop-target-zone');
   }
 
-  // Глобальные слушатели drag (touch + mouse)
+  // Pointer Events полностью заменяют touch/mouse listeners.
+  // Все события идут на srcEl через setPointerCapture — document-level не нужны.
   function initDragListeners() {
-    document.addEventListener('touchmove',   dragMove,   { passive: false });
-    document.addEventListener('touchend',    dragEnd,    { passive: false });
-    document.addEventListener('touchcancel', _dragCleanup);
-    document.addEventListener('mousemove', (e) => { if (DRAG.active) dragMove(e); });
-    document.addEventListener('mouseup',   (e) => { if (DRAG.active) dragEnd(e); });
+    // Запасной сброс на случай потери capture (напр. alert/focus-out)
+    document.addEventListener('pointercancel', (e) => { if (DRAG.active) dragCancel(); });
   }
 
   // Анимация полёта карты от руки к её месту на столе (FLIP клона)
