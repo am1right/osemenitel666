@@ -828,9 +828,12 @@
     const home  = DRAG.homeRect;
     if (!clone || !home) { _dragCleanup(); return; }
 
-    // Сбрасываем ссылки, чтобы cleanup не удалил раньше
-    DRAG.clone = null;
-    DRAG.active = false;
+    // Сбрасываем все поля сразу, чтобы новый drag мог стартовать
+    DRAG.clone    = null;
+    DRAG.active   = false;
+    DRAG.cardStr  = null;
+    DRAG.homeRect = null;
+    DRAG.moved    = false;
 
     // Включаем transition и летим обратно
     clone.style.transition = 'left .22s cubic-bezier(.3,.8,.4,1), top .22s cubic-bezier(.3,.8,.4,1), transform .22s, opacity .22s';
@@ -860,7 +863,8 @@
   function dragStart(e, cardStr, srcEl) {
     const s = DG.state;
     if (!s || DG.busy || s.game_over) return;
-    if (DRAG.active) return;            // защита от двойного старта
+    // Если предыдущий drag завис — принудительно сбросить
+    if (DRAG.active) _dragCleanup();
 
     const isDefender = s.role === 'defender';
     const legalAttacks   = new Set(s.legal_attacks || []);
