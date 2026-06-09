@@ -1037,21 +1037,14 @@
   }
 
   function initDragListeners() {
-    // touchmove/touchend вешаем на #dg-hand — он ближайший стабильный предок карт.
-    // Telegram WebApp перехватывает document-level touchmove для своего scroll,
-    // но NOT-passive listener на конкретном элементе работает надёжно.
-    const hand = document.getElementById('dg-hand');
-    if (hand) {
-      hand.addEventListener('touchmove',   _onTouchMove,   { passive: false });
-      hand.addEventListener('touchend',    _onTouchEnd,    { passive: false });
-      hand.addEventListener('touchcancel', _onTouchCancel, { passive: true  });
-    }
-    // touchend/touchcancel может прийти вне hand (палец ушёл на стол) — дублируем на document
-    document.addEventListener('touchmove',   _onTouchMove,   { passive: false });
-    document.addEventListener('touchend',    _onTouchEnd,    { passive: false });
-    document.addEventListener('touchcancel', _onTouchCancel, { passive: true  });
-    document.addEventListener('mousemove',   _onMouseMove);
-    document.addEventListener('mouseup',     _onMouseUp);
+    // capture:true — срабатывает ДО любых других listeners (включая Telegram WebApp scroll)
+    // passive:false — позволяет preventDefault() на touchmove
+    const opts = { capture: true, passive: false };
+    document.addEventListener('touchmove',   _onTouchMove,   opts);
+    document.addEventListener('touchend',    _onTouchEnd,    { capture: true, passive: false });
+    document.addEventListener('touchcancel', _onTouchCancel, { capture: true, passive: true });
+    document.addEventListener('mousemove',   _onMouseMove,   { capture: true });
+    document.addEventListener('mouseup',     _onMouseUp,     { capture: true });
   }
 
   // Анимация полёта карты от руки к её месту на столе (FLIP клона)
