@@ -383,6 +383,20 @@
         .dg-hand-card.transfer-card {
             filter: drop-shadow(0 0 6px rgba(240,165,0,0.9));
         }
+        /* Drag & Drop — подсветка целей */
+        #dg-table .dg-attack.drop-target {
+            outline: 3px solid #00ff88;
+            outline-offset: 3px;
+            filter: brightness(1.3) drop-shadow(0 0 10px rgba(0,255,136,0.8));
+        }
+        #dg-table.drop-target-zone {
+            background: rgba(0,255,136,0.08);
+            outline: 2px dashed rgba(0,255,136,0.5);
+            outline-offset: -4px;
+            border-radius: 12px;
+        }
+        /* Тянущаяся карта — убираем выделение текста */
+        .dg-hand-card { user-select: none; -webkit-user-select: none; }
         .dg-action-hint {
             font-size: 0.82rem;
             color: rgba(255,255,255,0.55);
