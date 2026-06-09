@@ -393,16 +393,9 @@
         .dg-hand-card.cheat-card {
             filter: drop-shadow(0 0 6px rgba(255,255,255,0.6));
         }
-        /* Шулерство: подозрительный отбой можно оспорить кликом */
+        /* Шулерство: карта кликабельна для оспаривания, но визуально не выделяется */
         #dg-table .dg-beat.dg-cheat-suspect {
             cursor: pointer;
-            outline: 2px dashed rgba(255,80,80,0.8);
-            outline-offset: 2px;
-            animation: dgCheatPulse 1s ease-in-out infinite;
-        }
-        @keyframes dgCheatPulse {
-            0%, 100% { filter: brightness(1); }
-            50% { filter: brightness(1.25) drop-shadow(0 0 8px rgba(255,80,80,0.8)); }
         }
         /* Drag & Drop — подсветка целей */
         #dg-table .dg-attack.drop-target {
