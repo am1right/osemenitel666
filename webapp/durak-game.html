@@ -563,6 +563,19 @@
                 }).catch(() => {});
         })();
 
+        // Глобальные блокировки для нормального drag&drop в Telegram WebApp
+        (function () {
+            const tg = window.Telegram?.WebApp;
+            if (tg) {
+                try { tg.disableVerticalSwipes?.(); } catch(e) {}
+                try { tg.expand?.(); } catch(e) {}
+            }
+            // Запрет контекстного меню (долгое нажатие на iOS) — иначе перехватывает touch
+            document.addEventListener('contextmenu', (e) => e.preventDefault());
+            // Запрет выделения текста при drag
+            document.addEventListener('selectstart', (e) => { if (DRAG && DRAG.active) e.preventDefault(); });
+        })();
+
         // Верхний отступ под шапку Telegram (как в shop/profile) — чтобы соперник не обрезался
         (function () {
             const tg = window.Telegram?.WebApp;

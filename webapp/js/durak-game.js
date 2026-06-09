@@ -653,7 +653,7 @@
       }
       // Tap fallback (для недоступных карт — просто клик)
       card.addEventListener('click', () => {
-        if (!DRAG.moved || !DRAG.active) onHandCardClick(cardStr);
+        if (!DRAG.moved && !DRAG.active) onHandCardClick(cardStr);
       });
       handEl.appendChild(card);
     });
@@ -813,6 +813,7 @@
     curX: 0, curY: 0,
     offsetX: 0, offsetY: 0,
     moved: false,
+    timeoutId: null,      // страховочный таймер — авто-отмена если touchend потерян
   };
 
   // ── Хелперы позиции клона ─────────────────────────────────
@@ -829,6 +830,7 @@
     if (!clone || !home) { _dragCleanup(); return; }
 
     // Сбрасываем все поля сразу, чтобы новый drag мог стартовать
+    if (DRAG.timeoutId) { clearTimeout(DRAG.timeoutId); DRAG.timeoutId = null; }
     DRAG.clone    = null;
     DRAG.active   = false;
     DRAG.cardStr  = null;
@@ -850,6 +852,7 @@
   }
 
   function _dragCleanup() {
+    if (DRAG.timeoutId) { clearTimeout(DRAG.timeoutId); DRAG.timeoutId = null; }
     if (DRAG.clone) { DRAG.clone.remove(); DRAG.clone = null; }
     if (DRAG.srcEl) { DRAG.srcEl.style.opacity = ''; DRAG.srcEl = null; }
     clearDropHighlights();
@@ -910,6 +913,17 @@
     ].join(';');
     document.body.appendChild(clone);
     DRAG.clone = clone;
+
+    // Клон сам ловит touchend/touchcancel — на случай если document-listener не сработает
+    clone.style.pointerEvents = 'none'; // клон не блокирует hit-test
+    // Слушаем на srcEl напрямую (он под пальцем до первого движения)
+    srcEl.addEventListener('touchend',    dragEnd,      { once: true, passive: false });
+    srcEl.addEventListener('touchcancel', _dragCleanup, { once: true });
+
+    // Страховочный таймер: если через 8 сек touchend так и не пришёл — отмена
+    DRAG.timeoutId = setTimeout(() => {
+      if (DRAG.active) _returnClone();
+    }, 8000);
 
     // Оригинал — полупрозрачный «слот»
     srcEl.style.opacity = '0.25';
