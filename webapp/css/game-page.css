@@ -1,3 +1,10 @@
+/* Отступ сверху как на остальных страницах (.container padding:20px) */
+#start-screen.game-container,
+#game-screen.game-container,
+#end-screen.game-container {
+    padding-top: max(20px, env(safe-area-inset-top, 0px)) !important;
+}
+
 /* ========== Общий вид стартового экрана игр ========== */
 .game-header {
     background: rgba(0,0,0,0.6);
