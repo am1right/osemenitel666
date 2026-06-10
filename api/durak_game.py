@@ -208,6 +208,10 @@ class DurakGame:
         self.cheating_enabled = bool(cheating_enabled)
         self.cheat_active: Optional[dict] = None   # {"attack": Card, "beat": Card} — текущий шулерский отбой, ещё не разоблачён
         self.cheat_locked: bool = False            # True — в этой волне жульничество запрещено (поймали)
+
+        # Подсказки: по умолчанию выключены (не подсвечиваются легальные ходы).
+        # Игрок может купить себе подсказки за Stars — действует до конца партии.
+        self.hints_purchased: set[int] = set()
         # Переводной: защитник перевёл атаку — храним кому
         self.transfer_target: Optional[int] = None  # кому перевели (новый защитник)
         self.transfer_in_progress: bool = False      # идёт перевод (ожидаем новую защиту)
@@ -288,6 +292,7 @@ class DurakGame:
             "cheat_active": ({"attack": str(self.cheat_active["attack"]), "beat": str(self.cheat_active["beat"])}
                              if self.cheat_active else None),
             "cheat_locked": self.cheat_locked,
+            "hints_purchased": list(self.hints_purchased),
         }
 
     @classmethod
@@ -331,6 +336,7 @@ class DurakGame:
         g.cheat_active = ({"attack": Card.from_str(ca["attack"]), "beat": Card.from_str(ca["beat"])}
                           if ca else None)
         g.cheat_locked = bool(data.get("cheat_locked", False))
+        g.hints_purchased = set(int(x) for x in data.get("hints_purchased", []))
         return g
 
     def get_hand(self, player_id: int) -> List[Card]:
@@ -454,6 +460,15 @@ class DurakGame:
                 return True
 
         return False
+
+    def purchase_hints(self, player_id: int) -> bool:
+        """Включает подсказки для игрока до конца партии."""
+        if player_id not in self.player_ids:
+            return False
+        if player_id in self.hints_purchased:
+            return False
+        self.hints_purchased.add(player_id)
+        return True
 
     def cheat_beat(self, player_id: int, attack_card: Card, beat_card: Card) -> bool:
         """
@@ -1137,6 +1152,7 @@ class DurakGame:
             "transfer_target": self.transfer_target,
             "cheat_active": (str(self.cheat_active["attack"]) if self.cheat_active else None),
             "cheat_locked": self.cheat_locked,
+            "hints_enabled": (viewer_id in self.hints_purchased) if viewer_id is not None else False,
             "players_who_can_throw_in": players_who_can_throw,
             "players_who_already_threw_this_wave": list(self.players_who_threw_this_wave),
             "can_attack_more": self.can_attack_more(),

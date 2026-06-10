@@ -568,7 +568,7 @@
       } else {
         atk.classList.add('unbeaten');
         // если защитник выбрал карту руки — подсветить, куда можно положить
-        if (DG.selectedHandCard && canBeat(DG.selectedHandCard, pair.attack)) {
+        if (state.hints_enabled && DG.selectedHandCard && canBeat(DG.selectedHandCard, pair.attack)) {
           atk.classList.add('beatable');
         }
         atk.onclick = () => onAttackSlotClick(pair.attack);
@@ -656,6 +656,10 @@
         // Шулерство: можно подложить любую карту
         playable = true;
         card.classList.add('cheat-card');
+      } else if (!state.hints_enabled) {
+        // Подсказки выключены: все карты выглядят одинаково доступными,
+        // легальность по-прежнему проверяет сервер
+        playable = true;
       } else {
         playable = isDefender ? beatable.has(cardStr) : legalAttacks.has(cardStr);
       }
@@ -702,6 +706,9 @@
       });
       if (DG.transferMode) btn.classList.add('dg-action-active');
       bar.appendChild(btn);
+    }
+    if (!state.hints_enabled) {
+      bar.appendChild(makeActionBtn('Подсказки 5⭐', 'hints', () => buyHints()));
     }
     if (allowed.includes('cheat_beat')) {
       const btn = makeActionBtn('Шулер 🃏', 'cheat', () => {
@@ -895,7 +902,9 @@
       ? legalTransfers.has(cardStr)
       : (DG.cheatMode && isDefender)
         ? true
-        : (isDefender ? beatable.has(cardStr) : legalAttacks.has(cardStr));
+        : !s.hints_enabled
+          ? true
+          : (isDefender ? beatable.has(cardStr) : legalAttacks.has(cardStr));
     if (!ok) return;
 
     const rect = srcEl.getBoundingClientRect();
@@ -1044,17 +1053,18 @@
 
     // ── Отбой (defender) ──────────────────────────────────
     if (isDefender) {
+      const fits = (atk) => s.hints_enabled ? canBeat(cardStr, atk) : true;
       // Ищем конкретную атакующую карту под точкой
       let attackCard = null;
       document.querySelectorAll('#dg-table .dg-attack.unbeaten').forEach(el => {
-        if (_pointInEl(cx, cy, el, 16) && canBeat(cardStr, el.dataset.card)) {
+        if (_pointInEl(cx, cy, el, 16) && fits(el.dataset.card)) {
           attackCard = el.dataset.card;
         }
       });
       if (!attackCard) {
         // Бросили в зону стола — если одна незакрытая
         if (tableZone && _pointInEl(cx, cy, tableZone)) {
-          const targets = (s.table || []).filter(p => !p.beat && canBeat(cardStr, p.attack));
+          const targets = (s.table || []).filter(p => !p.beat && fits(p.attack));
           if (targets.length === 1) attackCard = targets[0].attack;
         }
       }
@@ -1066,7 +1076,7 @@
 
     // ── Атака / подкидывание ──────────────────────────────
     const legal = new Set(s.legal_attacks || []);
-    if (!legal.has(cardStr)) return false;
+    if (s.hints_enabled && !legal.has(cardStr)) return false;
     if (!tableZone || !_pointInEl(cx, cy, tableZone)) return false;
     hapticSuccess();
     const action = s.attack_in_progress ? 'throw_in' : 'attack';
@@ -1093,7 +1103,8 @@
       });
     } else if (isDefender && !DG.transferMode) {
       document.querySelectorAll('#dg-table .dg-attack.unbeaten').forEach(el => {
-        if (_pointInEl(x, y, el, 16) && canBeat(DRAG.cardStr, el.dataset.card)) {
+        const fits = s.hints_enabled ? canBeat(DRAG.cardStr, el.dataset.card) : true;
+        if (_pointInEl(x, y, el, 16) && fits) {
           el.classList.add('drop-target');
         }
       });
@@ -1210,6 +1221,29 @@
     }
   }
   window.performDurakAction = (action, extra) => doAction(action, extra);
+
+  async function buyHints() {
+    if (DG.busy) return;
+    DG.busy = true;
+    try {
+      const res = await api(`/api/durak/lobbies/${DG.lobbyId}/buy-hints`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: DG.userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 402 && data.detail) window.offerTopUp(data.detail);
+        else flashInvalid();
+      } else if (data.state) {
+        render(data.state);
+      }
+    } catch (e) {
+      console.error('[durak] buyHints error', e);
+    } finally {
+      DG.busy = false;
+    }
+  }
 
   // ════════════════════════════════════════════════════════════
   //  ЗАГРУЗКА / ПОЛЛИНГ / WS

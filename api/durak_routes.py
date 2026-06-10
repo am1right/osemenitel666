@@ -469,6 +469,7 @@ def _parse_card(s: Optional[str]) -> Optional[Card]:
 
 DURAK_COMMISSION_RATE = 0.05  # комиссия с банка при выплате победителю
 TURN_TIMEOUT_SEC = 60         # таймаут хода: после него — авто-действие
+DURAK_HINTS_PRICE = 5         # цена подсказок (подсветка легальных ходов) за Stars, на партию
 
 
 def _apply_turn_timeout(game, force: bool = False):
@@ -825,6 +826,39 @@ async def perform_game_action(lobby_id: int, req: GameActionRequest, tg_user: di
         "success": success,
         "message": message,
         "state": new_state
+    }
+
+
+@router.post("/lobbies/{lobby_id}/buy-hints")
+async def buy_hints(lobby_id: int, req: StartGameRequest, tg_user: dict = Depends(require_webapp_user)):
+    """Покупка подсказок (подсветка легальных ходов) за Stars — лично для игрока, до конца партии."""
+    game = _get_game(lobby_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found or not started")
+
+    pid = int(tg_user["id"])
+    if pid not in game.player_ids:
+        raise HTTPException(status_code=403, detail="You are not a participant in this game")
+
+    if pid in game.hints_purchased:
+        return {"status": "ok", "already_purchased": True, "state": game.get_full_game_state(viewer_id=pid)}
+
+    wallet_result = db.spend_wallet(pid, DURAK_HINTS_PRICE, f"Подсказки в Дураке (лобби #{lobby_id})")
+    if not wallet_result.get("ok"):
+        raise HTTPException(status_code=402, detail={
+            "reason": "insufficient_funds",
+            "need": DURAK_HINTS_PRICE,
+            "balance": wallet_result.get("balance", 0),
+            "short": wallet_result.get("short", DURAK_HINTS_PRICE),
+        })
+
+    game.purchase_hints(pid)
+    _persist(lobby_id, game)
+
+    return {
+        "status": "ok",
+        "balance": wallet_result.get("balance"),
+        "state": game.get_full_game_state(viewer_id=pid),
     }
 
 
