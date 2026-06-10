@@ -45,7 +45,7 @@
     border-radius: 12px;
     padding: 15px;
     margin-top: 25px;
-    margin-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+    margin-bottom: calc(45px + env(safe-area-inset-bottom, 0px));
 }
 .leaderboard-mini h3 {
     margin: 0 0 12px 0;
