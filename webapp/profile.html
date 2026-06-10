@@ -10,6 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="durak-card.css">
+    <link rel="stylesheet" href="css/navbar.css">
     <style>
         * { user-select:none!important;-webkit-user-select:none!important;-webkit-tap-highlight-color:transparent!important;-webkit-touch-callout:none!important;box-sizing:border-box; }
         html,body { overscroll-behavior:none!important;touch-action:none!important;overflow:hidden!important;height:100%!important;position:fixed!important;width:100%!important;margin:0!important;padding:0!important; }
@@ -210,14 +211,6 @@
         .contest-card__timer { font-family:'Orbitron',sans-serif;font-size:11px;color:#00ffff; }
 
         /* ── Navbar ── */
-        .chin-navbar { position:fixed;bottom:0;left:0;right:0;height:calc(60px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);background:rgba(18,11,46,0.96);border-top:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;align-items:flex-start;justify-content:space-around;z-index:1000;box-shadow:0 -4px 24px rgba(0,0,0,0.7); }
-        .chin-navbar__item { flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding-top:10px;cursor:pointer;text-decoration:none;color:rgba(255,255,255,0.4);font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:0.5px;text-transform:uppercase;transition:color 0.2s;-webkit-tap-highlight-color:transparent;user-select:none; }
-        .chin-navbar__item:active { transform:scale(0.9); }
-        .chin-navbar__icon { width:24px;height:24px;display:flex;align-items:center;justify-content:center;transition:filter 0.2s,transform 0.2s; }
-        .chin-navbar__item--active { color:#00ffff; }
-        .chin-navbar__item--active .chin-navbar__icon { filter:drop-shadow(0 0 7px #00ffff);transform:translateY(-2px); }
-        .chin-navbar__dot { width:4px;height:4px;border-radius:50%;background:#00ffff;box-shadow:0 0 6px #00ffff;opacity:0;transition:opacity 0.2s;margin-top:-2px; }
-        .chin-navbar__item--active .chin-navbar__dot { opacity:1; }
         @keyframes spin { to{transform:rotate(360deg)} }
         .loading-spinner { width:24px;height:24px;border:2px solid rgba(0,255,255,0.2);border-top-color:#00ffff;border-radius:50%;animation:spin 0.8s linear infinite;margin:20px auto; }
     
@@ -440,20 +433,8 @@
     </div>
 
     <!-- Navbar -->
-    <nav class="chin-navbar">
-        <a class="chin-navbar__item" href="index.html">
-            <span class="chin-navbar__icon"><img src="icons/games.png" alt="Игры" style="width:24px;height:24px;object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,255,255,0.3));"></span>
-            <span>Игры</span><span class="chin-navbar__dot"></span>
-        </a>
-        <a class="chin-navbar__item chin-navbar__item--active" href="profile.html" onclick="return false;">
-            <span class="chin-navbar__icon"><img src="icons/profile.png" alt="Профиль" style="width:24px;height:24px;object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,255,255,0.3));"></span>
-            <span>Профиль</span><span class="chin-navbar__dot"></span>
-        </a>
-        <a class="chin-navbar__item" href="shop.html">
-            <span class="chin-navbar__icon"><img src="icons/shop.png" alt="Магазин" style="width:24px;height:24px;object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,255,255,0.3));"></span>
-            <span>Магазин</span><span class="chin-navbar__dot"></span>
-        </a>
-    </nav>
+    <div id="chin-navbar-mount"></div>
+    <script src="js/navbar.js"></script>
 
     <script>
         const tg = window.Telegram.WebApp;
