@@ -2,7 +2,7 @@
 #start-screen.game-container,
 #game-screen.game-container,
 #end-screen.game-container {
-    padding-top: max(20px, env(safe-area-inset-top, 0px)) !important;
+    padding-top: calc(56px + env(safe-area-inset-top, 0px)) !important;
 }
 
 /* ========== Общий вид стартового экрана игр ========== */
