@@ -98,7 +98,7 @@
       });
       if (res.status === 402) {
         const inGames = location.pathname.includes('/games/');
-        if (confirm('Недостаточно ⭐ на кошельке. Перейти в магазин?')) {
+        if (confirm('Недостаточно choin на кошельке. Перейти в магазин?')) {
           location.href = inGames ? '../shop.html' : 'shop.html';
         }
         return false;

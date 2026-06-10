@@ -546,7 +546,7 @@
             <div class="dg-phase" id="dg-phase">Загрузка…</div>
             <div class="dg-actions" id="dg-actions"></div>
             <div class="dg-side-actions">
-                <div class="dg-balance"><span id="dg-balance-val">0</span> ⭐</div>
+                <div class="dg-balance"><span id="dg-balance-val">0</span> choin</div>
                 <div class="dg-icon-btn" id="dg-sound-btn" title="Звук">🔊</div>
                 <div class="dg-icon-btn" id="dg-emoji-btn" title="Эмоции">😊</div>
                 <div class="dg-icon-btn" title="Сдаться / выйти"
@@ -578,7 +578,7 @@
                 .then(d => {
                     if (d && d.balance != null) {
                         const el = document.getElementById('dg-balance-val');
-                        if (el) el.textContent = d.balance;
+                        if (el) el.textContent = d.balance * 10;
                     }
                 }).catch(() => {});
         })();

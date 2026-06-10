@@ -781,7 +781,7 @@
                     } else if (c.prize_type === 'stars' && c.prize_value) {
                         const starsWrap = document.createElement('div');
                         starsWrap.style.cssText = 'margin-top:6px;font-family:Orbitron,sans-serif;font-size:7px;color:rgba(255,220,50,0.85);letter-spacing:0.5px;text-align:center;';
-                        starsWrap.textContent = `Приз: ${c.prize_value} звёзд`;
+                        starsWrap.textContent = `Приз: ${c.prize_value * 10} choin`;
                         card.appendChild(starsWrap);
                     }
                 });

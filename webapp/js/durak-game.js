@@ -708,7 +708,7 @@
       bar.appendChild(btn);
     }
     if (!state.hints_enabled) {
-      bar.appendChild(makeActionBtn('Подсказки 5⭐', 'hints', () => buyHints()));
+      bar.appendChild(makeActionBtn('Подсказки 50 choin', 'hints', () => buyHints()));
     }
     if (allowed.includes('cheat_beat')) {
       const btn = makeActionBtn('Шулер 🃏', 'cheat', () => {
@@ -1354,7 +1354,7 @@
     const pot = (window.currentLobbyData && window.currentLobbyData.pot) || 0;
     if (subEl) {
       subEl.textContent = pot > 0
-        ? `Банк: ${pot} ⭐`
+        ? `Банк: ${pot * 10} choin`
         : 'Игра без ставки';
     }
     overlay.style.display = 'flex';

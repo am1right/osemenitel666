@@ -381,6 +381,11 @@
             font-size: 1rem;
             filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.8));
         }
+        .pack-price .choin-icon {
+            width: 1rem; height: 1rem; object-fit: contain;
+            filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.8));
+            vertical-align: middle;
+        }
 
         /* LOADING STATE */
         .pack-card.loading {
@@ -875,7 +880,7 @@
             <!-- HEADER -->
             <div class="shop-header">
                 <h1>Магазин</h1>
-                <p>Покупай энергию за ⭐ Звёзды</p>
+                <p>Покупай энергию за choin</p>
             </div>
 
             <!-- CURRENT ENERGY STATUS -->
@@ -891,8 +896,8 @@
                 <div class="es-timer" id="statusTimer"></div>
             </div>
 
-            <!-- STARS WALLET -->
-            <div class="section-title">Кошелёк звёзд</div>
+            <!-- CHOIN WALLET -->
+            <div class="section-title">Кошелёк choin</div>
 
             <div class="wallet-block">
                 <div class="wallet-block__top">
@@ -901,42 +906,43 @@
                         <div class="wallet-block__sub">Используется при покупках автоматически</div>
                     </div>
                     <div class="wallet-block__balance">
-                        <div class="wallet-block__icon">⭐</div>
+                        <div class="wallet-block__icon"><img src="icons/choin.png" alt="" style="width:1.4em;height:1.4em;object-fit:contain;vertical-align:middle;"></div>
                         <div class="wallet-block__amount" id="walletBalance">—</div>
                     </div>
                 </div>
 
                 <!-- Пресеты -->
                 <div class="topup-presets" id="topupPresets">
-                    <div class="topup-preset" onclick="selectPreset(this, 10)">
-                        <div>10</div>
-                        <div class="topup-preset__sub">⭐</div>
-                    </div>
-                    <div class="topup-preset" onclick="selectPreset(this, 25)">
-                        <div>25</div>
-                        <div class="topup-preset__sub">⭐</div>
-                    </div>
-                    <div class="topup-preset" onclick="selectPreset(this, 50)">
-                        <div>50</div>
-                        <div class="topup-preset__sub">⭐</div>
-                    </div>
                     <div class="topup-preset" onclick="selectPreset(this, 100)">
                         <div>100</div>
-                        <div class="topup-preset__sub">⭐</div>
+                        <div class="topup-preset__sub">choin</div>
+                    </div>
+                    <div class="topup-preset" onclick="selectPreset(this, 250)">
+                        <div>250</div>
+                        <div class="topup-preset__sub">choin</div>
+                    </div>
+                    <div class="topup-preset" onclick="selectPreset(this, 500)">
+                        <div>500</div>
+                        <div class="topup-preset__sub">choin</div>
+                    </div>
+                    <div class="topup-preset" onclick="selectPreset(this, 1000)">
+                        <div>1000</div>
+                        <div class="topup-preset__sub">choin</div>
                     </div>
                 </div>
 
                 <!-- Произвольная сумма -->
                 <div class="topup-custom">
                     <div class="topup-input-wrap">
-                        <span class="ti-icon">⭐</span>
+                        <span class="ti-icon"><img src="icons/choin.png" alt="" style="width:1em;height:1em;object-fit:contain;vertical-align:middle;"></span>
                         <input
                             type="number"
                             class="topup-input"
                             id="topupAmount"
                             placeholder="Сумма"
-                            min="1"
-                            max="10000"
+                            min="10"
+                            max="100000"
+                            step="10"
                             inputmode="numeric"
                         >
                     </div>
@@ -960,22 +966,22 @@
                         <div class="pack-featured-mid">
                             <div class="pack-featured-name">Случайный кейс</div>
                             <div class="pack-featured-desc case-desc">
-                                <p class="case-desc__lead">Внутри могут ждать звёзды или редкий NFT-подарок — угадай, что выпадет тебе.</p>
+                                <p class="case-desc__lead">Внутри могут ждать choin или редкий NFT-подарок — угадай, что выпадет тебе.</p>
                                 <div class="case-desc__tags">
-                                    <span class="case-desc__tag case-desc__tag--stars">⭐ звёзды</span>
+                                    <span class="case-desc__tag case-desc__tag--stars">choin</span>
                                     <span class="case-desc__tag case-desc__tag--nft">NFT-подарок</span>
                                 </div>
                             </div>
                         </div>
                         <div class="pack-featured-right">
                             <div class="pack-price" style="flex-direction:column;gap:2px;padding:8px 12px; margin-top:-6px;">
-                                <span class="star-icon" style="font-size:1.3rem;">⭐</span>
-                                <span style="font-size:1.1rem;">500</span>
+                                <img class="choin-icon" style="width:1.3rem;height:1.3rem;" src="icons/choin.png" alt="">
+                                <span style="font-size:1.1rem;">5000</span>
                             </div>
 
-                            <!-- 
+                            <!--
                                 Plush Pepe-компаньон (чисто декоративный).
-                                Размещён под ценником 1000 ⭐.
+                                Размещён под ценником.
                                 Клик по нему запрещён — это просто визуальный декор.
                             -->
                             <div class="case-nft-companion" id="case-nft-companion" style="width:68px;height:68px;pointer-events:none;">
@@ -997,8 +1003,8 @@
                     <div class="pack-amount">+15%</div>
                     <div class="pack-label">заряда</div>
                     <div class="pack-price">
-                        <span class="star-icon">⭐</span>
-                        <span>5</span>
+                        <img class="choin-icon" src="icons/choin.png" alt="">
+                        <span>50</span>
                     </div>
                 </div>
 
@@ -1008,8 +1014,8 @@
                     <div class="pack-amount">+30%</div>
                     <div class="pack-label">заряда</div>
                     <div class="pack-price">
-                        <span class="star-icon">⭐</span>
-                        <span>10</span>
+                        <img class="choin-icon" src="icons/choin.png" alt="">
+                        <span>100</span>
                     </div>
                 </div>
 
@@ -1028,8 +1034,8 @@
                         </div>
                         <div class="pack-featured-right">
                             <div class="pack-price" style="flex-direction:column;gap:2px;padding:8px 12px;">
-                                <span class="star-icon" style="font-size:1.3rem;">⭐</span>
-                                <span style="font-size:1.1rem;">32</span>
+                                <img class="choin-icon" style="width:1.3rem;height:1.3rem;" src="icons/choin.png" alt="">
+                                <span style="font-size:1.1rem;">320</span>
                             </div>
                         </div>
                     </div>
@@ -1041,8 +1047,8 @@
                     <div class="pack-amount">+50%</div>
                     <div class="pack-label">заряда</div>
                     <div class="pack-price">
-                        <span class="star-icon">⭐</span>
-                        <span>16</span>
+                        <img class="choin-icon" src="icons/choin.png" alt="">
+                        <span>160</span>
                     </div>
                 </div>
 
@@ -1052,8 +1058,8 @@
                     <div class="pack-amount">+75%</div>
                     <div class="pack-label">заряда</div>
                     <div class="pack-price">
-                        <span class="star-icon">⭐</span>
-                        <span>24</span>
+                        <img class="choin-icon" src="icons/choin.png" alt="">
+                        <span>240</span>
                     </div>
                 </div>
 
@@ -1066,7 +1072,7 @@
             <!-- INFO BANNER -->
             <div class="stars-info">
                 <div class="si-icon">ℹ️</div>
-                <p>Оплата производится через <strong>Telegram Stars</strong> — встроенную валюту Telegram. Энергия и награды из кейса зачисляются сразу после оплаты.</p>
+                <p>Оплата производится в <strong>choin</strong> — внутренней валюте Chin Games (1⭐ Telegram = 10 choin). Энергия и награды из кейса зачисляются сразу после оплаты.</p>
             </div>
         </div>
     </div>
@@ -1286,7 +1292,7 @@
             if (reward.type === 'nft') return;
             if (reward.type === 'stars' && reward.balance != null) {
                 _walletBalance = reward.balance;
-                document.getElementById('walletBalance').textContent = _walletBalance;
+                document.getElementById('walletBalance').textContent = _walletBalance * CHOIN_RATE;
             }
         }
 
@@ -1322,16 +1328,16 @@
 
             if (resp.method === 'wallet') {
                 _walletBalance = resp.balance;
-                document.getElementById('walletBalance').textContent = _walletBalance;
+                document.getElementById('walletBalance').textContent = _walletBalance * CHOIN_RATE;
                 applyCaseReward(resp.reward);
                 showCaseReward(resp.reward);
-                showToast(`✅ Кейс открыт  −${CASE_PRICE} ⭐`, 'success');
+                showToast(`✅ Кейс открыт  −${CASE_PRICE * CHOIN_RATE} choin`, 'success');
                 return;
             }
 
             if (resp.method === 'invoice') {
                 if (resp.balance > 0) {
-                    showToast(`💡 На кошельке ${resp.balance} ⭐, нужно ещё ${resp.short}`, '');
+                    showToast(`💡 На кошельке ${resp.balance * CHOIN_RATE} choin, нужно ещё ${resp.short * CHOIN_RATE}`, '');
                 }
 
                 tg.openInvoice(resp.invoice_url, async (status) => {
@@ -1421,18 +1427,18 @@
                 _addEnergy(realAmount);
                 updateStatus();
                 _walletBalance = resp.balance;
-                document.getElementById('walletBalance').textContent = _walletBalance;
+                document.getElementById('walletBalance').textContent = _walletBalance * CHOIN_RATE;
                 if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-                showToast(`✅ +${realAmount} энергии  −${stars} ⭐ из кошелька`, 'success');
+                showToast(`✅ +${realAmount} энергии  −${stars * CHOIN_RATE} choin из кошелька`, 'success');
                 return;
             }
 
-            // ── Не хватает звёзд — открываем Telegram Invoice ───
+            // ── Не хватает choin — открываем Telegram Invoice ───
             if (resp.method === 'invoice') {
                 // Показываем подсказку если баланс частично покрывает
                 if (resp.balance > 0) {
                     showToast(
-                        `💡 На кошельке ${resp.balance} ⭐, нужно ещё ${resp.short}`,
+                        `💡 На кошельке ${resp.balance * CHOIN_RATE} choin, нужно ещё ${resp.short * CHOIN_RATE}`,
                         ''
                     );
                 }
@@ -1477,7 +1483,7 @@
                         <div class="pack-icon"><img src="icons/enegry.png" alt=""></div>
                         <div class="pack-amount">×${u.mult}</div>
                         <div class="pack-label">${u.owned ? 'куплено' : 'быстрее'}</div>
-                        <div class="pack-price"><span class="star-icon">⭐</span><span>${u.stars}</span></div>
+                        <div class="pack-price"><img class="choin-icon" src="icons/choin.png" alt=""><span>${u.stars * CHOIN_RATE}</span></div>
                     </div>`).join('');
             } catch (e) {}
         }
@@ -1498,7 +1504,7 @@
 
             if (resp.method === 'wallet') {
                 _walletBalance = resp.balance;
-                const wb = document.getElementById('walletBalance'); if (wb) wb.textContent = _walletBalance;
+                const wb = document.getElementById('walletBalance'); if (wb) wb.textContent = _walletBalance * CHOIN_RATE;
                 if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
                 showToast(`✅ Зарядка ускорена ×${resp.mult}`, 'success');
                 loadRegenUpgrades();
@@ -1546,7 +1552,8 @@
                 }).catch(() => {});
             }
         }
-        // ── WALLET ────────────────────────────────────────────────
+        // ── WALLET (внутр. баланс в звёздах, отображение в choin, 1⭐=10choin) ──
+        const CHOIN_RATE = 10;
         let _walletBalance = 0;
         let _selectedPreset = null;
 
@@ -1561,18 +1568,18 @@
                 const res = await api(`/api/wallet/balance?user_id=${userId}`);
                 const data = await res.json();
                 _walletBalance = data.balance ?? 0;
-                document.getElementById('walletBalance').textContent = _walletBalance;
+                document.getElementById('walletBalance').textContent = _walletBalance * CHOIN_RATE;
             } catch (e) {
                 document.getElementById('walletBalance').textContent = '?';
             }
         }
 
-        function selectPreset(el, amount) {
+        function selectPreset(el, choinAmount) {
             // Снять выделение с других
             document.querySelectorAll('.topup-preset').forEach(p => p.classList.remove('selected'));
             el.classList.add('selected');
-            _selectedPreset = amount;
-            document.getElementById('topupAmount').value = amount;
+            _selectedPreset = choinAmount;
+            document.getElementById('topupAmount').value = choinAmount;
             if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
         }
 
@@ -1584,15 +1591,20 @@
 
         async function topupWallet() {
             const amountRaw = document.getElementById('topupAmount').value;
-            const amount = parseInt(amountRaw);
-            if (!amount || amount < 1) {
-                showToast('⚠️ Укажи сумму от 1 звезды', 'error');
+            const choinAmount = parseInt(amountRaw);
+            if (!choinAmount || choinAmount < CHOIN_RATE) {
+                showToast(`⚠️ Укажи сумму от ${CHOIN_RATE} choin`, 'error');
                 return;
             }
-            if (amount > 10000) {
-                showToast('⚠️ Максимум 10 000 звёзд за раз', 'error');
+            if (choinAmount > 100000) {
+                showToast('⚠️ Максимум 100 000 choin за раз', 'error');
                 return;
             }
+            if (choinAmount % CHOIN_RATE !== 0) {
+                showToast(`⚠️ Сумма должна быть кратна ${CHOIN_RATE}`, 'error');
+                return;
+            }
+            const amount = choinAmount / CHOIN_RATE; // звёзды для сервера
 
             const userId = tg.initDataUnsafe?.user?.id;
             if (!userId) {
@@ -1616,7 +1628,7 @@
                     body: JSON.stringify({
                         user_id: userId,
                         amount: amount,
-                        label: `Пополнение кошелька на ${amount} ⭐`
+                        label: `Пополнение кошелька на ${choinAmount} choin`
                     })
                 });
                 const data = await res.json();
@@ -1648,11 +1660,11 @@
                     } catch {
                         _walletBalance += amount; // fallback
                     }
-                    document.getElementById('walletBalance').textContent = _walletBalance;
+                    document.getElementById('walletBalance').textContent = _walletBalance * CHOIN_RATE;
                     document.getElementById('topupAmount').value = '';
                     document.querySelectorAll('.topup-preset').forEach(p => p.classList.remove('selected'));
                     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-                    showToast(`✅ +${amount} ⭐ зачислено в кошелёк!`, 'success');
+                    showToast(`✅ +${choinAmount} choin зачислено в кошелёк!`, 'success');
                 } else if (status === 'cancelled') {
                     showToast('Платёж отменён', '');
                 } else if (status === 'failed') {

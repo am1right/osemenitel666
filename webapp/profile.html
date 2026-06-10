@@ -265,11 +265,11 @@
             <div id="contests-list"></div>
         </div>
 
-        <!-- Кошелёк Stars -->
+        <!-- Кошелёк Choin -->
         <div class="wallet-card" onclick="location.href='shop.html'" id="wallet-card" title="Перейти в магазин">
-            <div class="wallet-card__icon">⭐</div>
+            <div class="wallet-card__icon"><img src="icons/choin.png" alt="" style="width:2rem;height:2rem;object-fit:contain;filter:drop-shadow(0 0 8px rgba(255,215,0,0.7));"></div>
             <div class="wallet-card__info">
-                <div class="wallet-card__label">Кошелёк Stars</div>
+                <div class="wallet-card__label">Кошелёк Choin</div>
                 <div class="wallet-card__balance" id="wallet-balance">—</div>
                 <div class="wallet-card__sub">Нажми, чтобы пополнить</div>
             </div>
@@ -282,7 +282,7 @@
                 <div class="ref-card__icon">🤝</div>
                 <div>
                     <div class="ref-card__title">Пригласи друга</div>
-                    <div class="ref-card__sub">За каждого — +2 ⭐ и +10 <img src="icons/enegry.png" alt="" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;display:inline-block;filter:drop-shadow(0 0 4px rgba(0,255,255,0.7));"></div>
+                    <div class="ref-card__sub">За каждого — +20 choin и +10 <img src="icons/enegry.png" alt="" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;display:inline-block;filter:drop-shadow(0 0 4px rgba(0,255,255,0.7));"></div>
                 </div>
             </div>
             <div class="ref-card__stats">
@@ -295,7 +295,7 @@
                     <div class="ref-stat__label">Награждено</div>
                 </div>
             </div>
-            <div class="ref-reward-hint">За каждого нового игрока: <b>+2 ⭐ Stars</b> и <b>+10 <img src="icons/enegry.png" alt="" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;display:inline-block;filter:drop-shadow(0 0 4px rgba(0,255,255,0.7));"> энергии</b></div>
+            <div class="ref-reward-hint">За каждого нового игрока: <b>+20 choin</b> и <b>+10 <img src="icons/enegry.png" alt="" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;display:inline-block;filter:drop-shadow(0 0 4px rgba(0,255,255,0.7));"> энергии</b></div>
             <button class="ref-invite-btn" id="ref-invite-btn" onclick="shareRefLink()">
                 🔗 Поделиться ссылкой
             </button>
@@ -307,7 +307,7 @@
         </div>
 
         <!-- Бонусы и подписки -->
-        <div class="section-title">⭐ Бонусы</div>
+        <div class="section-title">Бонусы</div>
         <div class="bonus-card" id="bonus-card">
             <!-- Ежедневный вход -->
             <div class="bonus-row">
@@ -316,7 +316,7 @@
                     <div class="bonus-title">Ежедневный вход</div>
                     <div class="bonus-desc">Streak: <span id="daily-streak">—</span> дн.</div>
                 </div>
-                <div class="bonus-reward">+2 ⭐</div>
+                <div class="bonus-reward">+20 choin</div>
                 <button class="bonus-btn daily-btn" id="daily-btn" onclick="claimDaily()" style="width:auto;margin-top:0;padding:7px 14px;">Забрать</button>
             </div>
             <!-- Канал -->
@@ -326,7 +326,7 @@
                     <div class="bonus-title">Подписка на канал</div>
                     <div class="bonus-desc">@ZeroOrOneOFF — обязательно</div>
                 </div>
-                <div class="bonus-reward">+10 ⭐</div>
+                <div class="bonus-reward">+100 choin</div>
                 <button class="bonus-btn" id="bonus-channel-btn" onclick="claimBonus('sub_channel')">Получить</button>
             </div>
             <!-- Чат -->
@@ -336,7 +336,7 @@
                     <div class="bonus-title">Вступление в чат</div>
                     <div class="bonus-desc">@zeroandonechat — обязательно</div>
                 </div>
-                <div class="bonus-reward">+10 ⭐</div>
+                <div class="bonus-reward">+100 choin</div>
                 <button class="bonus-btn" id="bonus-chat-btn" onclick="claimBonus('sub_chat')">Получить</button>
             </div>
             <!-- Поделиться -->
@@ -346,7 +346,7 @@
                     <div class="bonus-title">Поделиться игрой</div>
                     <div class="bonus-desc">Отправь другу ссылку на бота</div>
                 </div>
-                <div class="bonus-reward">+5 ⭐</div>
+                <div class="bonus-reward">+50 choin</div>
                 <button class="bonus-btn" id="bonus-share-btn" onclick="claimShareBonus()">Поделиться</button>
             </div>
         </div>
@@ -564,7 +564,7 @@
                     if (c.prize_type === 'stars') {
                         prizeHtml = `<div class="contest-card__prize" style="color:#ffd700;">
                             <img src="icons/shop.png" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 0 4px rgba(255,215,0,0.6))">
-                            ${c.prize_value} звёзд${c.split_prize ? ' (делится)' : ' каждому'}
+                            ${c.prize_value * 10} choin${c.split_prize ? ' (делится)' : ' каждому'}
                         </div>`;
                     } else if (c.prize_type === 'tg_gift') {
                         const label = tgGiftLabel(c.gift_id);
@@ -825,7 +825,7 @@
                 box.innerHTML = list.map(h => {
                     const won = h.winner_id === user.id;
                     const date = h.ended_at ? new Date(h.ended_at).toLocaleDateString('ru') : '';
-                    const pot = h.pot ? ` · ${h.pot}⭐` : '';
+                    const pot = h.pot ? ` · ${h.pot * 10} choin` : '';
                     return `<div class="durak-row ${won ? 'durak-row--win' : 'durak-row--loss'}">
                         <span>${won ? '🏆 Победа' : '❌ Проигрыш'}${pot}</span><span>${date}</span></div>`;
                 }).join('');
@@ -873,7 +873,8 @@
             }
         }
 
-        // ── Кошелёк Stars ─────────────────────────────────────────
+        // ── Кошелёк Choin (1⭐ = 10 choin) ───────────────────────────
+        const CHOIN_RATE = 10;
         async function loadWalletBalance() {
             const userId = user?.id;
             const el = document.getElementById('wallet-balance');
@@ -882,7 +883,7 @@
                 const api = window.apiFetch || fetch;
                 const res = await api(`${API}/api/wallet/balance?user_id=${userId}`);
                 const data = await res.json();
-                el.textContent = data.balance ?? 0;
+                el.textContent = (data.balance ?? 0) * CHOIN_RATE;
             } catch (e) {
                 el.textContent = '—';
             }
@@ -934,7 +935,7 @@
 
                 let badgeHtml = '';
                 if (isDone) {
-                    badgeHtml = `<span class="ref-item__badge ref-item__badge--done">✅ +2⭐</span>`;
+                    badgeHtml = `<span class="ref-item__badge ref-item__badge--done">✅ +20 choin</span>`;
                 } else if (inProgress) {
                     badgeHtml = `<span class="ref-item__badge ref-item__badge--waiting">⏳ Играет</span>`;
                 } else {
@@ -1059,7 +1060,7 @@
                 const res = await fetch(`${API}/api/bonuses/daily_checkin`, { method: 'POST', headers: _tgHeaders() });
                 const d = await res.json();
                 if (d.already_today) { btn.textContent = '✅ Уже получено'; return; }
-                btn.textContent = `✅ +${d.stars} ⭐`;
+                btn.textContent = `✅ +${d.stars * CHOIN_RATE} choin`;
                 document.getElementById('daily-streak').textContent = d.streak;
                 loadWalletBalance();
             } catch(e) { btn.disabled = false; }
@@ -1078,7 +1079,7 @@
                 const d = await res.json();
                 if (d.already) { btn.textContent = '✅'; btn.className = 'bonus-btn bonus-btn--done'; return; }
                 if (!d.ok) { btn.disabled = false; btn.textContent = 'Сначала подпишись'; return; }
-                btn.textContent = `✅ +${d.stars} ⭐`; btn.className = 'bonus-btn bonus-btn--done';
+                btn.textContent = `✅ +${d.stars * CHOIN_RATE} choin`; btn.className = 'bonus-btn bonus-btn--done';
                 loadWalletBalance();
             } catch(e) { btn.disabled = false; }
         }

@@ -49,11 +49,11 @@
     return window.Telegram?.WebApp?.initDataUnsafe?.user || null;
   }
 
-  /** Недостаточно Stars для ставки → предлагаем пополнить в магазине. */
+  /** Недостаточно choin для ставки → предлагаем пополнить в магазине. */
   function offerTopUp(detail) {
     const short = detail && detail.short;
-    let msg = 'Недостаточно Stars для ставки.';
-    if (short) msg += ` Не хватает ${short} ⭐.`;
+    let msg = 'Недостаточно choin для ставки.';
+    if (short) msg += ` Не хватает ${short * 10} choin.`;
     msg += '\nПерейти в магазин для пополнения?';
     if (confirm(msg)) window.location.href = 'shop.html';
   }
@@ -126,8 +126,8 @@
       card.className = 'lobby-card';
       if (lobby.bet_amount > 0) card.classList.add('lobby-card--with-bet');
 
-      const betText = lobby.bet_amount > 0 ? ` • ${lobby.bet_amount}⭐` : '';
-      const potText = (lobby.pot && lobby.pot > 0) ? ` (банк ${lobby.pot}⭐)` : '';
+      const betText = lobby.bet_amount > 0 ? ` • ${lobby.bet_amount * 10} choin` : '';
+      const potText = (lobby.pot && lobby.pot > 0) ? ` (банк ${lobby.pot * 10} choin)` : '';
       const name = lobby.name || lobby.creator_name || 'Игрок';
 
       const info = document.createElement('div');
@@ -160,8 +160,8 @@
   }
 
   function showLobbyPreview(lobby) {
-    const betText = lobby.bet_amount > 0 ? `${lobby.bet_amount} ⭐` : 'Без ставки';
-    const potText = (lobby.pot && lobby.pot > 0) ? `\nБанк лобби: ${lobby.pot} ⭐` : '';
+    const betText = lobby.bet_amount > 0 ? `${lobby.bet_amount * 10} choin` : 'Без ставки';
+    const potText = (lobby.pot && lobby.pot > 0) ? `\nБанк лобби: ${lobby.pot * 10} choin` : '';
     const message =
       `Лобби #${lobby.id}\n` +
       `Создатель: ${lobby.creator_name || 'Игрок'}\n\n` +
@@ -247,7 +247,7 @@
       deck_size: parseInt(document.getElementById('deck-size').value, 10),
       game_type: document.getElementById('game-type')?.value || 'podkidnoy',
       cheating_enabled: document.getElementById('cheating')?.value === 'true',
-      bet_amount: parseInt(document.getElementById('bet-amount').value, 10) || 0,
+      bet_amount: Math.floor((parseInt(document.getElementById('bet-amount').value, 10) || 0) / 10),
     };
 
     if (submitBtn) { submitBtn.textContent = 'Создаём…'; submitBtn.disabled = true; }

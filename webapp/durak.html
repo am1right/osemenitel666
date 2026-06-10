@@ -205,9 +205,9 @@
             </div>
 
             <div style="margin-bottom:20px;">
-                <label>Ставка (Stars)</label><br>
-                <input type="number" id="bet-amount" value="0" min="0" max="100000" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #d122e3;">
-                <small style="color:#888;">0 = без ставки. Иначе от 5 до 100000 ⭐. 5% комиссии боту.</small>
+                <label>Ставка (choin)</label><br>
+                <input type="number" id="bet-amount" value="0" min="0" max="1000000" step="10" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #d122e3;">
+                <small style="color:#888;">0 = без ставки. Иначе от 50 до 1000000 choin. 5% комиссии боту.</small>
             </div>
 
             <div style="display:flex; gap:10px;">
@@ -278,8 +278,8 @@
             </div>
 
             <div style="margin-bottom:20px;">
-                <label>Ставка (Stars)</label><br>
-                <input type="number" id="edit-bet-amount" min="0" max="10000" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #6655aa;">
+                <label>Ставка (choin)</label><br>
+                <input type="number" id="edit-bet-amount" min="0" max="100000" step="10" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #6655aa;">
             </div>
 
             <div style="display:flex; gap:10px;">
@@ -379,7 +379,7 @@
                         const w = h.players.find(p => p.user_id === h.winner_id);
                         if (w && w.first_name) winnerName = w.first_name;
                     }
-                    const pot = h.pot ? h.pot + '⭐' : '';
+                    const pot = h.pot ? (h.pot * 10) + ' choin' : '';
                     html += `<div style="padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.1);">
                         ${date} • Победитель ${winnerName} • Банк ${pot} • Лобби #${h.lobby_id}
                     </div>`;

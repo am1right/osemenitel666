@@ -248,8 +248,8 @@
             </div>
 
             <div style="margin-bottom:20px;">
-                <label>Ставка (Stars)</label><br>
-                <input type="number" id="edit-bet-amount" min="0" max="100000" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #6655aa;">
+                <label>Ставка (choin)</label><br>
+                <input type="number" id="edit-bet-amount" min="0" max="1000000" step="10" style="width:100%; padding:8px; border-radius:8px; background:#0f0a24; color:#fff; border:1px solid #6655aa;">
             </div>
 
             <div style="display:flex; gap:10px;">
@@ -413,8 +413,8 @@
                 }
 
                 // === ОБЫЧНОЕ СОСТОЯНИЕ (WAITING) ===
-                const bet = lobby.bet_amount > 0 ? `${lobby.bet_amount} ⭐` : 'Без ставки';
-                const potText = (lobby.pot && lobby.pot > 0) ? ` • Банк: ${lobby.pot}⭐` : '';
+                const bet = lobby.bet_amount > 0 ? `${lobby.bet_amount * 10} choin` : 'Без ставки';
+                const potText = (lobby.pot && lobby.pot > 0) ? ` • Банк: ${lobby.pot * 10} choin` : '';
                 const typeText = lobby.game_type === 'podkidnoy' ? 'Подкидной' : 'Переводной';
                 const cheatText = lobby.cheating_enabled ? 'Разрешено' : 'Запрещено';
 
@@ -613,7 +613,7 @@
 
             if (bet > 0) {
                 const confirmLeave = confirm(
-                    `В этом лобби ставка ${bet} ⭐.\n\n` +
+                    `В этом лобби ставка ${bet * 10} choin.\n\n` +
                     `Игра ещё не началась — ставка вернётся на твой кошелёк.\n\n` +
                     `Выйти из лобби?`
                 );
@@ -638,7 +638,7 @@
 
             // Показываем уведомление, если была ставка
             if (bet > 0) {
-                alert(`Ставка ${bet} ⭐ возвращена на кошелёк.`);
+                alert(`Ставка ${bet * 10} choin возвращена на кошелёк.`);
             }
 
             exitWaitingRoom();
@@ -696,7 +696,7 @@
             let text = `🎮 Присоединяйся в лобби "${lobbyName}"!\n\n`;
             text += `👥 Игроков: ${lobby.current_players || 1}/${lobby.max_players}\n`;
             if (lobby.bet_amount > 0) {
-                text += `⭐ Ставка: ${lobby.bet_amount}\n`;
+                text += `Ставка: ${lobby.bet_amount * 10} choin\n`;
             }
             text += `🃏 ${lobby.deck_size} карт • ${lobby.game_type === 'podkidnoy' ? 'Подкидной' : 'Переводной'}\n\n`;
             text += `Нажимай кнопку ниже, чтобы зайти прямо в лобби!`;
@@ -1118,7 +1118,7 @@
             // Заполняем текущими значениями
             document.getElementById('edit-max-players').value = currentLobbyData.max_players || 4;
             document.getElementById('edit-deck-size').value = currentLobbyData.deck_size || 36;
-            document.getElementById('edit-bet-amount').value = currentLobbyData.bet_amount || 0;
+            document.getElementById('edit-bet-amount').value = (currentLobbyData.bet_amount || 0) * 10;
 
             document.getElementById('edit-settings-modal').style.display = 'flex';
         }
@@ -1134,7 +1134,7 @@
                 user_id: currentUserId,
                 max_players: parseInt(document.getElementById('edit-max-players').value),
                 deck_size: parseInt(document.getElementById('edit-deck-size').value),
-                bet_amount: parseInt(document.getElementById('edit-bet-amount').value) || 0
+                bet_amount: Math.floor((parseInt(document.getElementById('edit-bet-amount').value) || 0) / 10)
             };
 
             try {
