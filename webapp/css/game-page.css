@@ -1,0 +1,48 @@
+/* ========== Общий вид стартового экрана игр ========== */
+.game-header {
+    background: linear-gradient(135deg, rgba(237,28,36,0.25), rgba(237,28,36,0.08));
+    border: 1px solid rgba(237,28,36,0.4);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+    text-align: center;
+}
+.game-header h1 {
+    margin: 0 0 6px 0;
+}
+.game-header p {
+    margin: 0;
+    color: rgba(255,255,255,0.85);
+}
+
+.game-icon-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 96px;
+    height: 96px;
+    margin: 0 auto 20px auto;
+    background: linear-gradient(135deg, rgba(255,235,0,0.25), rgba(255,235,0,0.08));
+    border: 1px solid rgba(255,235,0,0.4);
+    border-radius: 16px;
+}
+.game-icon-box img {
+    width: 64px; height: 64px; object-fit: contain;
+    filter: drop-shadow(0 0 14px rgba(188,19,254,0.6));
+}
+
+/* Лидерборд: бордовый блок, скролл до конца + место под navbar */
+.leaderboard-mini {
+    background: linear-gradient(135deg, rgba(135,0,40,0.35), rgba(135,0,40,0.12));
+    border: 1px solid rgba(135,0,40,0.5);
+    border-radius: 16px;
+    padding: 15px;
+    margin-top: 25px;
+    margin-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+}
+.leaderboard-mini h3 {
+    margin: 0 0 12px 0;
+    color: var(--neon-pink, #bc13fe);
+    text-align: center;
+    font-family: 'Orbitron', sans-serif;
+}

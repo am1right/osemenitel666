@@ -7,6 +7,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="../js/api.js"></script>
     <link rel="stylesheet" href="../css/navbar.css">
+    <link rel="stylesheet" href="../css/game-page.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
@@ -111,9 +112,6 @@
             background:rgba(0,243,255,0.22);
         }
 
-        .leaderboard-mini { margin-top:25px; background:rgba(0,0,0,0.6); border-radius:12px; padding:15px; border:1px solid var(--neon-purple); }
-        .leaderboard-mini h3 { margin:0 0 12px 0; color:var(--neon-pink); text-align:center; font-family:'Orbitron',sans-serif; }
-
     </style>
 </head>
 <body>
@@ -123,9 +121,11 @@
 
     <!-- Стартовый экран -->
     <div id="start-screen" class="screen active game-container">
-        <h1>SNAKE</h1>
-        <p style="color:rgba(255,255,255,0.8);margin-bottom:20px;">Классика. Ешь, расти, не врежься!</p>
-        <div style="margin-bottom:25px;"><img src="../icons/snake.png" alt="Snake" style="width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 0 14px rgba(188,19,254,0.6));"></div>
+        <div class="game-header">
+            <h1>SNAKE</h1>
+            <p>Классика. Ешь, расти, не врежься!</p>
+        </div>
+        <div class="game-icon-box"><img src="../icons/snake.png" alt="Snake"></div>
 
         <button id="snake-start-btn" class="start-btn" onclick="tryStartGame()">НАЧАТЬ ИГРУ</button>
 
