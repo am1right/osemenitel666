@@ -1,7 +1,7 @@
 /* ========== BOTTOM NAV (общий для всех страниц) ========== */
 .chin-navbar {
     position: fixed;
-    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
     left: 16px; right: 16px;
     height: 68px;
     background: rgba(255, 255, 255, 0.06);
@@ -37,7 +37,8 @@
     border-radius: 22px;
 }
 .chin-navbar__item:active { transform: scale(0.92); }
-.chin-navbar__icon { width:28px; height:28px; display:flex; align-items:center; justify-content:center; transition: filter 0.25s, transform 0.25s; }
+.chin-navbar__icon { width:34px; height:34px; display:flex; align-items:center; justify-content:center; transition: filter 0.25s, transform 0.25s; }
+.chin-navbar__icon img { width:100%; height:100%; }
 .chin-navbar__item--active {
     color: #fff;
     background: linear-gradient(180deg, #4f9bff 0%, #1f5fe0 100%);
@@ -47,7 +48,7 @@
     justify-content: center;
 }
 .chin-navbar__item--active .chin-navbar__icon {
-    width: 30px; height: 30px;
+    width: 36px; height: 36px;
     filter: drop-shadow(0 0 6px rgba(255,255,255,0.6));
     transform: scale(1.1);
 }
