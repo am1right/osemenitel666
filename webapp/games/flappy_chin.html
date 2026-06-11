@@ -24,7 +24,7 @@
         }
 
         :root {
-            --neon-blue: #00f3ff;
+            --neon-blue: #ff66c9;
             --neon-pink: #bc13fe;
             --neon-purple: #7a04eb;
             --bg-dark: #1a103d;
@@ -39,7 +39,7 @@
 
         .bg-grid, .bg-glow { position:absolute; top:0; left:0; width:200%; height:200%; z-index:-2; pointer-events:none; }
         .bg-grid {
-            background-image:linear-gradient(rgba(188,19,254,0.2) 1px,transparent 1px),linear-gradient(90deg,rgba(0,243,255,0.2) 1px,transparent 1px);
+            background-image:linear-gradient(rgba(188,19,254,0.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,102,201,0.2) 1px,transparent 1px);
             background-size:40px 40px;
             transform:perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);
             animation:gridMove 20s linear infinite; opacity:0.6;
@@ -320,11 +320,11 @@
             const size = bird.radius * 2.4;
             if (chinReady) {
                 ctx.shadowBlur = 12;
-                ctx.shadowColor = 'rgba(0,243,255,0.8)';
+                ctx.shadowColor = 'rgba(255,102,201,0.8)';
                 ctx.drawImage(chinImg, -size / 2, -size / 2, size, size);
                 ctx.shadowBlur = 0;
             } else {
-                ctx.fillStyle = '#00f3ff';
+                ctx.fillStyle = '#ff66c9';
                 ctx.beginPath();
                 ctx.arc(0, 0, bird.radius, 0, Math.PI * 2);
                 ctx.fill();
@@ -342,7 +342,7 @@
                 ctx.shadowColor = '#bc13fe';
                 ctx.fillRect(pipe.x, 0, pipeWidth, pipe.top);
                 ctx.fillRect(pipe.x, pipe.top + pipeGap, pipeWidth, canvas.height);
-                ctx.fillStyle = '#00f3ff';
+                ctx.fillStyle = '#ff66c9';
                 ctx.fillRect(pipe.x, pipe.top - 8, pipeWidth, 8);
                 ctx.fillRect(pipe.x, pipe.top + pipeGap, pipeWidth, 8);
             }
