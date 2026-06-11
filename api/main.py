@@ -650,17 +650,23 @@ async def api_confirm_case(request: Request, _: None = Depends(require_internal)
 # ── Wallet API ──────────────────────────────────────────────────────
 
 @app.get("/api/wallet/balance")
-async def api_wallet_balance(user_id: int):
+async def api_wallet_balance(user_id: int, tg_user: dict = Depends(require_webapp_user)):
+    if int(user_id) != int(tg_user["id"]):
+        raise HTTPException(status_code=403, detail="user_id mismatch")
     return get_wallet(user_id)
 
 
 @app.get("/api/user/flags")
-async def api_user_flags(user_id: int):
+async def api_user_flags(user_id: int, tg_user: dict = Depends(require_webapp_user)):
+    if int(user_id) != int(tg_user["id"]):
+        raise HTTPException(status_code=403, detail="user_id mismatch")
     return get_user_flags(user_id)
 
 
 @app.get("/api/energy/balance")
-async def api_energy_balance(user_id: int):
+async def api_energy_balance(user_id: int, tg_user: dict = Depends(require_webapp_user)):
+    if int(user_id) != int(tg_user["id"]):
+        raise HTTPException(status_code=403, detail="user_id mismatch")
     _online[int(user_id)] = _time.time()   # отметка присутствия
     return get_energy(user_id)
 
@@ -783,14 +789,18 @@ async def api_wallet_spend(request: Request, tg_user: dict = Depends(require_web
 
 
 @app.get("/api/wallet/transactions")
-async def api_wallet_transactions(user_id: int, limit: int = 20):
+async def api_wallet_transactions(user_id: int, limit: int = 20, tg_user: dict = Depends(require_webapp_user)):
+    if int(user_id) != int(tg_user["id"]):
+        raise HTTPException(status_code=403, detail="user_id mismatch")
     return {"transactions": get_wallet_transactions(user_id, limit)}
 
 
 # ── Referrals ───────────────────────────────────────────────────────
 
 @app.get("/api/bonuses/status/{user_id}")
-async def api_bonus_status(user_id: int):
+async def api_bonus_status(user_id: int, tg_user: dict = Depends(require_webapp_user)):
+    if int(user_id) != int(tg_user["id"]):
+        raise HTTPException(status_code=403, detail="user_id mismatch")
     sub = await _check_subscription(user_id)
     bonuses = get_user_bonus_status(user_id)
     checkin = get_daily_checkin_status(user_id)
@@ -838,8 +848,10 @@ async def api_daily_checkin(request: Request):
 
 
 @app.get("/api/bonuses/check_subscription/{user_id}")
-async def api_check_subscription(user_id: int):
+async def api_check_subscription(user_id: int, tg_user: dict = Depends(require_webapp_user)):
     """Проверка подписки — для гейтинга доступа."""
+    if int(user_id) != int(tg_user["id"]):
+        raise HTTPException(status_code=403, detail="user_id mismatch")
     sub = await _check_subscription(user_id)
     allowed = sub["channel"] and sub["chat"]
     return {"allowed": allowed, **sub}

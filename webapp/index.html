@@ -373,8 +373,8 @@
 
         async function _markSubVerified(uid) {
             try {
-                await fetch(`${API}/api/bonuses/check_subscription/${uid}`); // side-effect: cache warm
-                await fetch(`${API}/api/sub_verified_webapp/${uid}`, { method: 'POST' });
+                await apiFetch(`${API}/api/bonuses/check_subscription/${uid}`); // side-effect: cache warm
+                await apiFetch(`${API}/api/sub_verified_webapp/${uid}`, { method: 'POST' });
             } catch(e) {}
         }
 
@@ -384,7 +384,7 @@
             const msg = document.getElementById('sub-gate-msg');
             msg.textContent = 'Проверяем…';
             try {
-                const res = await fetch(`${API}/api/bonuses/check_subscription/${uid}`);
+                const res = await apiFetch(`${API}/api/bonuses/check_subscription/${uid}`);
                 const d = await res.json();
                 if (d.allowed) {
                     await _markSubVerified(uid);
@@ -410,7 +410,7 @@
                     if (vd.verified) { gate.style.display = 'none'; return; }
                 }
                 // Не верифицирован — проверяем реальную подписку
-                const res = await fetch(`${API}/api/bonuses/check_subscription/${uid}`);
+                const res = await apiFetch(`${API}/api/bonuses/check_subscription/${uid}`);
                 const d = await res.json();
                 if (d.allowed) {
                     await _markSubVerified(uid);

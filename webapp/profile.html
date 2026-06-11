@@ -1014,7 +1014,7 @@
         async function loadBonuses() {
             if (!user) return;
             try {
-                const res = await fetch(`${API}/api/bonuses/status/${user.id}`);
+                const res = await apiFetch(`${API}/api/bonuses/status/${user.id}`);
                 const d = await res.json();
                 // Дейли
                 const dailyBtn = document.getElementById('daily-btn');
