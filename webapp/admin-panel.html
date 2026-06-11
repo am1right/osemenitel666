@@ -311,7 +311,7 @@
         tg.onEvent('safeAreaChanged', applyPadding);
         tg.onEvent('contentSafeAreaChanged', applyPadding);
 
-        const ENERGY_ICON_INLINE = '<img src="icons/enegry.png" alt="" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;display:inline-block;filter:drop-shadow(0 0 4px rgba(0,255,255,0.7));">';
+        const ENERGY_ICON_INLINE = '<img src="icons/enegry.webp" alt="" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;display:inline-block;filter:drop-shadow(0 0 4px rgba(0,255,255,0.7));">';
         function formatEnergyVal(n) {
             return `${n} ${ENERGY_ICON_INLINE}`;
         }
@@ -610,7 +610,7 @@
                 ${scoresHtml || '<div class="empty-msg">Нет игровых данных</div>'}
 
                 <!-- Energy control -->
-                <div class="section-sep" style="display:flex;align-items:center;gap:6px;"><img src="icons/enegry.png" alt="" style="width:16px;height:16px;object-fit:contain;filter:drop-shadow(0 0 4px rgba(0,255,255,0.7));"> Энергия</div>
+                <div class="section-sep" style="display:flex;align-items:center;gap:6px;"><img src="icons/enegry.webp" alt="" style="width:16px;height:16px;object-fit:contain;filter:drop-shadow(0 0 4px rgba(0,255,255,0.7));"> Энергия</div>
                 <div class="wallet-control" style="border-color:rgba(0,255,255,0.25);">
                     <div class="wallet-balance-row">
                         <div>
@@ -644,7 +644,7 @@
                 <div class="tx-list">${txHtml}</div>
 
                 <!-- Contest results -->
-                <div class="section-sep"><img src="icons/cup.png" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;"> Соревнования</div>
+                <div class="section-sep"><img src="icons/cup.webp" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;"> Соревнования</div>
                 ${contestsHtml}
 
                 <!-- Quick resets (этот игрок) -->

@@ -130,7 +130,7 @@
     el.classList.add(suitInfo.color);
 
     const base = document.createElement('img');
-    base.src = 'icons/durak/card_front.png';
+    base.src = 'icons/durak/card_front.webp';
     base.className = 'rdcard-base';
     base.draggable = false;
     el.appendChild(base);
@@ -142,7 +142,7 @@
       c.className = `rdcard-corner ${cls} ${suitInfo.color}`;
       // На тузах масть в углах не нужна — её показывает крупная картинка в центре
       c.innerHTML = `<span class="rdcard-rank">${dr}</span>` +
-                    (aceCard ? '' : `<img src="icons/durak/${suitInfo.name}.png" class="rdcard-suit-sm" draggable="false">`);
+                    (aceCard ? '' : `<img src="icons/durak/${suitInfo.name}.webp" class="rdcard-suit-sm" draggable="false">`);
       return c;
     };
     el.appendChild(corner('tl'));
@@ -157,7 +157,7 @@
       if (rank === 'Q' || rank === '12') base = 'queen';
       if (rank === 'K' || rank === '13') base = 'king';
       // Для красных мастей (червы/бубны) — красные версии фигур
-      const file = suitInfo.color === 'red' ? `${base}_red.png` : `${base}.png`;
+      const file = suitInfo.color === 'red' ? `${base}_red.webp` : `${base}.webp`;
       const img = document.createElement('img');
       img.src = `icons/durak/${file}`;
       img.className = 'rdcard-court';
@@ -166,7 +166,7 @@
       center.appendChild(img);
     } else if (isAce) {
       const img = document.createElement('img');
-      img.src = `icons/durak/${suitInfo.name}_ace.png`;
+      img.src = `icons/durak/${suitInfo.name}_ace.webp`;
       img.className = 'rdcard-ace';
       img.draggable = false;
       center.appendChild(img);
@@ -395,7 +395,7 @@
     if (trumpMini && state.trump_suit) {
       const info = SUIT_MAP[state.trump_suit];
       if (info) {
-        trumpMini.innerHTML = `<img src="icons/durak/${info.name}.png" draggable="false">`;
+        trumpMini.innerHTML = `<img src="icons/durak/${info.name}.webp" draggable="false">`;
       }
     }
     const phaseEl = document.getElementById('dg-phase');
@@ -1347,7 +1347,7 @@
 
     const emojiEl = document.getElementById('dg-go-emoji');
     if (emojiEl) {
-      emojiEl.src = isDurak ? 'icons/emoji/durak.png' : 'icons/emoji/durak_win.png';
+      emojiEl.src = isDurak ? 'icons/emoji/durak.webp' : 'icons/emoji/durak_win.webp';
       emojiEl.style.display = 'block';
     }
 

@@ -40,8 +40,8 @@ const Energy = (() => {
 
     function _iconSrc() {
         return location.pathname.includes('/games/')
-            ? '../icons/enegry.png'
-            : 'icons/enegry.png';
+            ? '../icons/enegry.webp'
+            : 'icons/enegry.webp';
     }
 
     function iconHtml(sizePx = 20) {
