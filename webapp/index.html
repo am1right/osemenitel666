@@ -33,6 +33,8 @@
         }
 
         .container {
+            position: relative !important;
+            z-index: 1 !important;
             padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
             /* Делаем контейнер прокручиваемым с правильной высотой (учитываем навбар снизу) */
             overflow-y: auto !important;
@@ -218,7 +220,7 @@
 </head>
 <body>
     <video id="bg-video" autoplay loop muted playsinline preload="auto"
-           style="position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:-3;pointer-events:none;">
+           style="position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;pointer-events:none;">
         <source src="chin_back.mp4" type="video/mp4">
     </video>
     <script>
