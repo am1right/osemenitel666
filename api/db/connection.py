@@ -3,19 +3,49 @@ from typing import Set
 
 import psycopg2
 import psycopg2.extras
+import psycopg2.pool
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 TEST_PLAYER_IDS = (999001, 777888)
 TEST_ID_RANGE = (888_000, 1_010_000)
 
+_POOL_MIN = int(os.getenv("DB_POOL_MIN", "2"))
+_POOL_MAX = int(os.getenv("DB_POOL_MAX", "10"))
+_pool = None
+
+
+def _get_pool():
+    global _pool
+    if _pool is None:
+        db_url = DATABASE_URL
+        if not db_url:
+            raise RuntimeError("DATABASE_URL is not set - добавьте PostgreSQL URL из Render Dashboard")
+        if db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql://", 1)
+        _pool = psycopg2.pool.ThreadedConnectionPool(_POOL_MIN, _POOL_MAX, db_url)
+    return _pool
+
+
+class _PooledConnection:
+    """Прокси над соединением из пула: close() возвращает соединение в пул."""
+
+    def __init__(self, pool, conn):
+        self._pool = pool
+        self._conn = conn
+
+    def close(self):
+        if self._conn is not None:
+            self._pool.putconn(self._conn)
+            self._conn = None
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
 
 def get_connection():
-    db_url = DATABASE_URL
-    if not db_url:
-        raise RuntimeError("DATABASE_URL is not set - добавьте PostgreSQL URL из Render Dashboard")
-    if db_url.startswith("postgres://"):
-        db_url = db_url.replace("postgres://", "postgresql://", 1)
-    return psycopg2.connect(db_url)
+    pool = _get_pool()
+    conn = pool.getconn()
+    return _PooledConnection(pool, conn)
 
 
 def _cursor(conn):
