@@ -5,7 +5,8 @@
     --bg-color-mid: #1a103d;
     --card-bg: #2b1d54;
     --primary: #d122e3;
-    --secondary: #33e6e6;
+    --secondary: #ff66c9;   /* розовый из видео-фона (был голубой #33e6e6) */
+    --accent-violet: #a347f8;
     --text-muted: #a095c4;
     --grid-color: rgba(51, 34, 102, 0.55);
     --text-glow: 0 0 10px rgba(191, 64, 255, 0.9), 0 0 25px rgba(209, 34, 227, 0.55), 0 0 45px rgba(209, 34, 227, 0.25);
@@ -123,7 +124,7 @@ h1.glitch::after {
     text-transform: uppercase;
     letter-spacing: 1px;
     margin-bottom: 30px;
-    text-shadow: 0 0 8px rgba(51, 230, 230, 0.8), 0 0 18px rgba(0, 242, 255, 0.4);
+    text-shadow: 0 0 8px rgba(255, 102, 201, 0.8), 0 0 18px rgba(255, 102, 201, 0.4);
     font-weight: 700;
 }
 
@@ -169,7 +170,8 @@ h1.glitch::after {
 .games-section-title {
     grid-column: 1 / -1;
     font-size: 0.8rem;
-    color: rgba(255,255,255,0.4);
+    color: rgba(216, 180, 255, 0.75);
+    text-shadow: 0 0 10px rgba(163, 71, 248, 0.5);
     text-transform: uppercase;
     letter-spacing: 1.5px;
     font-family: 'Orbitron', sans-serif;
@@ -186,10 +188,10 @@ h1.glitch::after {
     grid-column: 1 / -1;
     height: 1px;
     background: linear-gradient(
-        to right, 
-        transparent, 
-        rgba(0, 255, 136, 0.25), 
-        rgba(188, 19, 254, 0.2), 
+        to right,
+        transparent,
+        rgba(255, 102, 201, 0.3),
+        rgba(163, 71, 248, 0.3),
         transparent
     );
 }

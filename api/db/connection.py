@@ -4,6 +4,7 @@ from typing import Set
 import psycopg2
 import psycopg2.extras
 import psycopg2.pool
+import psycopg2.extensions
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 TEST_PLAYER_IDS = (999001, 777888)
