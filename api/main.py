@@ -1,11 +1,13 @@
 import os
+import re
 import json
+import hashlib
 import logging
 import asyncio
 from datetime import datetime, timezone
 from typing import Dict, Any
 from pathlib import Path
-from fastapi import Depends, FastAPI, Request, HTTPException
+from fastapi import Depends, FastAPI, Request, HTTPException, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -199,8 +201,78 @@ def _verify_game_token(token: str, uid: int, game: str, score: int) -> tuple[boo
 
 STATIC_DIR = BASE_DIR / "webapp"
 
+# ── Версионирование статики (cache-busting через ?v=<hash>) ─────────
+_ASSET_EXTS = (".css", ".js", ".png", ".webp", ".jpg", ".jpeg", ".svg", ".woff", ".woff2", ".mp4")
+_asset_hash_cache: dict[str, str] = {}
+
+
+def _asset_hash(rel_path: str) -> str | None:
+    """Хэш содержимого файла (8 hex), кешируется по mtime."""
+    fpath = STATIC_DIR / rel_path.lstrip("/")
+    try:
+        stat = fpath.stat()
+    except OSError:
+        return None
+    cache_key = f"{rel_path}:{stat.st_mtime_ns}"
+    cached = _asset_hash_cache.get(rel_path)
+    if cached and cached[0] == cache_key:
+        return cached[1]
+    h = hashlib.sha256(fpath.read_bytes()).hexdigest()[:8]
+    _asset_hash_cache[rel_path] = (cache_key, h)
+    return h
+
+
+_ASSET_REF_RE = re.compile(
+    r'((?:src|href)=")((?!https?://|//|data:)[^"?]+\.(?:'
+    + "|".join(ext.lstrip(".") for ext in _ASSET_EXTS)
+    + r'))(\?[^"]*)?(")'
+)
+
+
+def _inject_asset_versions(html: bytes, base_dir: str) -> bytes:
+    text = html.decode("utf-8")
+
+    def repl(m):
+        prefix, url, _query, suffix = m.groups()
+        if url.startswith("/static/"):
+            rel_path = url[len("/static/"):]
+        elif url.startswith("/"):
+            return m.group(0)
+        else:
+            rel_path = os.path.normpath(os.path.join(base_dir, url)).replace("\\", "/")
+        h = _asset_hash(rel_path)
+        if not h:
+            return m.group(0)
+        return f"{prefix}{url}?v={h}{suffix}"
+
+    return _ASSET_REF_RE.sub(repl, text).encode("utf-8")
+
+
+class VersionedStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope):
+        response = await super().get_response(path, scope)
+        if "v" in scope.get("query_string", b"").decode():
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        else:
+            response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
+
+
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="webapp")
+app.mount("/static", VersionedStaticFiles(directory=str(STATIC_DIR)), name="webapp")
+
+
+@app.middleware("http")
+async def add_asset_versions_to_html(request: Request, call_next):
+    response = await call_next(request)
+    if response.headers.get("content-type", "").startswith("text/html") and request.url.path.startswith("/static/"):
+        body = b"".join([chunk async for chunk in response.body_iterator])
+        base_dir = os.path.dirname(request.url.path[len("/static/"):])
+        body = _inject_asset_versions(body, base_dir)
+        headers = dict(response.headers)
+        headers["content-length"] = str(len(body))
+        return Response(content=body, status_code=response.status_code, headers=headers, media_type=response.media_type)
+    return response
 
 init_db()
 
