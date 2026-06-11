@@ -33,6 +33,34 @@
         }
 
         /* ── Подгонка интерфейса под видео-фон ── */
+        /* Палитра видео: розовый #ff66c9, фиолет #a347f8, тёмный #0a041e */
+
+        /* Глитч-копии заголовка имеют непрозрачный фон — на видео это тёмные полосы. Убираем. */
+        h1.glitch::before, h1.glitch::after { background: transparent !important; }
+
+        /* Подзаголовок: голубой → розовый из видео */
+        .subtitle {
+            color: #ff7ad1 !important;
+            text-shadow: 0 0 8px rgba(255, 102, 201, 0.8), 0 0 20px rgba(255, 102, 201, 0.4) !important;
+        }
+
+        /* Заголовки секций — фиолетовый акцент вместо серого */
+        .games-section-title {
+            color: rgba(216, 180, 255, 0.75) !important;
+            text-shadow: 0 0 10px rgba(163, 71, 248, 0.5);
+        }
+
+        /* Разделители — розово-фиолетовый градиент вместо зелёно-голубого */
+        .games-separator {
+            background: linear-gradient(to right, transparent, rgba(255, 102, 201, 0.3), rgba(163, 71, 248, 0.3), transparent) !important;
+        }
+
+        /* Активная вкладка навбара: синий → розово-фиолетовый градиент видео */
+        .chin-navbar__item--active {
+            background: linear-gradient(180deg, #ff66c9 0%, #a347f8 100%) !important;
+            box-shadow: 0 6px 20px rgba(255, 102, 201, 0.5), inset 0 1px 0 rgba(255,255,255,0.3) !important;
+        }
+
         /* Карточки — стеклянные, видео просвечивает */
         .game-card {
             background: rgba(16, 8, 36, 0.55) !important;
@@ -276,7 +304,7 @@
                 <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:10px;
                             margin:8px 0 4px;font-family:'Orbitron',sans-serif;font-size:15px;font-weight:700;
                             letter-spacing:2px;text-transform:uppercase;
-                            color:rgba(0,243,255,0.9);text-shadow:0 0 12px rgba(0,243,255,0.6);
+                            color:rgba(255,122,209,0.95);text-shadow:0 0 12px rgba(255,102,201,0.6);
                             animation:durakHintBounce 1.8s ease-in-out infinite;">
                     🎮 Онлайн игры ниже <span style="font-size:18px;">↓</span>
                 </div>

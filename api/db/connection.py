@@ -35,6 +35,11 @@ class _PooledConnection:
 
     def close(self):
         if self._conn is not None:
+            if self._conn.closed == 0 and self._conn.status != psycopg2.extensions.STATUS_READY:
+                try:
+                    self._conn.rollback()
+                except Exception:
+                    pass
             self._pool.putconn(self._conn)
             self._conn = None
 
