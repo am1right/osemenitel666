@@ -49,9 +49,10 @@ body {
         linear-gradient(var(--grid-color) 1px, transparent 1px),
         linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
     background-size: 40px 40px;
-    transform: rotateX(60deg);
     animation: gridMove 20s linear infinite;
     mask-image: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 80%);
+    will-change: background-position;
+    transform: rotateX(60deg) translateZ(0);
 }
 
 .stars {
@@ -69,6 +70,8 @@ body {
     background-size: 200px 200px;
     animation: starsMove 100s linear infinite;
     opacity: 0.45;
+    will-change: background-position;
+    transform: translateZ(0);
 }
 
 /* --- Контейнер --- */
@@ -109,6 +112,7 @@ h1.glitch::before {
     text-shadow: -2px 0 var(--primary);
     clip: rect(24px, 550px, 90px, 0);
     animation: glitch-anim-1 2.5s infinite linear alternate-reverse;
+    will-change: clip, transform;
 }
 
 h1.glitch::after {
@@ -116,6 +120,13 @@ h1.glitch::after {
     text-shadow: -2px 0 var(--secondary);
     clip: rect(85px, 550px, 140px, 0);
     animation: glitch-anim-2 3s infinite linear alternate-reverse;
+    will-change: clip, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .grid-floor, .stars, h1.glitch::before, h1.glitch::after {
+        animation: none !important;
+    }
 }
 
 .subtitle {

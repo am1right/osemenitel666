@@ -6,6 +6,8 @@
     <title>Реферальная программа | Chin Games</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="js/api.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <!-- hCaptcha — sitekey подставляется динамически -->
     <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
@@ -41,7 +43,7 @@
                 linear-gradient(90deg, rgba(0,243,255,0.12) 1px, transparent 1px);
             background-size: 40px 40px;
             transform: perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);
-            animation: gridMove 20s linear infinite;
+            animation: gridMove 20s linear infinite; will-change: transform;
             z-index: 0; opacity: 0.4;
         }
         @keyframes gridMove {
@@ -309,6 +311,10 @@
             text-align: center; margin-top: 10px;
             min-height: 20px;
         }
+        @media (prefers-reduced-motion: reduce) {
+            .bg-grid, .bg-stars, h1.glitch::before, h1.glitch::after { animation: none !important; }
+        }
+
     </style>
 </head>
 <body>

@@ -29,7 +29,7 @@
         }
 
         .bg-grid, .bg-glow { position:absolute; top:0; left:0; width:200%; height:200%; z-index:-2; }
-        .bg-grid { background-image:linear-gradient(rgba(188,19,254,0.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,102,201,0.2) 1px,transparent 1px); background-size:40px 40px; transform:perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px); animation:gridMove 20s linear infinite; opacity:0.6; }
+        .bg-grid { background-image:linear-gradient(rgba(188,19,254,0.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,102,201,0.2) 1px,transparent 1px); background-size:40px 40px; transform:perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px); animation:gridMove 20s linear infinite;will-change:transform; opacity:0.6; }
         .bg-glow { background:radial-gradient(circle, rgba(122,4,235,0.3) 0%, rgba(42,16,80,0) 70%); top:50%; left:50%; width:150vw; height:150vw; transform:translate(-50%,-50%); animation:pulseGlow 4s ease-in-out infinite alternate; }
 
         @keyframes gridMove { 0% { transform:perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px); } 100% { transform:perspective(500px) rotateX(60deg) translateY(40px) translateZ(-200px); } }
@@ -111,6 +111,10 @@
             transform:scale(0.92);
             background:rgba(255,102,201,0.22);
         }
+        @media (prefers-reduced-motion: reduce) {
+            .bg-grid, .bg-stars, h1.glitch::before, h1.glitch::after { animation: none !important; }
+        }
+
 
     </style>
 </head>

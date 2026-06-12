@@ -6,6 +6,8 @@
     <title>Панель администратора | Chin Games</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="js/api.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <style>
         * { user-select:none!important;-webkit-user-select:none!important;-webkit-tap-highlight-color:transparent!important;box-sizing:border-box; }
@@ -13,7 +15,7 @@
         :root { --neon-cyan:#00ffff;--neon-pink:#ff00ff;--neon-purple:#7a04eb;--neon-blue:#00b4ff;--bg-dark:#1a103d;--glass:rgba(255,255,255,0.05); }
         body { font-family:'Rajdhani',sans-serif;background:linear-gradient(180deg,#0d081a 0%,#120b2e 35%,#1a103d 100%);color:#fff;height:100vh;overflow:hidden;display:flex;flex-direction:column; }
 
-        .bg-grid { position:fixed;top:0;left:0;width:200%;height:200%;background-image:linear-gradient(rgba(0,100,255,0.08) 1px,transparent 1px),linear-gradient(90deg,rgba(0,180,255,0.08) 1px,transparent 1px);background-size:40px 40px;transform:perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);animation:gridMove 20s linear infinite;z-index:0;opacity:0.4; }
+        .bg-grid { position:fixed;top:0;left:0;width:200%;height:200%;background-image:linear-gradient(rgba(0,100,255,0.08) 1px,transparent 1px),linear-gradient(90deg,rgba(0,180,255,0.08) 1px,transparent 1px);background-size:40px 40px;transform:perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);animation:gridMove 20s linear infinite;will-change:transform;z-index:0;opacity:0.4; }
         @keyframes gridMove { 0%{transform:perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px)}100%{transform:perspective(500px) rotateX(60deg) translateY(40px) translateZ(-200px)} }
 
         .scroll-area { position:relative;z-index:1;flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-y!important;padding:16px 16px calc(80px + env(safe-area-inset-bottom,0px)); }
@@ -162,6 +164,10 @@
         .toast.success { border-color:rgba(0,255,100,0.5);color:#00ff64; }
 
         @media (max-width:380px) { .info-grid { grid-template-columns:repeat(2,1fr); } }
+        @media (prefers-reduced-motion: reduce) {
+            .bg-grid, .bg-stars, h1.glitch::before, h1.glitch::after { animation: none !important; }
+        }
+
     </style>
 </head>
 <body>

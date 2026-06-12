@@ -7,7 +7,9 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="js/api.js"></script>
     <script src="js/durak-game.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js" defer></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="durak-card.css">
     <link rel="stylesheet" href="css/navbar.css">
@@ -16,7 +18,7 @@
         html,body { overscroll-behavior:none!important;touch-action:none!important;overflow:hidden!important;height:100%!important;position:fixed!important;width:100%!important;margin:0!important;padding:0!important; }
         :root { --neon-cyan:#00ffff;--neon-pink:#ff00ff;--neon-purple:#7a04eb;--bg-dark:#1a103d;--glass:rgba(255,255,255,0.05); }
         body { font-family:'Rajdhani',sans-serif;background:linear-gradient(180deg,#0d081a 0%,#120b2e 35%,#1a103d 100%);color:#fff;height:100vh;overflow:hidden;display:flex;flex-direction:column; }
-        .bg-grid { position:fixed;top:0;left:0;width:200%;height:200%;background-image:linear-gradient(rgba(188,19,254,0.15) 1px,transparent 1px),linear-gradient(90deg,rgba(0,243,255,0.15) 1px,transparent 1px);background-size:40px 40px;transform:perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);animation:gridMove 20s linear infinite;z-index:0;opacity:0.5; }
+        .bg-grid { position:fixed;top:0;left:0;width:200%;height:200%;background-image:linear-gradient(rgba(188,19,254,0.15) 1px,transparent 1px),linear-gradient(90deg,rgba(0,243,255,0.15) 1px,transparent 1px);background-size:40px 40px;transform:perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);animation:gridMove 20s linear infinite;will-change:transform;z-index:0;opacity:0.5; }
         @keyframes gridMove { 0%{transform:perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px)}100%{transform:perspective(500px) rotateX(60deg) translateY(40px) translateZ(-200px)} }
         .scroll-area { position:relative;z-index:1;flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-y!important;padding:16px 16px calc(80px + env(safe-area-inset-bottom,0px)); }
         .profile-header { display:flex;align-items:center;gap:16px;margin-bottom:24px; }
@@ -233,6 +235,10 @@
         .nft-prize-tabs { display:flex;gap:6px;justify-content:center;margin-bottom:10px; }
         .nft-prize-tab { padding:4px 11px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:20px;font-family:Orbitron,sans-serif;font-size:8px;color:rgba(255,255,255,0.4);cursor:pointer;transition:all 0.2s; }
         .nft-prize-tab.active { background:rgba(188,19,254,0.2);border-color:#bc13fe;color:#e060ff;box-shadow:0 0 8px rgba(188,19,254,0.2); }
+        @media (prefers-reduced-motion: reduce) {
+            .bg-grid, .bg-stars, h1.glitch::before, h1.glitch::after { animation: none !important; }
+        }
+
 </style>
 </head>
 <body>

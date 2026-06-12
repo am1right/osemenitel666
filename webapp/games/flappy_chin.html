@@ -42,7 +42,7 @@
             background-image:linear-gradient(rgba(188,19,254,0.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,102,201,0.2) 1px,transparent 1px);
             background-size:40px 40px;
             transform:perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);
-            animation:gridMove 20s linear infinite; opacity:0.6;
+            animation:gridMove 20s linear infinite;will-change:transform; opacity:0.6;
         }
         .bg-glow {
             background:radial-gradient(circle, rgba(122,4,235,0.3) 0%, rgba(42,16,80,0) 70%);
@@ -98,6 +98,10 @@
             color:#fff; text-shadow:0 0 12px var(--neon-pink); text-align:center; padding:12px;
         }
         .start-overlay.hidden { display:none; }
+        @media (prefers-reduced-motion: reduce) {
+            .bg-grid, .bg-stars, h1.glitch::before, h1.glitch::after { animation: none !important; }
+        }
+
 
     </style>
 </head>
