@@ -299,7 +299,7 @@
                 <div class="ref-card__icon">🤝</div>
                 <div>
                     <div class="ref-card__title">Пригласи друга</div>
-                    <div class="ref-card__sub">За каждого — +20 choin и +10 <img src="icons/enegry.webp" alt="" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;display:inline-block;filter:drop-shadow(0 0 4px rgba(0,255,255,0.7));"></div>
+                    <div class="ref-card__sub">За каждого — +20 <img src="icons/chent.webp" alt="" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;display:inline-block;"> и +10 <img src="icons/enegry.webp" alt="" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;display:inline-block;filter:drop-shadow(0 0 4px rgba(0,255,255,0.7));"></div>
                 </div>
             </div>
             <div class="ref-card__stats">
@@ -312,7 +312,7 @@
                     <div class="ref-stat__label">Награждено</div>
                 </div>
             </div>
-            <div class="ref-reward-hint">За каждого нового игрока: <b>+20 choin</b> и <b>+10 <img src="icons/enegry.webp" alt="" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;display:inline-block;filter:drop-shadow(0 0 4px rgba(0,255,255,0.7));"> энергии</b></div>
+            <div class="ref-reward-hint">За каждого нового игрока: <b>+20 <img src="icons/chent.webp" alt="" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;display:inline-block;"></b> и <b>+10 <img src="icons/enegry.webp" alt="" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;display:inline-block;filter:drop-shadow(0 0 4px rgba(0,255,255,0.7));"> энергии</b></div>
             <button class="ref-invite-btn" id="ref-invite-btn" onclick="shareRefLink()">
                 🔗 Поделиться ссылкой
             </button>
@@ -333,7 +333,7 @@
                     <div class="bonus-title">Ежедневный вход</div>
                     <div class="bonus-desc">Streak: <span id="daily-streak">—</span> дн.</div>
                 </div>
-                <div class="bonus-reward">+20 choin</div>
+                <div class="bonus-reward">+20 <img src="icons/chent.webp" alt="" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;display:inline-block;"></div>
                 <button class="bonus-btn daily-btn" id="daily-btn" onclick="claimDaily()" style="width:auto;margin-top:0;padding:7px 14px;">Забрать</button>
             </div>
             <!-- Канал -->
@@ -343,7 +343,7 @@
                     <div class="bonus-title">Подписка на канал</div>
                     <div class="bonus-desc">@ZeroOrOneOFF — обязательно</div>
                 </div>
-                <div class="bonus-reward">+100 choin</div>
+                <div class="bonus-reward">+100 <img src="icons/chent.webp" alt="" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;display:inline-block;"></div>
                 <button class="bonus-btn" id="bonus-channel-btn" onclick="claimBonus('sub_channel')">Получить</button>
             </div>
             <!-- Чат -->
@@ -353,7 +353,7 @@
                     <div class="bonus-title">Вступление в чат</div>
                     <div class="bonus-desc">@zeroandonechat — обязательно</div>
                 </div>
-                <div class="bonus-reward">+100 choin</div>
+                <div class="bonus-reward">+100 <img src="icons/chent.webp" alt="" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;display:inline-block;"></div>
                 <button class="bonus-btn" id="bonus-chat-btn" onclick="claimBonus('sub_chat')">Получить</button>
             </div>
             <!-- Поделиться -->
@@ -363,7 +363,7 @@
                     <div class="bonus-title">Поделиться игрой</div>
                     <div class="bonus-desc">Отправь другу ссылку на бота</div>
                 </div>
-                <div class="bonus-reward">+50 choin</div>
+                <div class="bonus-reward">+50 <img src="icons/chent.webp" alt="" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;display:inline-block;"></div>
                 <button class="bonus-btn" id="bonus-share-btn" onclick="claimShareBonus()">Поделиться</button>
             </div>
         </div>
@@ -966,7 +966,7 @@
 
                 let badgeHtml = '';
                 if (isDone) {
-                    badgeHtml = `<span class="ref-item__badge ref-item__badge--done">✅ +20 choin</span>`;
+                    badgeHtml = `<span class="ref-item__badge ref-item__badge--done">✅ +20 <img src="icons/chent.webp" alt="" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;display:inline-block;"></span>`;
                 } else if (inProgress) {
                     badgeHtml = `<span class="ref-item__badge ref-item__badge--waiting">⏳ Играет</span>`;
                 } else {
