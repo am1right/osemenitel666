@@ -237,9 +237,12 @@
         const flapStrength = -7.4;
         let pipes = [];
         let frame = 0;
+        let lastTime = 0;
+        let pipeSpawnTimer = 0;
         const pipeGap = 148;
         const pipeWidth = 60;
         const pipeSpeed = 2.8;
+        const pipeSpawnInterval = 75 / 60 * 1000; // ~1250ms, эквивалент frame % 75 на 60fps
         function updateBestDisplays() {
             const el = document.getElementById('best-score-game');
             if (el) el.textContent = bestScore;
@@ -353,18 +356,18 @@
             ctx.shadowBlur = 0;
         }
 
-        function updateBird() {
+        function updateBird(k) {
             if (waitingForStart) return;
-            bird.velocity += gravity;
-            bird.y += bird.velocity;
+            bird.velocity += gravity * k;
+            bird.y += bird.velocity * k;
             if (bird.y > canvas.height - 36) { bird.y = canvas.height - 36; endGame(); }
             if (bird.y < bird.radius) { bird.y = bird.radius; bird.velocity = 0; }
         }
 
-        function updatePipes() {
+        function updatePipes(k, dt) {
             if (waitingForStart) return;
             for (let i = pipes.length - 1; i >= 0; i--) {
-                pipes[i].x -= pipeSpeed;
+                pipes[i].x -= pipeSpeed * k;
                 if (!pipes[i].passed && pipes[i].x + pipeWidth < bird.x) {
                     pipes[i].passed = true;
                     score++;
@@ -372,7 +375,9 @@
                 }
                 if (pipes[i].x + pipeWidth < 0) pipes.splice(i, 1);
             }
-            if (frame % 75 === 0) {
+            pipeSpawnTimer += dt;
+            if (pipeSpawnTimer >= pipeSpawnInterval) {
+                pipeSpawnTimer -= pipeSpawnInterval;
                 const top = Math.random() * (canvas.height - pipeGap - 120) + 40;
                 pipes.push({ x: canvas.width + 20, top, passed: false });
             }
@@ -389,12 +394,17 @@
             }
         }
 
-        function gameLoop() {
+        function gameLoop(now) {
             if (!gameRunning) return;
+            if (typeof now !== 'number') now = performance.now();
+            if (!lastTime) lastTime = now;
+            const dt = now - lastTime;
+            lastTime = now;
+            const k = Math.min(dt / (1000 / 60), 3);
             frame++;
             drawBackground();
-            updateBird();
-            updatePipes();
+            updateBird(k);
+            updatePipes(k, dt);
             checkCollision();
             drawPipes();
             drawBird();
@@ -429,6 +439,7 @@
                 canvas.addEventListener('touchstart', flap, { passive: false });
                 canvas.addEventListener('mousedown', flap);
                 drawBackground(); drawPipes(); drawBird();
+                lastTime = 0;
                 gameLoop();
             });
         }
@@ -441,6 +452,8 @@
             score = 0;
             pipes = [{ x: canvas.width * 0.55, top: 160, passed: true }];
             frame = 0;
+            lastTime = 0;
+            pipeSpawnTimer = 0;
             waitingForStart = true;
             document.getElementById('current-score').textContent = '0';
             gameRunning = true;
