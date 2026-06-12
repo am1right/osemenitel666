@@ -3,7 +3,7 @@ from typing import Dict, Any, List, Optional
 from api.db.connection import get_connection, _cursor
 from api.db.energy import ENERGY_MAX
 
-REFERRAL_STARS        = 2
+REFERRAL_CHENT        = 20   # = 2 choin * 10 (chent — гриндовая валюта вместо донатных choin)
 REFERRAL_ENERGY       = 10   # +10% заряда батареи
 REFERRAL_GAMES_NEEDED = 3
 FRAUD_DAILY_LIMIT     = 8
@@ -90,18 +90,18 @@ def try_grant_referral_reward(invitee_id: int) -> Optional[Dict[str, Any]]:
             return None
 
         cur.execute('''
-            INSERT INTO wallet (user_id, balance, total_topped_up, updated_at)
+            INSERT INTO chent_wallet (user_id, balance, total_earned, updated_at)
             VALUES (%s, %s, %s, NOW())
             ON CONFLICT (user_id) DO UPDATE SET
-                balance         = wallet.balance + EXCLUDED.balance,
-                total_topped_up = wallet.total_topped_up + EXCLUDED.total_topped_up,
-                updated_at      = NOW()
-        ''', (inviter_id, REFERRAL_STARS, REFERRAL_STARS))
+                balance      = chent_wallet.balance + EXCLUDED.balance,
+                total_earned = chent_wallet.total_earned + EXCLUDED.total_earned,
+                updated_at   = NOW()
+        ''', (inviter_id, REFERRAL_CHENT, REFERRAL_CHENT))
 
         cur.execute('''
-            INSERT INTO wallet_transactions (user_id, type, amount, description)
+            INSERT INTO chent_transactions (user_id, type, amount, description)
             VALUES (%s, 'topup', %s, %s)
-        ''', (inviter_id, REFERRAL_STARS, f"Реферал: {invitee_id} отыграл {REFERRAL_GAMES_NEEDED}+ игр"))
+        ''', (inviter_id, REFERRAL_CHENT, f"Реферал: {invitee_id} отыграл {REFERRAL_GAMES_NEEDED}+ игр"))
 
         cur.execute('''
             INSERT INTO energy (user_id, amount, updated_at)
@@ -113,7 +113,7 @@ def try_grant_referral_reward(invitee_id: int) -> Optional[Dict[str, Any]]:
 
         cur.execute("UPDATE referrals SET reward_sent = 1 WHERE invitee_id = %s", (invitee_id,))
 
-        cur.execute('SELECT balance FROM wallet WHERE user_id = %s', (inviter_id,))
+        cur.execute('SELECT balance FROM chent_wallet WHERE user_id = %s', (inviter_id,))
         new_balance = cur.fetchone()["balance"]
         cur.execute('SELECT amount FROM energy WHERE user_id = %s', (inviter_id,))
         energy_row = cur.fetchone()
@@ -121,7 +121,7 @@ def try_grant_referral_reward(invitee_id: int) -> Optional[Dict[str, Any]]:
 
         conn.commit()
         return {
-            "stars":       REFERRAL_STARS,
+            "chent":       REFERRAL_CHENT,
             "energy":      REFERRAL_ENERGY,
             "new_balance": new_balance,
             "new_energy":  new_energy,

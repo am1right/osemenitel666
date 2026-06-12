@@ -85,6 +85,8 @@ def _delete_player(cur, user_id: int) -> None:
         ("scores",             "user_id"),
         ("wallet_transactions","user_id"),
         ("wallet",             "user_id"),
+        ("chent_transactions", "user_id"),
+        ("chent_wallet",       "user_id"),
         ("energy",             "user_id"),
         ("admin_bans",         "user_id"),
     ]:
@@ -237,6 +239,28 @@ def init_db():
             total_topped_up INTEGER DEFAULT 0,
             total_spent     INTEGER DEFAULT 0,
             updated_at      TIMESTAMP DEFAULT NOW()
+        )
+    ''')
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS chent_wallet (
+            user_id      BIGINT PRIMARY KEY,
+            first_name   TEXT,
+            balance      INTEGER DEFAULT 0,
+            total_earned INTEGER DEFAULT 0,
+            total_spent  INTEGER DEFAULT 0,
+            updated_at   TIMESTAMP DEFAULT NOW()
+        )
+    ''')
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS chent_transactions (
+            id          SERIAL PRIMARY KEY,
+            user_id     BIGINT NOT NULL,
+            type        TEXT NOT NULL,
+            amount      INTEGER NOT NULL,
+            description TEXT,
+            created_at  TIMESTAMP DEFAULT NOW()
         )
     ''')
 

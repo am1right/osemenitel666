@@ -1,12 +1,15 @@
 from datetime import date
 from typing import Dict, Any, Optional
 from api.db.connection import get_connection, _cursor
-from api.db.wallet import topup_wallet
+from api.db.chent import topup_chent
 
-BONUS_CHANNEL_STARS   = 10
-BONUS_CHAT_STARS      = 10
-BONUS_SHARE_STARS     = 5
-DAILY_CHECKIN_STARS   = 2
+# choin -> chent: курс x10 (chent — гриндовая валюта, choin — донат/выводимая)
+CHENT_PER_CHOIN = 10
+
+BONUS_CHANNEL_CHENT   = 10 * CHENT_PER_CHOIN
+BONUS_CHAT_CHENT      = 10 * CHENT_PER_CHOIN
+BONUS_SHARE_CHENT     = 5  * CHENT_PER_CHOIN
+DAILY_CHECKIN_CHENT   = 2  * CHENT_PER_CHOIN
 
 BONUS_CHANNEL  = "sub_channel"
 BONUS_CHAT     = "sub_chat"
@@ -26,9 +29,9 @@ def get_user_bonus_status(user_id: int) -> Dict[str, bool]:
 
 
 def grant_bonus(user_id: int, first_name: str, bonus_type: str) -> Dict[str, Any]:
-    """Начисляет одноразовый бонус. Возвращает {ok, already, stars}."""
-    amounts = {BONUS_CHANNEL: BONUS_CHANNEL_STARS, BONUS_CHAT: BONUS_CHAT_STARS, BONUS_SHARE: BONUS_SHARE_STARS}
-    stars = amounts.get(bonus_type, 0)
+    """Начисляет одноразовый бонус (в chent). Возвращает {ok, already, chent}."""
+    amounts = {BONUS_CHANNEL: BONUS_CHANNEL_CHENT, BONUS_CHAT: BONUS_CHAT_CHENT, BONUS_SHARE: BONUS_SHARE_CHENT}
+    chent = amounts.get(bonus_type, 0)
     conn = get_connection(); cur = _cursor(conn)
     try:
         cur.execute(
@@ -38,15 +41,15 @@ def grant_bonus(user_id: int, first_name: str, bonus_type: str) -> Dict[str, Any
         conn.commit()
     except Exception:
         conn.rollback(); cur.close(); conn.close()
-        return {"ok": False, "already": True, "stars": 0}
+        return {"ok": False, "already": True, "chent": 0}
     cur.close(); conn.close()
-    if stars > 0:
-        topup_wallet(user_id, first_name, stars, description=f"Бонус: {bonus_type}")
-    return {"ok": True, "already": False, "stars": stars}
+    if chent > 0:
+        topup_chent(user_id, first_name, chent, description=f"Бонус: {bonus_type}")
+    return {"ok": True, "already": False, "chent": chent}
 
 
 def daily_checkin(user_id: int, first_name: str) -> Dict[str, Any]:
-    """Ежедневный вход. Возвращает {ok, already_today, stars, streak}."""
+    """Ежедневный вход. Возвращает {ok, already_today, chent, streak}."""
     today = date.today()
     conn = get_connection(); cur = _cursor(conn)
     cur.execute("SELECT last_checkin, streak FROM daily_checkins WHERE user_id = %s", (user_id,))
@@ -58,7 +61,7 @@ def daily_checkin(user_id: int, first_name: str) -> Dict[str, Any]:
             last = datetime.strptime(last, "%Y-%m-%d").date()
         if last == today:
             cur.close(); conn.close()
-            return {"ok": False, "already_today": True, "stars": 0, "streak": row["streak"]}
+            return {"ok": False, "already_today": True, "chent": 0, "streak": row["streak"]}
         from datetime import timedelta
         streak = row["streak"] + 1 if last == today - timedelta(days=1) else 1
         cur.execute(
@@ -72,8 +75,8 @@ def daily_checkin(user_id: int, first_name: str) -> Dict[str, Any]:
             (user_id, today)
         )
     conn.commit(); cur.close(); conn.close()
-    topup_wallet(user_id, first_name, DAILY_CHECKIN_STARS, description="Ежедневный вход")
-    return {"ok": True, "already_today": False, "stars": DAILY_CHECKIN_STARS, "streak": streak}
+    topup_chent(user_id, first_name, DAILY_CHECKIN_CHENT, description="Ежедневный вход")
+    return {"ok": True, "already_today": False, "chent": DAILY_CHECKIN_CHENT, "streak": streak}
 
 
 def get_daily_checkin_status(user_id: int) -> Dict[str, Any]:

@@ -282,6 +282,17 @@
             <div class="wallet-card__arrow">›</div>
         </div>
 
+        <!-- Баланс Chent -->
+        <div class="wallet-card" onclick="location.href='shop.html'" id="chent-card" title="Перейти в магазин">
+            <div class="wallet-card__icon"><img src="icons/chent.webp" alt="" style="width:2rem;height:2rem;object-fit:contain;filter:drop-shadow(0 0 8px rgba(192,192,255,0.6));"></div>
+            <div class="wallet-card__info">
+                <div class="wallet-card__label">Баланс Chent</div>
+                <div class="wallet-card__balance" id="chent-balance">—</div>
+                <div class="wallet-card__sub">Зарабатывай за бонусы и дейлик</div>
+            </div>
+            <div class="wallet-card__arrow">›</div>
+        </div>
+
         <!-- Реферальная программа -->
         <div class="ref-card" id="ref-card" style="display:none;">
             <div class="ref-card__header">
@@ -895,6 +906,20 @@
             }
         }
 
+        async function loadChentBalance() {
+            const userId = user?.id;
+            const el = document.getElementById('chent-balance');
+            if (!userId) { el.textContent = '0'; return; }
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api(`${API}/api/chent/balance?user_id=${userId}`);
+                const data = await res.json();
+                el.textContent = data.balance ?? 0;
+            } catch (e) {
+                el.textContent = '—';
+            }
+        }
+
         // ── Реферальная программа ─────────────────────────────────
         let _refUrl = '';
 
@@ -1066,9 +1091,9 @@
                 const res = await fetch(`${API}/api/bonuses/daily_checkin`, { method: 'POST', headers: _tgHeaders() });
                 const d = await res.json();
                 if (d.already_today) { btn.textContent = '✅ Уже получено'; return; }
-                btn.textContent = `✅ +${d.stars * CHOIN_RATE} choin`;
+                btn.textContent = `✅ +${d.chent} chent`;
                 document.getElementById('daily-streak').textContent = d.streak;
-                loadWalletBalance();
+                loadChentBalance();
             } catch(e) { btn.disabled = false; }
         }
 
@@ -1085,8 +1110,8 @@
                 const d = await res.json();
                 if (d.already) { btn.textContent = '✅'; btn.className = 'bonus-btn bonus-btn--done'; return; }
                 if (!d.ok) { btn.disabled = false; btn.textContent = 'Сначала подпишись'; return; }
-                btn.textContent = `✅ +${d.stars * CHOIN_RATE} choin`; btn.className = 'bonus-btn bonus-btn--done';
-                loadWalletBalance();
+                btn.textContent = `✅ +${d.chent} chent`; btn.className = 'bonus-btn bonus-btn--done';
+                loadChentBalance();
             } catch(e) { btn.disabled = false; }
         }
 
@@ -1100,6 +1125,7 @@
 
         initProfile();
         loadWalletBalance();
+        loadChentBalance();
         loadReferralStats();
         loadContests();
         loadStats();

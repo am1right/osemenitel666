@@ -41,6 +41,13 @@ from api.db.wallet import (
     get_wallet_transactions,
 )
 
+from api.db.chent import (
+    get_chent_wallet,
+    topup_chent,
+    spend_chent,
+    get_chent_transactions,
+)
+
 from api.db.energy import (
     ENERGY_MAX,
     ENERGY_REGEN_MS,
@@ -65,7 +72,7 @@ from api.db.cases import (
 )
 
 from api.db.referrals import (
-    REFERRAL_STARS,
+    REFERRAL_CHENT,
     REFERRAL_ENERGY,
     REFERRAL_GAMES_NEEDED,
     FRAUD_DAILY_LIMIT,
@@ -108,7 +115,7 @@ from api.db.admin import (
 
 from api.db.bonuses import (
     BONUS_CHANNEL, BONUS_CHAT, BONUS_SHARE,
-    BONUS_CHANNEL_STARS, BONUS_CHAT_STARS, BONUS_SHARE_STARS, DAILY_CHECKIN_STARS,
+    BONUS_CHANNEL_CHENT, BONUS_CHAT_CHENT, BONUS_SHARE_CHENT, DAILY_CHECKIN_CHENT,
     get_user_bonus_status, grant_bonus, daily_checkin, get_daily_checkin_status,
 )
 
@@ -151,6 +158,7 @@ __all__ = [
     "mark_prize_sent", "cancel_contest",
     # wallet
     "get_wallet", "topup_wallet", "spend_wallet", "get_wallet_transactions",
+    "get_chent_wallet", "topup_chent", "spend_chent", "get_chent_transactions",
     # energy
     "ENERGY_MAX", "ENERGY_REGEN_MS", "get_energy", "spend_energy", "admin_adjust_energy", "upgrade_regen_speed",
     # cases
@@ -159,7 +167,7 @@ __all__ = [
     "get_case_settings", "save_case_settings", "get_case_valuable_cooldown_status",
     "get_recent_case_reward", "grant_case_reward", "confirm_case_reward",
     # referrals
-    "REFERRAL_STARS", "REFERRAL_ENERGY", "REFERRAL_GAMES_NEEDED",
+    "REFERRAL_CHENT", "REFERRAL_ENERGY", "REFERRAL_GAMES_NEEDED",
     "FRAUD_DAILY_LIMIT", "FRAUD_INACTIVE_RATIO",
     "register_referral", "accept_referral_policy", "get_referral_by_invitee",
     "get_invitee_total_games", "try_grant_referral_reward", "claim_referral_reward",

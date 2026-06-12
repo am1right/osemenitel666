@@ -953,6 +953,20 @@
                 </div>
             </div>
 
+            <!-- CHENT WALLET -->
+            <div class="wallet-block">
+                <div class="wallet-block__top">
+                    <div>
+                        <div class="wallet-block__label">Баланс chent</div>
+                        <div class="wallet-block__sub">Зарабатывай за бонусы и дейлик</div>
+                    </div>
+                    <div class="wallet-block__balance">
+                        <div class="wallet-block__icon"><img src="icons/chent.webp" alt="" style="width:1.4em;height:1.4em;object-fit:contain;vertical-align:middle;"></div>
+                        <div class="wallet-block__amount" id="chentBalance">—</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- CASE (перемещено наверх, сразу после пополнения баланса) -->
             <div class="section-title">Кейсы</div>
             <div class="case-section">
@@ -1061,6 +1075,79 @@
                     <div class="pack-price">
                         <img class="choin-icon" src="icons/choin.webp" alt="">
                         <span>240</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ENERGY PACKS (chent) -->
+            <div class="section-title">Пакеты энергии за chent</div>
+
+            <div class="packs-grid">
+
+                <!-- Pack 1 -->
+                <div class="pack-card" onclick="buyEnergyChent(15, 500)">
+                    <div class="pack-icon"><img src="icons/enegry.webp" alt=""></div>
+                    <div class="pack-amount">+15%</div>
+                    <div class="pack-label">заряда</div>
+                    <div class="pack-price">
+                        <img class="choin-icon" src="icons/chent.webp" alt="">
+                        <span>500</span>
+                    </div>
+                </div>
+
+                <!-- Pack 2 -->
+                <div class="pack-card" onclick="buyEnergyChent(30, 1000)">
+                    <div class="pack-icon"><img src="icons/enegry.webp" alt=""></div>
+                    <div class="pack-amount">+30%</div>
+                    <div class="pack-label">заряда</div>
+                    <div class="pack-price">
+                        <img class="choin-icon" src="icons/chent.webp" alt="">
+                        <span>1000</span>
+                    </div>
+                </div>
+
+                <!-- Pack 3: FEATURED — Полный заряд -->
+                <div class="pack-card featured" onclick="buyEnergyChent(100, 3200)">
+                    <div class="pack-badge">✦ Лучшая цена</div>
+                    <div class="pack-featured-inner">
+                        <div class="pack-featured-left">
+                            <div class="pack-icon" style="margin-bottom:4px;"><img src="icons/enegry.webp" alt="" style="width:42px;height:42px;"></div>
+                            <div class="pack-amount">100%</div>
+                            <div class="pack-label" style="margin-bottom:0;">заряда</div>
+                        </div>
+                        <div class="pack-featured-mid">
+                            <div class="pack-featured-name">Полный заряд</div>
+                            <div class="pack-featured-desc">Заряди батарею до 100% и продолжай гонку</div>
+                        </div>
+                        <div class="pack-featured-right">
+                            <div class="pack-price" style="flex-direction:column;gap:2px;padding:8px 12px;">
+                                <img class="choin-icon" style="width:1.3rem;height:1.3rem;" src="icons/chent.webp" alt="">
+                                <span style="font-size:1.1rem;">3200</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pack 4 -->
+                <div class="pack-card" onclick="buyEnergyChent(50, 1600)">
+                    <div class="pack-icon"><img src="icons/enegry.webp" alt=""></div>
+                    <div class="pack-amount">+50%</div>
+                    <div class="pack-label">заряда</div>
+                    <div class="pack-price">
+                        <img class="choin-icon" src="icons/chent.webp" alt="">
+                        <span>1600</span>
+                    </div>
+                </div>
+
+                <!-- Pack 5 -->
+                <div class="pack-card" onclick="buyEnergyChent(75, 2400)">
+                    <div class="pack-icon"><img src="icons/enegry.webp" alt="" style="width:40px;height:40px;"></div>
+                    <div class="pack-amount">+75%</div>
+                    <div class="pack-label">заряда</div>
+                    <div class="pack-price">
+                        <img class="choin-icon" src="icons/chent.webp" alt="">
+                        <span>2400</span>
                     </div>
                 </div>
 
@@ -1468,6 +1555,54 @@
             }
         }
 
+        // ── Покупка энергии за chent (без invoice, только списание баланса) ──
+        async function buyEnergyChent(amount, chent) {
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+
+            const { current, max } = Energy.get();
+            const realAmount = amount === 'full' ? (max - current) : amount;
+
+            if (realAmount <= 0) {
+                showToast('Энергия уже полная!', '');
+                return;
+            }
+
+            const userId = tg.initDataUnsafe?.user?.id;
+            if (!userId) {
+                showToast('⚠️ Нет доступа к Telegram', 'error');
+                return;
+            }
+
+            let resp;
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api('/api/shop/buy_energy_chent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, amount: amount, chent: chent })
+                });
+                resp = await res.json();
+                if (!res.ok) throw new Error(resp.detail || 'Server error');
+            } catch (err) {
+                console.error('buy_energy_chent error:', err);
+                showToast('⚠️ Ошибка покупки', 'error');
+                return;
+            }
+
+            if (resp.method === 'chent') {
+                _addEnergy(realAmount);
+                updateStatus();
+                document.getElementById('chentBalance').textContent = resp.balance;
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                showToast(`✅ +${realAmount} энергии  −${chent} chent`, 'success');
+                return;
+            }
+
+            if (resp.method === 'insufficient') {
+                showToast(`💡 Не хватает chent: нужно ещё ${resp.short}`, '');
+            }
+        }
+
         // ── Апгрейды скорости восстановления энергии ──────────────
         async function loadRegenUpgrades() {
             const userId = tg.initDataUnsafe?.user?.id;
@@ -1572,6 +1707,20 @@
                 document.getElementById('walletBalance').textContent = _walletBalance * CHOIN_RATE;
             } catch (e) {
                 document.getElementById('walletBalance').textContent = '?';
+            }
+        }
+
+        async function loadChentBalance() {
+            const userId = tg.initDataUnsafe?.user?.id;
+            const el = document.getElementById('chentBalance');
+            if (!userId) { el.textContent = '0'; return; }
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api(`/api/chent/balance?user_id=${userId}`);
+                const data = await res.json();
+                el.textContent = data.balance ?? 0;
+            } catch (e) {
+                el.textContent = '?';
             }
         }
 
@@ -1749,6 +1898,7 @@
 
         // Загружаем баланс кошелька при старте
         loadWalletBalance();
+        loadChentBalance();
 
         // Отключаем кнопку «Игры» в нижней навигации, если пользователь забанен
         if (window.disableGamesNavIfBanned) {

@@ -19,8 +19,9 @@ from api.database import (
     get_unannounced_finished_contests, mark_contest_announced,
     finish_contest, mark_prize_sent, cancel_contest,
     get_wallet, spend_wallet, topup_wallet, get_wallet_transactions,
+    get_chent_wallet, spend_chent, topup_chent, get_chent_transactions,
     register_referral, claim_referral_reward, get_referral_stats,
-    is_already_referred, REFERRAL_STARS, REFERRAL_ENERGY,
+    is_already_referred, REFERRAL_CHENT, REFERRAL_ENERGY,
     try_grant_referral_reward, get_referral_by_invitee,
     admin_adjust_energy, upgrade_regen_speed,
     get_energy, spend_energy, get_user_flags,
@@ -30,7 +31,7 @@ from api.database import (
     upsert_tg_username, admin_get_all_players,
     get_user_bonus_status, grant_bonus, daily_checkin, get_daily_checkin_status,
     BONUS_CHANNEL, BONUS_CHAT, BONUS_SHARE,
-    BONUS_CHANNEL_STARS, BONUS_CHAT_STARS, BONUS_SHARE_STARS, DAILY_CHECKIN_STARS,
+    BONUS_CHANNEL_CHENT, BONUS_CHAT_CHENT, BONUS_SHARE_CHENT, DAILY_CHECKIN_CHENT,
     set_sub_verified, get_sub_verified, reset_all_sub_verified, get_all_user_ids,
 )
 
@@ -354,7 +355,7 @@ async def api_save_score(request: Request, tg_user: dict = Depends(require_webap
             reward = try_grant_referral_reward(user_id)
             if reward:
                 inviter_id  = reward["inviter_id"]
-                stars       = reward["stars"]
+                chent       = reward["chent"]
                 energy      = reward["energy"]
                 new_balance = reward["new_balance"]
                 invitee_ref = get_referral_by_invitee(user_id)
@@ -368,21 +369,21 @@ async def api_save_score(request: Request, tg_user: dict = Depends(require_webap
                             text=(
                                 f"🎉 Твой реферал <b>{invitee_name}</b> отыграл 3 игры!\n\n"
                                 f"Ты получил:\n"
-                                f"⭐ +{stars} Stars на кошелёк (баланс: {new_balance})\n"
+                                f"🪙 +{chent} chent на баланс (баланс: {new_balance})\n"
                                 f"⚡ +{energy} энергии\n\n"
                                 f"Продолжай приглашать друзей! 🚀"
                             )
                         )
                     except Exception as notify_err:
                         logger.warning(f"[REF] Не удалось уведомить inviter {inviter_id}: {notify_err}")
-                logger.info(f"[REF] Reward granted: invitee={user_id} inviter={inviter_id} +{stars}⭐ +{energy}⚡")
+                logger.info(f"[REF] Reward granted: invitee={user_id} inviter={inviter_id} +{chent} chent +{energy}⚡")
         except Exception as ref_err:
             logger.warning(f"[REF] check_reward error for user {user_id}: {ref_err}")
 
         return {
             "status": "success",
             "new_record": result.get("new_record", False),
-            "referral_reward": {"stars": reward["stars"], "energy": reward["energy"]} if reward else None,
+            "referral_reward": {"chent": reward["chent"], "energy": reward["energy"]} if reward else None,
         }
     except HTTPException:
         raise
@@ -417,6 +418,7 @@ async def api_get_stats(user_id: int, game_name: str):
 # Энергия теперь батарея 0..100%. amount = % заряда → цена в Stars.
 # ~0.32⭐ за 1% (эквивалент старому: 4⭐/энергия × 8 = полный бак 32⭐).
 ENERGY_PACKS: dict[int, int] = {15: 5, 30: 10, 50: 16, 75: 24, 100: 32}
+ENERGY_PACKS_CHENT: dict[int, int] = {15: 500, 30: 1000, 50: 1600, 75: 2400, 100: 3200}  # = choin-цена * 10
 ENERGY_MAX = 100  # батарея
 
 
@@ -549,6 +551,46 @@ async def api_buy_energy(request: Request, tg_user: dict = Depends(require_webap
         raise
     except Exception as e:
         logger.error(f"buy_energy error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/shop/buy_energy_chent")
+async def api_buy_energy_chent(request: Request, tg_user: dict = Depends(require_webapp_user)):
+    """Покупка энергии за chent (без Stars-инвойса — только списание баланса)."""
+    try:
+        data    = await request.json()
+        user_id = data.get("user_id")
+        amount  = int(data.get("amount", 0))   # единицы энергии
+        chent   = int(data.get("chent", 0))    # цена пака в chent
+
+        if not user_id:
+            raise HTTPException(status_code=400, detail="Missing user_id")
+        if amount <= 0:
+            raise HTTPException(status_code=400, detail="Invalid amount")
+
+        expected_chent = ENERGY_PACKS_CHENT.get(amount)
+        if expected_chent is None or expected_chent != chent:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid pack or price. Expected: {ENERGY_PACKS_CHENT.get(amount)}"
+            )
+
+        result = spend_chent(
+            user_id=user_id,
+            amount=chent,
+            description=f"Покупка {amount} ⚡ энергии"
+        )
+        if not result["ok"]:
+            return {"method": "insufficient", "balance": result["balance"], "short": result["short"], "amount": amount}
+
+        admin_adjust_energy(user_id, amount)
+        logger.info(f"[SHOP] chent buy: user={user_id} -{chent}chent +{amount}⚡ balance={result['balance']}")
+        return {"method": "chent", "balance": result["balance"], "amount": amount}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"buy_energy_chent error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -728,6 +770,13 @@ async def api_wallet_balance(user_id: int, tg_user: dict = Depends(require_webap
     return get_wallet(user_id)
 
 
+@app.get("/api/chent/balance")
+async def api_chent_balance(user_id: int, tg_user: dict = Depends(require_webapp_user)):
+    if int(user_id) != int(tg_user["id"]):
+        raise HTTPException(status_code=403, detail="user_id mismatch")
+    return get_chent_wallet(user_id)
+
+
 @app.get("/api/user/flags")
 async def api_user_flags(user_id: int, tg_user: dict = Depends(require_webapp_user)):
     if int(user_id) != int(tg_user["id"]):
@@ -884,10 +933,10 @@ async def api_bonus_status(user_id: int, tg_user: dict = Depends(require_webapp_
         "config": {
             "channel": REQUIRED_CHANNEL,
             "chat":    REQUIRED_CHAT,
-            "channel_stars": BONUS_CHANNEL_STARS,
-            "chat_stars":    BONUS_CHAT_STARS,
-            "share_stars":   BONUS_SHARE_STARS,
-            "daily_stars":   DAILY_CHECKIN_STARS,
+            "channel_chent": BONUS_CHANNEL_CHENT,
+            "chat_chent":    BONUS_CHAT_CHENT,
+            "share_chent":   BONUS_SHARE_CHENT,
+            "daily_chent":   DAILY_CHECKIN_CHENT,
         }
     }
 
@@ -960,7 +1009,7 @@ async def api_referral_stats(user_id: int):
     try:
         stats = get_referral_stats(user_id)
         ref_url = f"https://t.me/{BOT_USERNAME}?start=ref_{user_id}"
-        return {**stats, "ref_url": ref_url, "reward_per_ref": {"stars": REFERRAL_STARS, "energy": REFERRAL_ENERGY}}
+        return {**stats, "ref_url": ref_url, "reward_per_ref": {"chent": REFERRAL_CHENT, "energy": REFERRAL_ENERGY}}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
