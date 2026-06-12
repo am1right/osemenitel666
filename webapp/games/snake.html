@@ -115,7 +115,17 @@
             .bg-grid, .bg-stars, h1.glitch::before, h1.glitch::after { animation: none !important; }
         }
 
-
+        /* На малых экранах (iPhone SE и т.п.) уменьшаем D-pad, чтобы доска + стата + D-pad влезали без скролла */
+        @media (max-height: 670px) {
+            .dpad {
+                grid-template-columns:repeat(3, 48px);
+                grid-template-rows:repeat(2, 48px);
+                gap:6px; margin:10px auto 0;
+            }
+            .dpad-btn {
+                width:48px; height:48px; font-size:18px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -245,13 +255,19 @@
             gameInterval = setInterval(move, speed);
         }
 
+        let cellEls = [];
+        let prevLitIdx = new Set();
+
         function initBoard() {
             gameBoard.style.gridTemplateColumns = `repeat(${boardSize}, 1fr)`;
             gameBoard.innerHTML = '';
+            cellEls = [];
+            prevLitIdx = new Set();
             for (let i = 0; i < boardSize * boardSize; i++) {
                 const cell = document.createElement('div');
                 cell.className = 'cell';
                 gameBoard.appendChild(cell);
+                cellEls.push(cell);
             }
         }
 
@@ -265,16 +281,25 @@
         }
 
         function render() {
-            const cells = gameBoard.querySelectorAll('.cell');
-            cells.forEach(cell => cell.className = 'cell');
+            const newLitIdx = new Set();
 
-            snake.forEach((segment, i) => {
-                const idx = segment.y * boardSize + segment.x;
-                if (cells[idx]) cells[idx].classList.add(i === 0 ? 'snake' : 'snake');
+            snake.forEach(segment => {
+                newLitIdx.add(segment.y * boardSize + segment.x);
             });
-
             const foodIdx = food.y * boardSize + food.x;
-            if (cells[foodIdx]) cells[foodIdx].classList.add('food');
+            newLitIdx.add(foodIdx);
+
+            // Снять подсветку с клеток, которые больше не заняты
+            for (const idx of prevLitIdx) {
+                if (!newLitIdx.has(idx) && cellEls[idx]) cellEls[idx].className = 'cell';
+            }
+
+            // Подсветить занятые клетки
+            for (const idx of newLitIdx) {
+                if (cellEls[idx]) cellEls[idx].className = idx === foodIdx ? 'cell food' : 'cell snake';
+            }
+
+            prevLitIdx = newLitIdx;
         }
 
         function move() {
@@ -297,6 +322,7 @@
             if (willEat) {
                 score += 10;
                 document.getElementById('score').textContent = score;
+                if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
                 placeFood();
                 if (score % 50 === 0 && speed > 140) {
                     speed -= 10;
@@ -345,6 +371,7 @@
 
         function endGame() {
             clearInterval(gameInterval);
+            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
             if (window.Energy) Energy.endSession();
             if (score > bestScore) {
                 bestScore = score;
@@ -414,23 +441,26 @@
             if (e.key === 'ArrowDown')  setDir(0, 1);
         });
 
-        // Свайпы
-        let touchStartX = 0, touchStartY = 0;
+        // Свайпы — обрабатываем на touchmove, чтобы быстрая смена направления
+        // в одном жесте (диагональный свайп) ставила несколько поворотов в очередь.
+        const SWIPE_THRESHOLD = 30;
+        let touchAnchorX = 0, touchAnchorY = 0;
         gameBoard.addEventListener('touchstart', e => {
-            touchStartX = e.changedTouches[0].screenX;
-            touchStartY = e.changedTouches[0].screenY;
+            touchAnchorX = e.touches[0].screenX;
+            touchAnchorY = e.touches[0].screenY;
         }, {passive:true});
 
-        gameBoard.addEventListener('touchend', e => {
-            const dxTouch = e.changedTouches[0].screenX - touchStartX;
-            const dyTouch = e.changedTouches[0].screenY - touchStartY;
+        gameBoard.addEventListener('touchmove', e => {
+            const touch = e.touches[0];
+            const dxTouch = touch.screenX - touchAnchorX;
+            const dyTouch = touch.screenY - touchAnchorY;
 
             if (Math.abs(dxTouch) > Math.abs(dyTouch)) {
-                if (dxTouch > 30)  setDir(1, 0);
-                if (dxTouch < -30) setDir(-1, 0);
+                if (dxTouch > SWIPE_THRESHOLD)  { setDir(1, 0);  touchAnchorX = touch.screenX; touchAnchorY = touch.screenY; }
+                if (dxTouch < -SWIPE_THRESHOLD) { setDir(-1, 0); touchAnchorX = touch.screenX; touchAnchorY = touch.screenY; }
             } else {
-                if (dyTouch > 30)  setDir(0, 1);
-                if (dyTouch < -30) setDir(0, -1);
+                if (dyTouch > SWIPE_THRESHOLD)  { setDir(0, 1);  touchAnchorX = touch.screenX; touchAnchorY = touch.screenY; }
+                if (dyTouch < -SWIPE_THRESHOLD) { setDir(0, -1); touchAnchorX = touch.screenX; touchAnchorY = touch.screenY; }
             }
         }, {passive:true});
 

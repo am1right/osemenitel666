@@ -220,7 +220,7 @@
         const canvas = document.getElementById('game-canvas');
         const startOverlay = document.getElementById('start-overlay');
         const ctx = canvas.getContext('2d');
-        const API = 'https://chingames.duckdns.org';
+        const API = '';
         const GAME_ID = 'flappy';
 
         const chinImg = new Image();
@@ -436,8 +436,8 @@
                 startOverlay.classList.remove('hidden');
                 document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
                 document.getElementById('game-screen').classList.add('active');
-                canvas.addEventListener('touchstart', flap, { passive: false });
-                canvas.addEventListener('mousedown', flap);
+                document.getElementById('game-screen').addEventListener('touchstart', flap, { passive: false });
+                document.getElementById('game-screen').addEventListener('mousedown', flap);
                 drawBackground(); drawPipes(); drawBird();
                 lastTime = 0;
                 gameLoop();
@@ -462,8 +462,8 @@
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
 
-            canvas.addEventListener('touchstart', flap, { passive: false });
-            canvas.addEventListener('mousedown', flap);
+            document.getElementById('game-screen').addEventListener('touchstart', flap, { passive: false });
+            document.getElementById('game-screen').addEventListener('mousedown', flap);
 
             drawBackground();
             drawPipes();
@@ -477,8 +477,8 @@
             if (window.Energy) Energy.endSession();
             waitingForStart = false;
             startOverlay.classList.add('hidden');
-            canvas.removeEventListener('touchstart', flap);
-            canvas.removeEventListener('mousedown', flap);
+            document.getElementById('game-screen').removeEventListener('touchstart', flap);
+            document.getElementById('game-screen').removeEventListener('mousedown', flap);
 
             if (score > bestScore) bestScore = score;
             updateBestDisplays();
