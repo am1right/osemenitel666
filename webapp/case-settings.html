@@ -78,13 +78,6 @@
                 <span class="chance-val" id="chance-val">40%</span>
             </div>
             <div class="hint">Рекомендуется около 40%</div>
-
-            <div class="section-label" style="margin-top:16px;">🎁 Шанс выиграть NFT</div>
-            <div class="chance-row">
-                <input type="range" id="nft-chance" min="0" max="100" value="18" step="1">
-                <span class="chance-val" id="nft-chance-val">18%</span>
-            </div>
-            <div class="hint">Отдельный шанс именно NFT (можно 100%). Влияет ТОЛЬКО на NFT — остальные награды по своей логике.</div>
         </div>
 
         <div class="section">
@@ -156,12 +149,6 @@
             const v = chanceInput.value;
             chanceVal.textContent = v + '%';
             chanceHint.textContent = v + '%';
-        });
-
-        const nftChanceInput = document.getElementById('nft-chance');
-        const nftChanceVal = document.getElementById('nft-chance-val');
-        nftChanceInput.addEventListener('input', () => {
-            nftChanceVal.textContent = nftChanceInput.value + '%';
         });
 
         function showToast(msg, type) {
@@ -248,9 +235,6 @@
                 chanceVal.textContent = pct + '%';
                 chanceHint.textContent = pct + '%';
                 document.getElementById('valuable-cooldown').value = data.valuable_cooldown_min ?? 60;
-                const nftPct = Math.round((data.nft_chance ?? 0.18) * 100);
-                nftChanceInput.value = nftPct;
-                nftChanceVal.textContent = nftPct + '%';
                 document.getElementById('gift-fields').innerHTML = '';
                 const gifts = data.nft_gifts || [];
                 if (gifts.length) {
@@ -271,7 +255,6 @@
             const urls = getGiftUrls().filter(u => u.startsWith('http'));
             const valuable_chance = parseInt(chanceInput.value, 10) / 100;
             const valuable_cooldown_min = parseInt(document.getElementById('valuable-cooldown').value, 10) || 60;
-            const nft_chance = parseInt(nftChanceInput.value, 10) / 100;
 
             try {
                 const api = window.apiFetch || fetch;
@@ -283,7 +266,6 @@
                         nft_gifts: urls,
                         valuable_chance,
                         valuable_cooldown_min,
-                        nft_chance,
                     }),
                 });
                 const data = await res.json();

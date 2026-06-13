@@ -683,6 +683,13 @@
             letter-spacing: 1px;
         }
 
+        .case-modal__btn--ghost {
+            margin-top: 10px;
+            background: transparent;
+            border: 1px solid rgba(188, 19, 254, 0.45);
+            color: rgba(255, 255, 255, 0.7);
+        }
+
         /* ── NFT MODAL ── */
         .nft-modal-overlay { display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,0.88);backdrop-filter:blur(14px);align-items:center;justify-content:center;padding:20px; }
         .nft-modal-overlay.open { display:flex; }
@@ -878,6 +885,16 @@
             <div class="case-modal__title">Кейс открыт</div>
             <div class="case-modal__reward" id="caseRewardText">—</div>
             <button type="button" class="case-modal__btn" onclick="closeCaseModal()">Забрать</button>
+        </div>
+    </div>
+
+    <!-- CASE CONFIRM MODAL -->
+    <div class="case-modal-overlay" id="caseConfirmModal" onclick="if(event.target===this)closeCaseConfirm()">
+        <div class="case-modal">
+            <div class="case-modal__title" id="caseConfirmName">Кейс</div>
+            <div class="case-modal__reward" id="caseConfirmPrice">— choin</div>
+            <button type="button" class="case-modal__btn" id="caseConfirmOpenBtn" onclick="caseConfirmAccept()">Открыть</button>
+            <button type="button" class="case-modal__btn case-modal__btn--ghost" onclick="closeCaseConfirm()">Отмена</button>
         </div>
     </div>
 
@@ -1128,41 +1145,58 @@
         }
 
         function playCaseOpenAnim(caseId) {
-            const box = document.getElementById(`caseBox${caseId}`);
-            if (!box) return;
-            box.classList.remove('open', 'shaking');
-            spawnSparks(caseId);
-            // re-trigger shake
-            requestAnimationFrame(() => {
-                box.classList.add('shaking');
-                setTimeout(() => {
-                    box.classList.remove('shaking');
-                    box.classList.add('open');
-                    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('rigid');
-                }, 700);
+            return new Promise((resolve) => {
+                const box = document.getElementById(`caseBox${caseId}`);
+                if (!box) { resolve(); return; }
+                box.classList.remove('open', 'shaking');
+                spawnSparks(caseId);
+                // долгий замах — саспенс перед открытием
+                requestAnimationFrame(() => {
+                    box.classList.add('shaking');
+                    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+                    setTimeout(() => {
+                        box.classList.remove('shaking');
+                        box.classList.add('open');
+                        spawnSparks(caseId);
+                        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('rigid');
+                        setTimeout(resolve, 500);
+                    }, 2200);
+                });
             });
         }
 
         const CASE_NAMES = { 1: 'Стартовый кейс', 2: 'Премиум кейс', 3: 'Легендарный кейс' };
+        let _pendingCaseId = null;
 
         function confirmBuyCase(caseId) {
-            const price = CASE_PRICES[caseId];
             if (_testMode) { buyCase(caseId); return; }
-            if (confirm(`Открыть «${CASE_NAMES[caseId]}» за ${price} choin?`)) {
-                buyCase(caseId);
-            }
+            _pendingCaseId = caseId;
+            document.getElementById('caseConfirmName').textContent = CASE_NAMES[caseId];
+            document.getElementById('caseConfirmPrice').textContent = `${CASE_PRICES[caseId]} choin`;
+            document.getElementById('caseConfirmModal').classList.add('show');
+        }
+
+        function closeCaseConfirm() {
+            document.getElementById('caseConfirmModal').classList.remove('show');
+            _pendingCaseId = null;
+        }
+
+        function caseConfirmAccept() {
+            const caseId = _pendingCaseId;
+            closeCaseConfirm();
+            if (caseId) buyCase(caseId);
         }
 
         async function buyCase(caseId) {
-            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
-            playCaseOpenAnim(caseId);
-
             const userId = tg.initDataUnsafe?.user?.id;
             const firstName = tg.initDataUnsafe?.user?.first_name || '';
             if (!userId) {
                 showToast('⚠️ Нет доступа к Telegram', 'error');
                 return;
             }
+
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
+            const animDone = playCaseOpenAnim(caseId);
 
             const choinPrice = CASE_PRICES[caseId];
             const starsPrice = choinPrice / 10;
@@ -1195,6 +1229,7 @@
                 };
                 const table = tables[caseId] || tables[3];
                 const reward = table[Math.floor(Math.random() * table.length)];
+                await animDone;
                 showCaseReward(reward, caseId);
                 showToast('🧪 Тест-режим: награда не выдана', '');
                 return;
@@ -1217,6 +1252,8 @@
                 if (!res.ok) throw new Error(resp.detail || 'Server error');
             } catch (err) {
                 console.error('buy_case error:', err);
+                await animDone;
+                closeCaseModal();
                 showToast('⚠️ Ошибка покупки', 'error');
                 return;
             }
@@ -1225,12 +1262,14 @@
                 _walletBalance = resp.balance;
                 document.getElementById('walletBalance').textContent = _walletBalance * CHOIN_RATE;
                 applyCaseReward(resp.reward);
+                await animDone;
                 showCaseReward(resp.reward, caseId);
                 showToast(`✅ Кейс открыт  −${choinPrice} choin`, 'success');
                 return;
             }
 
             if (resp.method === 'insufficient') {
+                await animDone;
                 const box = document.getElementById(`caseBox${caseId}`);
                 if (box) box.classList.remove('open');
                 const burst = document.getElementById(`caseBurst${caseId}`);
