@@ -32,6 +32,10 @@
         .pill:active { transform:scale(0.95); }
         .pill.selected { background:rgba(0,255,255,0.15);border-color:#00ffff;color:#00ffff;text-shadow:0 0 8px rgba(0,255,255,0.5);box-shadow:0 0 12px rgba(0,255,255,0.15); }
         .pill.prize-pill.selected { background:rgba(188,19,254,0.2);border-color:#bc13fe;color:#e000ff;text-shadow:0 0 8px rgba(188,19,254,0.5);box-shadow:0 0 12px rgba(188,19,254,0.2); }
+        .pill.tg-gift-pill { padding:10px 6px 8px; }
+        .pill.tg-gift-pill.selected { background:rgba(188,19,254,0.2);border-color:#bc13fe;color:#e000ff;text-shadow:0 0 8px rgba(188,19,254,0.5);box-shadow:0 0 12px rgba(188,19,254,0.2); }
+        .pill.tg-gift-pill img { filter:drop-shadow(0 0 4px rgba(255,255,255,0.3)); }
+        .pill.tg-gift-pill.selected img { filter:drop-shadow(0 0 6px rgba(188,19,254,0.6)); }
 
         /* Инпуты */
         .field { margin-bottom:14px; }
@@ -161,11 +165,20 @@
                 </div>
             </div>
 
-            <!-- TG-подарок (роза, мишка и тд) -->
+            <!-- TG-подарок (мишка, бокс, ракета, алмаз) -->
             <div id="tg-gift-section" style="display:none;margin-top:14px;">
                 <div class="field">
-                    <label>Название подарка</label>
-                    <input type="text" id="tg-gift-name" placeholder="например: rose, bear, cake…" autocomplete="off">
+                    <label>Подарок</label>
+                    <div class="pill-group" id="tg-gift-pills">
+                        <div class="pill tg-gift-pill" data-val="bear" onclick="selectPill('tgGift',this)">
+                            <img src="icons/tg_gifts/bear.png" style="width:28px;height:28px;object-fit:contain;display:block;margin:0 auto 4px;">Мишка</div>
+                        <div class="pill tg-gift-pill" data-val="box" onclick="selectPill('tgGift',this)">
+                            <img src="icons/tg_gifts/box.png" style="width:28px;height:28px;object-fit:contain;display:block;margin:0 auto 4px;">Подарок</div>
+                        <div class="pill tg-gift-pill" data-val="rocket" onclick="selectPill('tgGift',this)">
+                            <img src="icons/tg_gifts/rocket.png" style="width:28px;height:28px;object-fit:contain;display:block;margin:0 auto 4px;">Ракета</div>
+                        <div class="pill tg-gift-pill" data-val="diamond" onclick="selectPill('tgGift',this)">
+                            <img src="icons/tg_gifts/diamond.png" style="width:28px;height:28px;object-fit:contain;display:block;margin:0 auto 4px;">Алмаз</div>
+                    </div>
                 </div>
                 <div class="hint" style="margin-top:8px;padding:10px 12px;background:rgba(255,170,0,0.08);border:1px solid rgba(255,170,0,0.25);border-radius:8px;color:rgba(255,200,80,0.85);line-height:1.5;">
                     Подарок отправляется вручную. Бот уведомит победителей (до топ 5), ты отправишь подарок сам.
@@ -235,6 +248,8 @@
         const ADMIN_USERNAMES = ['rostips', 'am1right'];
         const GAME_LABELS = { math: 'Math Master', '2048': '2048', snake: 'Snake', flappy: 'Flappy Chin' };
         const GAME_ICONS = { math: 'math', '2048': '2048', snake: 'snake', flappy: 'bird' };
+        const TG_GIFT_ICONS_MAP = { bear: 'bear', box: 'box', rocket: 'rocket', diamond: 'diamond' };
+        const TG_GIFT_NAMES_MAP = { bear: 'Мишка', box: 'Подарок', rocket: 'Ракета', diamond: 'Алмаз' };
         const user = tg.initDataUnsafe?.user;
 
         // Проверка доступа
@@ -244,7 +259,7 @@
         }
 
         // ── Состояние ─────────────────────────────────────────
-        const state = { game: null, winners: null, prize: null, split: null, dur: null };
+        const state = { game: null, winners: null, prize: null, split: null, dur: null, tgGift: null };
 
         function selectPill(group, el) {
             const parent = el.closest('.pill-group');
@@ -343,7 +358,6 @@
         function validate() {
             const giftIds = state.prize === 'gift' ? getGiftIds() : [];
             const allGiftsFilled = giftIds.every(u => u.startsWith('http'));
-            const tgGiftName = (document.getElementById('tg-gift-name').value || '').trim();
 
             const ok =
                 state.game &&
@@ -351,7 +365,7 @@
                 state.prize &&
                 (state.prize !== 'stars'   || parseInt(document.getElementById('stars-amount').value || 0) > 0) &&
                 (state.prize !== 'gift'    || allGiftsFilled) &&
-                (state.prize !== 'tg_gift' || tgGiftName.length > 0) &&
+                (state.prize !== 'tg_gift' || !!state.tgGift) &&
                 (state.prize !== 'stars'   || parseInt(state.winners) <= 1 || state.split) &&
                 getDurationMinutes() > 0;
 
@@ -367,7 +381,8 @@
                         ? `${amt} ⭐ поровну`
                         : `${amt} ⭐ каждому`;
                 } else if (state.prize === 'tg_gift') {
-                    prizeText = `🎀 ${tgGiftName} (топ ${winners})`;
+                    const TG_GIFT_NAMES = { bear: 'Мишка', box: 'Подарок', rocket: 'Ракета', diamond: 'Алмаз' };
+                    prizeText = `🎀 ${TG_GIFT_NAMES[state.tgGift] || state.tgGift} (топ ${winners})`;
                 } else {
                     prizeText = winners === 1 ? 'NFT Топ 1' : giftIds.map((_, i) => `NFT Топ ${i+1}`).join(', ');
                 }
@@ -397,7 +412,6 @@
 
         document.getElementById('stars-amount').addEventListener('input', () => { updateHints(); validate(); });
         document.getElementById('dur-custom').addEventListener('input', validate);
-        document.getElementById('tg-gift-name').addEventListener('input', validate);
 
         // ── Динамические поля NFT ─────────────────────────────
         const PLACE_LABELS = [
@@ -495,7 +509,6 @@
             const dur = getDurationMinutes();
             const starsAmt = parseInt(document.getElementById('stars-amount').value || 0);
             const giftIds = getGiftIds();
-            const tgGiftName = (document.getElementById('tg-gift-name').value || '').trim();
 
             const body = {
                 username: user.username,
@@ -503,7 +516,7 @@
                 game_name: state.game,
                 prize_type: state.prize,
                 prize_value: starsAmt,
-                gift_id: state.prize === 'tg_gift' ? tgGiftName : (giftIds[0] || null),
+                gift_id: state.prize === 'tg_gift' ? state.tgGift : (giftIds[0] || null),
                 gift_ids: state.prize === 'gift' && giftIds.length > 0 ? giftIds : null,
                 split_prize: state.split === 'split',
                 winners_count: winners,
@@ -549,7 +562,11 @@
                     <div class="active-card">
                         <div class="active-card__info">
                             <div class="active-card__title" style="display:flex;align-items:center;gap:6px;"><img src="icons/${GAME_ICONS[c.game_name] || c.game_name}.png" style="width:14px;height:14px;object-fit:contain;filter:drop-shadow(0 0 4px rgba(224,0,255,0.5))"> ${GAME_LABELS[c.game_name] || c.game_name} · Топ ${c.winners_count}</div>
-                            <div class="active-card__sub">${c.prize_type === 'stars' ? c.prize_value + ' звёзд' : c.prize_type === 'tg_gift' ? '🎀 ' + (c.gift_id || 'TG-подарок') + ' (вручную)' : '🎁 NFT-подарок (вручную)'} · ${formatTimer(c.seconds_left)}</div>
+                            <div class="active-card__sub" style="display:flex;align-items:center;gap:6px;">${
+                                c.prize_type === 'stars' ? c.prize_value + ' звёзд'
+                                : c.prize_type === 'tg_gift' ? `<img src="icons/tg_gifts/${TG_GIFT_ICONS_MAP[c.gift_id] || 'box'}.png" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;"> ${TG_GIFT_NAMES_MAP[c.gift_id] || c.gift_id || 'TG-подарок'} (вручную)`
+                                : '🎁 NFT-подарок (вручную)'
+                            } · ${formatTimer(c.seconds_left)}</div>
                         </div>
                         <div class="cancel-btn" onclick="cancelContest(${c.id})">ОТМЕНА</div>
                     </div>

@@ -40,19 +40,19 @@ def get_nft_drop_count_today() -> int:
 CASE1_TABLE = [
     (0.25, {"type": "chent", "amount": 500,  "title": "+500 chent"}),
     (0.30, {"type": "choin", "amount": 100,  "title": "+100 choin"}),
-    (0.30, {"type": "tg_gift", "stars_value": 15, "title": "Подарок Telegram 15⭐"}),
-    (0.10, {"type": "tg_gift", "stars_value": 25, "title": "Подарок Telegram 25⭐"}),
-    (0.05, {"type": "tg_gift", "stars_value": 50, "title": "Подарок Telegram 50⭐"}),
+    (0.30, {"type": "tg_gift", "stars_value": 15, "title": "Мишка 15⭐"}),
+    (0.10, {"type": "tg_gift", "stars_value": 25, "title": "Подарок 25⭐"}),
+    (0.05, {"type": "tg_gift", "stars_value": 50, "title": "Ракета 50⭐"}),
 ]
 
 # Кейс 2 — цена 40⭐ (400 Choin)
 CASE2_TABLE = [
     (0.20, {"type": "chent", "amount": 800,  "title": "+800 chent"}),
     (0.25, {"type": "choin", "amount": 200,  "title": "+200 choin"}),
-    (0.25, {"type": "tg_gift", "stars_value": 15,  "title": "Подарок Telegram 15⭐"}),
-    (0.16, {"type": "tg_gift", "stars_value": 25,  "title": "Подарок Telegram 25⭐"}),
-    (0.10, {"type": "tg_gift", "stars_value": 50,  "title": "Подарок Telegram 50⭐"}),
-    (0.04, {"type": "tg_gift", "stars_value": 100, "title": "Подарок Telegram 100⭐"}),
+    (0.25, {"type": "tg_gift", "stars_value": 15,  "title": "Мишка 15⭐"}),
+    (0.16, {"type": "tg_gift", "stars_value": 25,  "title": "Подарок 25⭐"}),
+    (0.10, {"type": "tg_gift", "stars_value": 50,  "title": "Ракета 50⭐"}),
+    (0.04, {"type": "tg_gift", "stars_value": 100, "title": "Алмаз 100⭐"}),
 ]
 
 
