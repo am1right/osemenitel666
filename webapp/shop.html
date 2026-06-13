@@ -453,6 +453,12 @@
             backdrop-filter: blur(8px);
             position: relative;
             overflow: hidden;
+            transition: box-shadow .3s, border-color .3s;
+        }
+
+        .wallet-block.topup-highlight {
+            border-color: rgba(255,215,0,0.9);
+            box-shadow: 0 0 0 3px rgba(255,215,0,0.35);
         }
 
         .wallet-block::before {
@@ -716,7 +722,7 @@
             <!-- CHOIN WALLET -->
             <div class="section-title">Кошелёк choin</div>
 
-            <div class="wallet-block">
+            <div class="wallet-block" id="walletBlock">
                 <div class="wallet-block__top">
                     <div>
                         <div class="wallet-block__label">Внутренний баланс</div>
@@ -980,9 +986,15 @@
         }
 
         // ── ПАКЕТЫ ЭНЕРГИИ: переключение валюты choin/chent ────
+        // ENERGY_PACKS — цены в единицах списания (stars для choin, chent для chent)
         const ENERGY_PACKS = {
             choin: { 15: 5, 30: 10, 50: 16, 75: 24, 100: 32 },
             chent: { 15: 500, 30: 1000, 50: 1600, 75: 2400, 100: 3200 },
+        };
+        // DISPLAY_PRICES — цены, показываемые в ценнике (choin = stars * CHOIN_RATE)
+        const DISPLAY_PRICES = {
+            choin: { 15: 50, 30: 100, 50: 160, 75: 240, 100: 320 },
+            chent: ENERGY_PACKS.chent,
         };
         let _packCurrency = 'choin';
 
@@ -995,7 +1007,7 @@
             });
 
             const icon = `icons/${currency}.webp`;
-            const prices = ENERGY_PACKS[currency];
+            const prices = DISPLAY_PRICES[currency];
             document.querySelectorAll('#energyPacksGrid .pack-price').forEach(priceEl => {
                 const img = priceEl.querySelector('img');
                 const span = priceEl.querySelector('span');
@@ -1017,9 +1029,8 @@
          *
          * Флоу:
          * 1. POST /api/shop/buy_energy — бэкенд проверяет баланс кошелька.
-         * 2a. method="wallet"  → Stars списаны, энергия добавляется сразу.
-         * 2b. method="invoice" → не хватает Stars, открываем Telegram Invoice.
-         *     После оплаты энергия добавляется через коллбэк invoiceClosed.
+         * 2a. method="wallet"       → Stars списаны, энергия добавляется сразу.
+         * 2b. method="insufficient" → не хватает Stars, направляем к пополнению.
          *
          * amount — кол-во энергии ('full' = до максимума)
          * stars  — цена пака в Telegram Stars
@@ -1074,37 +1085,13 @@
                 return;
             }
 
-            // ── Не хватает choin — открываем Telegram Invoice ───
-            if (resp.method === 'invoice') {
-                // Показываем подсказку если баланс частично покрывает
-                if (resp.balance > 0) {
-                    showToast(
-                        `💡 На кошельке ${resp.balance * CHOIN_RATE} choin, нужно ещё ${resp.short * CHOIN_RATE}`,
-                        ''
-                    );
-                }
-
-                tg.openInvoice(resp.invoice_url, (status) => {
-                    if (status === 'paid') {
-                        _addEnergy(realAmount);
-                        updateStatus();
-                        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-                        showToast(`✅ +${realAmount} энергии добавлено!`, 'success');
-
-                        // Уведомляем бэкенд (логирование)
-                        const api = window.apiFetch || fetch;
-                        api('/api/shop/confirm', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ user_id: userId, amount: realAmount })
-                        }).catch(() => {});
-
-                    } else if (status === 'cancelled') {
-                        showToast('Платёж отменён', '');
-                    } else if (status === 'failed') {
-                        showToast('❌ Ошибка оплаты', 'error');
-                    }
-                });
+            // ── Не хватает choin — направляем к пополнению ──────
+            if (resp.method === 'insufficient') {
+                showToast(
+                    `💡 Не хватает ${resp.short * CHOIN_RATE} choin. Пополни баланс`,
+                    ''
+                );
+                goToTopup();
             }
         }
 
@@ -1199,18 +1186,9 @@
                 loadRegenUpgrades();
                 return;
             }
-            if (resp.method === 'invoice') {
-                tg.openInvoice(resp.invoice_url, (status) => {
-                    if (status === 'paid') {
-                        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-                        showToast('✅ Зарядка ускорена!', 'success');
-                        loadRegenUpgrades();
-                    } else if (status === 'cancelled') {
-                        showToast('Платёж отменён', '');
-                    } else if (status === 'failed') {
-                        showToast('❌ Ошибка оплаты', 'error');
-                    }
-                });
+            if (resp.method === 'insufficient') {
+                showToast(`💡 Не хватает ${resp.short * CHOIN_RATE} choin. Пополни баланс`, '');
+                goToTopup();
             }
         }
         document.addEventListener('DOMContentLoaded', loadRegenUpgrades);
@@ -1241,6 +1219,15 @@
                 }).catch(() => {});
             }
         }
+        // ── Направить к блоку пополнения баланса ──────────────────
+        function goToTopup() {
+            const block = document.getElementById('walletBlock');
+            if (!block) return;
+            block.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            block.classList.add('topup-highlight');
+            setTimeout(() => block.classList.remove('topup-highlight'), 1200);
+        }
+
         // ── WALLET (внутр. баланс в звёздах, отображение в choin, 1⭐=10choin) ──
         const CHOIN_RATE = 10;
         let _walletBalance = 0;

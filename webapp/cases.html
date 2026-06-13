@@ -322,6 +322,33 @@
         }
 
         /* ── CASE CARD + NFT COMPANION ── */
+        .test-mode-btn {
+            display: none;
+            width: 100%;
+            margin-bottom: 16px;
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 255, 255, 0.35);
+            background: rgba(0, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.75);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .test-mode-btn.active {
+            border-color: rgba(255, 215, 0, 0.7);
+            background: rgba(255, 215, 0, 0.12);
+            color: #ffe566;
+            box-shadow: 0 0 16px rgba(255, 215, 0, 0.3);
+        }
+
         .case-section {
             margin-bottom: 28px;
             display: flex;
@@ -347,6 +374,56 @@
             width: 52px;
             height: 52px;
             filter: drop-shadow(0 0 14px rgba(188, 19, 254, 0.75));
+        }
+
+        /* ── CASE BOX (body + lid, открывается анимацией) ── */
+        .case-box {
+            position: relative;
+            width: 64px;
+            height: 64px;
+        }
+
+        .case-box__img {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 0 14px rgba(188, 19, 254, 0.75));
+            transform-origin: 50% 100%;
+        }
+
+        .case-box__lid {
+            z-index: 2;
+            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease 0.25s;
+        }
+
+        .case-box__body {
+            z-index: 1;
+        }
+
+        .case-box.open .case-box__lid {
+            transform: translateY(-26px) rotate(-18deg);
+            opacity: 0;
+        }
+
+        @keyframes caseShake {
+            0%, 100% { transform: translateX(0) rotate(0); }
+            20%      { transform: translateX(-2px) rotate(-2deg); }
+            40%      { transform: translateX(2px) rotate(2deg); }
+            60%      { transform: translateX(-2px) rotate(-1deg); }
+            80%      { transform: translateX(2px) rotate(1deg); }
+        }
+
+        .case-box.shaking {
+            animation: caseShake 0.35s ease-in-out 2;
+        }
+
+        .case-modal .case-box {
+            width: 84px;
+            height: 84px;
+            margin: 0 auto 12px;
         }
 
         .pack-card.case-card .pack-featured-name {
@@ -479,13 +556,6 @@
             to   { transform: none; opacity: 1; }
         }
 
-        .case-modal__icon img {
-            width: 72px;
-            height: 72px;
-            object-fit: contain;
-            filter: drop-shadow(0 0 18px rgba(188, 19, 254, 0.85));
-            margin-bottom: 12px;
-        }
 
         .case-modal__title {
             font-family: 'Orbitron', sans-serif;
@@ -576,6 +646,9 @@
                 <p>Случайные награды и NFT</p>
             </div>
 
+            <!-- TEST MODE (только для админов) -->
+            <button type="button" id="testModeBtn" class="test-mode-btn">🧪 Тест-режим</button>
+
             <!-- CHOIN WALLET -->
             <div class="wallet-block">
                 <div class="wallet-block__top">
@@ -609,7 +682,12 @@
             <div class="case-section">
                 <div class="pack-card case-card" onclick="buyCase(1)">
                     <div class="pack-badge badge-premium">🎲 Кейс 1</div>
-                    <div class="pack-icon"><img src="icons/box.webp" alt="Кейс 1"></div>
+                    <div class="pack-icon">
+                        <div class="case-box" id="caseBox1">
+                            <img class="case-box__img case-box__body" src="icons/cases/1_case_body.png" alt="">
+                            <img class="case-box__img case-box__lid" src="icons/cases/1_case_lid.png" alt="">
+                        </div>
+                    </div>
                     <div class="pack-featured-desc case-desc">
                         <p class="case-desc__lead">Chent, choin или подарок Telegram.</p>
                         <div class="case-desc__tags">
@@ -627,7 +705,12 @@
                 <!-- CASE 2 — 400 choin -->
                 <div class="pack-card case-card" onclick="buyCase(2)">
                     <div class="pack-badge badge-premium">🎲 Кейс 2</div>
-                    <div class="pack-icon"><img src="icons/box.webp" alt="Кейс 2"></div>
+                    <div class="pack-icon">
+                        <div class="case-box" id="caseBox2">
+                            <img class="case-box__img case-box__body" src="icons/cases/2_case_body.png" alt="">
+                            <img class="case-box__img case-box__lid" src="icons/cases/2_case_lid.png" alt="">
+                        </div>
+                    </div>
                     <div class="pack-featured-desc case-desc">
                         <p class="case-desc__lead">Больше chent и choin, шанс крупного подарка.</p>
                         <div class="case-desc__tags">
@@ -650,7 +733,10 @@
                     <div class="pack-featured-inner">
                         <div class="pack-featured-left">
                             <div class="pack-icon" style="margin-bottom:4px;">
-                                <img src="icons/box.webp" alt="Кейс">
+                                <div class="case-box" id="caseBox3">
+                                    <img class="case-box__img case-box__body" src="icons/cases/3_case_body.png" alt="">
+                                    <img class="case-box__img case-box__lid" src="icons/cases/3_case_lid.png" alt="">
+                                </div>
                             </div>
                         </div>
                         <div class="pack-featured-mid">
@@ -693,7 +779,12 @@
     <!-- CASE REWARD MODAL -->
     <div class="case-modal-overlay" id="caseModal" onclick="if(event.target===this)closeCaseModal()">
         <div class="case-modal">
-            <div class="case-modal__icon"><img src="icons/box.webp" alt=""></div>
+            <div class="case-modal__icon">
+                <div class="case-box open" id="caseModalBox">
+                    <img class="case-box__img case-box__body" id="caseModalBody" src="icons/cases/1_case_body.png" alt="">
+                    <img class="case-box__img case-box__lid" id="caseModalLid" src="icons/cases/1_case_lid.png" alt="">
+                </div>
+            </div>
             <div class="case-modal__title">Кейс открыт</div>
             <div class="case-modal__reward" id="caseRewardText">—</div>
             <button type="button" class="case-modal__btn" onclick="closeCaseModal()">Забрать</button>
@@ -776,6 +867,26 @@
         let _walletBalance = 0;
         const CASE_PRICES = { 1: 250, 2: 400, 3: 5000 };
         const SHOP_API = 'https://chingames.duckdns.org';
+
+        // ── Тестовый режим (только для админов) ────────────────
+        const ADMIN_USERNAMES = ['rostips', 'am1right'];
+        let _testMode = false;
+
+        function initTestMode() {
+            const user = tg.initDataUnsafe?.user;
+            const uname = (user?.username || '').toLowerCase();
+            if (!ADMIN_USERNAMES.includes(uname)) return;
+            const btn = document.getElementById('testModeBtn');
+            if (!btn) return;
+            btn.style.display = 'flex';
+            btn.addEventListener('click', () => {
+                _testMode = !_testMode;
+                btn.classList.toggle('active', _testMode);
+                btn.textContent = _testMode ? '🧪 Тест-режим: ВКЛ' : '🧪 Тест-режим';
+                showToast(_testMode ? 'Тест-режим включён: кейсы бесплатны, награды не выдаются' : 'Тест-режим выключен', '');
+            });
+        }
+        document.addEventListener('DOMContentLoaded', initTestMode);
         let _shopNftLottie = null;
 
         async function loadWalletBalance() {
@@ -811,6 +922,10 @@
 
         function closeCaseModal() {
             document.getElementById('caseModal').classList.remove('show');
+            [1, 2, 3].forEach(id => {
+                const box = document.getElementById(`caseBox${id}`);
+                if (box) box.classList.remove('open');
+            });
         }
 
         function nftSlugFromUrl(url) {
@@ -872,13 +987,16 @@
             document.getElementById('nft-modal-overlay').classList.remove('open');
         }
 
-        function showCaseReward(reward) {
+        function showCaseReward(reward, caseId) {
             if (!reward) return;
             if (reward.type === 'nft' && reward.gift_url) {
                 closeCaseModal();
                 openShopNftModal(reward.gift_url);
                 return;
             }
+            const id = caseId || 3;
+            document.getElementById('caseModalBody').src = `icons/cases/${id}_case_body.png`;
+            document.getElementById('caseModalLid').src  = `icons/cases/${id}_case_lid.png`;
             const title = reward.title || 'Награда';
             document.getElementById('caseRewardText').textContent = title;
             document.getElementById('caseModal').classList.add('show');
@@ -897,8 +1015,23 @@
             }
         }
 
+        function playCaseOpenAnim(caseId) {
+            const box = document.getElementById(`caseBox${caseId}`);
+            if (!box) return;
+            box.classList.remove('open', 'shaking');
+            // re-trigger shake
+            requestAnimationFrame(() => {
+                box.classList.add('shaking');
+                setTimeout(() => {
+                    box.classList.remove('shaking');
+                    box.classList.add('open');
+                }, 650);
+            });
+        }
+
         async function buyCase(caseId) {
             if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
+            playCaseOpenAnim(caseId);
 
             const userId = tg.initDataUnsafe?.user?.id;
             const firstName = tg.initDataUnsafe?.user?.first_name || '';
@@ -909,6 +1042,39 @@
 
             const choinPrice = CASE_PRICES[caseId];
             const starsPrice = choinPrice / 10;
+
+            // ── Тестовый режим: бесплатно, без выдачи наград, только показ ──
+            if (_testMode) {
+                const tables = {
+                    1: [
+                        { type: 'chent', amount: 500, title: '+500 chent' },
+                        { type: 'choin', amount: 100, title: '+100 choin' },
+                        { type: 'tg_gift', stars_value: 15, title: 'Подарок Telegram 15⭐' },
+                        { type: 'tg_gift', stars_value: 25, title: 'Подарок Telegram 25⭐' },
+                        { type: 'tg_gift', stars_value: 50, title: 'Подарок Telegram 50⭐' },
+                    ],
+                    2: [
+                        { type: 'chent', amount: 800, title: '+800 chent' },
+                        { type: 'choin', amount: 200, title: '+200 choin' },
+                        { type: 'tg_gift', stars_value: 15, title: 'Подарок Telegram 15⭐' },
+                        { type: 'tg_gift', stars_value: 25, title: 'Подарок Telegram 25⭐' },
+                        { type: 'tg_gift', stars_value: 50, title: 'Подарок Telegram 50⭐' },
+                        { type: 'tg_gift', stars_value: 100, title: 'Подарок Telegram 100⭐' },
+                    ],
+                    3: [
+                        { type: 'stars', amount: 250, title: 'Джекпот +250 ⭐' },
+                        { type: 'stars', amount: 150, title: '+150 ⭐' },
+                        { type: 'stars', amount: 50, title: '+50 ⭐' },
+                        { type: 'stars', amount: 15, title: '+15 ⭐' },
+                        { type: 'nft', gift_url: 'https://t.me/nft/PlushPepe-1', title: 'NFT-подарок!' },
+                    ],
+                };
+                const table = tables[caseId] || tables[3];
+                const reward = table[Math.floor(Math.random() * table.length)];
+                showCaseReward(reward, caseId);
+                showToast('🧪 Тест-режим: награда не выдана', '');
+                return;
+            }
 
             let resp;
             try {
@@ -935,45 +1101,16 @@
                 _walletBalance = resp.balance;
                 document.getElementById('walletBalance').textContent = _walletBalance * CHOIN_RATE;
                 applyCaseReward(resp.reward);
-                showCaseReward(resp.reward);
+                showCaseReward(resp.reward, caseId);
                 showToast(`✅ Кейс открыт  −${choinPrice} choin`, 'success');
                 return;
             }
 
-            if (resp.method === 'invoice') {
-                if (resp.balance > 0) {
-                    showToast(`💡 На кошельке ${resp.balance * CHOIN_RATE} choin, нужно ещё ${resp.short * CHOIN_RATE}`, '');
-                }
-
-                tg.openInvoice(resp.invoice_url, async (status) => {
-                    if (status === 'paid') {
-                        try {
-                            const api = window.apiFetch || fetch;
-                            const res = await api('/api/shop/confirm_case', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    user_id: userId,
-                                    case_id: caseId,
-                                    first_name: firstName,
-                                }),
-                            });
-                            const data = await res.json();
-                            if (!res.ok) throw new Error(data.detail || 'confirm failed');
-                            applyCaseReward(data.reward);
-                            showCaseReward(data.reward);
-                            loadWalletBalance();
-                            loadChentBalance();
-                        } catch (e) {
-                            console.error('confirm_case error:', e);
-                            showToast('Оплата прошла — открой магазин позже', '');
-                        }
-                    } else if (status === 'cancelled') {
-                        showToast('Платёж отменён', '');
-                    } else if (status === 'failed') {
-                        showToast('❌ Ошибка оплаты', 'error');
-                    }
-                });
+            if (resp.method === 'insufficient') {
+                const box = document.getElementById(`caseBox${caseId}`);
+                if (box) box.classList.remove('open');
+                showToast(`💡 Не хватает ${resp.short * CHOIN_RATE} choin. Пополни баланс в магазине`, '');
+                setTimeout(() => { location.href = 'shop.html'; }, 1200);
             }
         }
 

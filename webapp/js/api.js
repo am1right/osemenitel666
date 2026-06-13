@@ -71,13 +71,11 @@
         if (typeof onDone === 'function') onDone();
         return;
       }
-      if (d.method === 'invoice' && d.invoice_url && window.Telegram?.WebApp?.openInvoice) {
-        window.Telegram.WebApp.openInvoice(d.invoice_url, async (status) => {
-          if (status === 'paid') {
-            if (window.Energy && Energy.pull) await Energy.pull();
-            if (typeof onDone === 'function') onDone();
-          }
-        });
+      if (d.method === 'insufficient') {
+        const inGames = location.pathname.includes('/games/');
+        if (confirm('Недостаточно choin на кошельке. Перейти в магазин для пополнения?')) {
+          location.href = inGames ? '../shop.html' : 'shop.html';
+        }
       }
     } catch (e) { alert('Ошибка покупки'); }
   };

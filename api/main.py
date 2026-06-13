@@ -26,8 +26,8 @@ from api.database import (
     admin_adjust_energy, upgrade_regen_speed,
     get_energy, spend_energy, get_user_flags,
     CASE_PRICE, CASE_PRICES, CASE_NFT_DAILY_LIMIT, CASE_BOT_STARS_ALERT_THRESHOLD,
-    grant_case_reward, grant_case1_reward, grant_case2_reward, confirm_case_reward,
-    get_recent_case_reward, get_nft_drop_count_today,
+    grant_case_reward, grant_case1_reward, grant_case2_reward,
+    get_nft_drop_count_today,
     get_case_settings, save_case_settings, get_case_valuable_cooldown_status,
     add_announce_chat, remove_announce_chat, get_announce_chats,
     upsert_tg_username, admin_get_all_players,
@@ -424,58 +424,6 @@ ENERGY_PACKS_CHENT: dict[int, int] = {15: 500, 30: 1000, 50: 1600, 75: 2400, 100
 ENERGY_MAX = 100  # батарея
 
 
-@app.post("/api/shop/create_invoice")
-async def api_create_invoice(request: Request):
-    try:
-        data     = await request.json()
-        user_id  = data.get("user_id")
-        amount   = int(data.get("amount", 0))
-        stars    = int(data.get("stars", 0))
-        label    = data.get("label", f"+{amount} ⚡ Энергия")
-
-        if not user_id:
-            raise HTTPException(status_code=400, detail="Missing user_id")
-        if int(user_id) != int(tg_user["id"]):
-            raise HTTPException(status_code=403, detail="user_id mismatch")
-        if amount <= 0:
-            raise HTTPException(status_code=400, detail="Invalid amount")
-
-        expected_stars = ENERGY_PACKS.get(amount)
-        if expected_stars is None or expected_stars != stars:
-            logger.warning(f"Invalid pack: amount={amount}, stars={stars}. Known packs: {ENERGY_PACKS}")
-            raise HTTPException(status_code=400, detail=f"Invalid pack or price. Expected: {ENERGY_PACKS.get(amount)}")
-
-        bot = get_bot()
-        invoice_link = await bot.create_invoice_link(
-            title=label,
-            description=f"Покупка {amount} единиц энергии в Chin Games",
-            payload=f"energy:{user_id}:{amount}",
-            provider_token="",
-            currency="XTR",
-            prices=[LabeledPrice(label=label, amount=expected_stars)],
-        )
-        return {"invoice_url": invoice_link}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"create_invoice error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/api/shop/confirm")
-async def api_shop_confirm(request: Request, _: None = Depends(require_internal)):
-    try:
-        data = await request.json()
-        user_id = int(data.get("user_id", 0))
-        amount = int(data.get("amount", 0))
-        if user_id and amount > 0:
-            admin_adjust_energy(user_id, amount)
-        logger.info(f"[SHOP] confirm: user={user_id} +{amount} energy")
-        return {"status": "ok"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @app.post("/api/shop/buy_energy")
 async def api_buy_energy(request: Request, tg_user: dict = Depends(require_webapp_user)):
     """
@@ -484,8 +432,7 @@ async def api_buy_energy(request: Request, tg_user: dict = Depends(require_webap
     Логика:
     1. Проверяем баланс кошелька пользователя.
     2. Если хватает — списываем Stars из кошелька, возвращаем {"method": "wallet", "balance": N}.
-    3. Если не хватает — возвращаем {"method": "invoice", "invoice_url": "...", "short": K},
-       фронт открывает Telegram Invoice на полную стоимость.
+    3. Если не хватает — возвращаем {"method": "insufficient", "balance": N, "short": K}.
     """
     try:
         data       = await request.json()
@@ -524,26 +471,14 @@ async def api_buy_energy(request: Request, tg_user: dict = Depends(require_webap
                     "balance": result["balance"],
                     "amount": amount,
                 }
-            # Гонка: баланс изменился между get и spend — падаем на invoice
-            logger.warning(f"[SHOP] Wallet race condition for user {user_id}, falling back to invoice")
+            # Гонка: баланс изменился между get и spend
             balance = result["balance"]  # актуальный баланс после неудачной попытки
 
-        # ── Не хватает — создаём Telegram Invoice ────────────────
+        # ── Не хватает — направляем к пополнению ──────────────────
         short = stars - balance
-        bot   = get_bot()
-        label = f"+{amount} ⚡ Энергия"
-        invoice_link = await bot.create_invoice_link(
-            title=label,
-            description=f"Покупка {amount} единиц энергии в Chin Games",
-            payload=f"energy:{user_id}:{amount}",
-            provider_token="",
-            currency="XTR",
-            prices=[LabeledPrice(label=label, amount=stars)],
-        )
-        logger.info(f"[SHOP] invoice buy: user={user_id} amount={amount} stars={stars} short={short}")
+        logger.info(f"[SHOP] insufficient: user={user_id} amount={amount} stars={stars} short={short}")
         return {
-            "method": "invoice",
-            "invoice_url": invoice_link,
+            "method": "insufficient",
             "balance": balance,
             "short": short,
             "amount": amount,
@@ -621,7 +556,7 @@ async def api_regen_upgrades(user_id: int):
 
 @app.post("/api/shop/buy_regen")
 async def api_buy_regen(request: Request, tg_user: dict = Depends(require_webapp_user)):
-    """Покупка апгрейда скорости регена (кошелёк → иначе invoice)."""
+    """Покупка апгрейда скорости регена (кошелёк → иначе недостаточно)."""
     try:
         data    = await request.json()
         user_id = data.get("user_id")
@@ -641,17 +576,8 @@ async def api_buy_regen(request: Request, tg_user: dict = Depends(require_webapp
                 logger.info(f"[SHOP] wallet regen buy: user={user_id} lvl={level} -{stars}⭐")
                 return {"method": "wallet", "balance": res["balance"], "mult": up["mult"]}
 
-        bot = get_bot()
-        label = f"⚡ Реген энергии ×{up['mult']:g}"
-        invoice_link = await bot.create_invoice_link(
-            title=label,
-            description=f"Ускорение восстановления энергии в Chin Games (×{up['mult']:g})",
-            payload=f"regen:{user_id}:{level}",
-            provider_token="",
-            currency="XTR",
-            prices=[LabeledPrice(label=label, amount=stars)],
-        )
-        return {"method": "invoice", "invoice_url": invoice_link, "stars": stars}
+        balance = wallet["balance"]
+        return {"method": "insufficient", "balance": balance, "short": stars - balance, "stars": stars}
     except HTTPException:
         raise
     except Exception as e:
@@ -739,7 +665,7 @@ async def _check_nft_drop_alerts(reward: Dict[str, Any], case_id: int) -> None:
 
 @app.post("/api/shop/buy_case")
 async def api_buy_case(request: Request, tg_user: dict = Depends(require_webapp_user)):
-    """Покупка случайного кейса за Choin (кошелёк или invoice)."""
+    """Покупка случайного кейса за Choin (кошелёк, иначе недостаточно)."""
     try:
         data = await request.json()
         user_id = data.get("user_id")
@@ -781,20 +707,9 @@ async def api_buy_case(request: Request, tg_user: dict = Depends(require_webapp_
                 }
             balance = result["balance"]
 
-        bot = get_bot()
-        label = "Случайный кейс"
-        invoice_link = await bot.create_invoice_link(
-            title=label,
-            description="Случайная награда: chent, choin, подарок Telegram или NFT",
-            payload=f"case:{user_id}:{case_id}:{stars}",
-            provider_token="",
-            currency="XTR",
-            prices=[LabeledPrice(label=label, amount=stars)],
-        )
-        logger.info(f"[SHOP] case{case_id} invoice: user={user_id} stars={stars} short={stars - balance}")
+        logger.info(f"[SHOP] case{case_id} insufficient: user={user_id} stars={stars} short={stars - balance}")
         return {
-            "method": "invoice",
-            "invoice_url": invoice_link,
+            "method": "insufficient",
             "balance": balance,
             "short": stars - balance,
         }
@@ -803,34 +718,6 @@ async def api_buy_case(request: Request, tg_user: dict = Depends(require_webapp_
         raise
     except Exception as e:
         logger.error(f"buy_case error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/api/shop/confirm_case")
-async def api_confirm_case(request: Request, _: None = Depends(require_internal)):
-    """Выдача награды после оплаты кейса через Telegram Invoice."""
-    try:
-        data = await request.json()
-        user_id = int(data.get("user_id", 0))
-        first_name = data.get("first_name", "")
-        case_id = int(data.get("case_id", 3))
-        if not user_id:
-            raise HTTPException(status_code=400, detail="Missing user_id")
-        if case_id not in CASE_PRICES:
-            raise HTTPException(status_code=400, detail="Invalid case_id")
-
-        recent = get_recent_case_reward(user_id)
-        reward = recent if recent else CASE_GRANT_FNS[case_id](user_id, first_name)
-        logger.info(f"[SHOP] case{case_id} confirm: user={user_id} reward={reward['type']}")
-        if not recent and reward.get("type") == "tg_gift":
-            await _notify_tg_gift_reward(user_id, reward, case_id)
-        if not recent:
-            await _check_nft_drop_alerts(reward, case_id)
-        return {"status": "ok", "reward": reward}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"confirm_case error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
