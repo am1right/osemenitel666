@@ -54,7 +54,7 @@ from api.db.energy import (
     get_energy,
     spend_energy,
     admin_adjust_energy,
-    upgrade_regen_speed,
+    boost_regen_speed,
 )
 
 from api.db.cases import (
@@ -166,7 +166,7 @@ __all__ = [
     "get_wallet", "topup_wallet", "spend_wallet", "get_wallet_transactions",
     "get_chent_wallet", "topup_chent", "spend_chent", "get_chent_transactions",
     # energy
-    "ENERGY_MAX", "ENERGY_REGEN_MS", "get_energy", "spend_energy", "admin_adjust_energy", "upgrade_regen_speed",
+    "ENERGY_MAX", "ENERGY_REGEN_MS", "get_energy", "spend_energy", "admin_adjust_energy", "boost_regen_speed",
     # cases
     "CASE_PRICE", "CASE_PRICES", "CASE_NFT_DAILY_LIMIT", "CASE_BOT_STARS_ALERT_THRESHOLD",
     "CASE_REWARD_DEDUP_SEC", "CASE_VALUABLE_CHANCE_DEFAULT",

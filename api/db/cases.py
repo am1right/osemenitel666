@@ -195,7 +195,7 @@ def _roll_common_stars() -> int:
 
 def _pick_common_reward() -> Dict[str, Any]:
     amount = _roll_common_stars()
-    title  = "Джекпот +250 ⭐" if amount >= 250 else f"+{amount} ⭐"
+    title  = f"Джекпот +{amount * 10} choin" if amount >= 250 else f"+{amount * 10} choin"
     return {"type": "stars", "amount": amount, "title": title}
 
 
@@ -205,8 +205,8 @@ def _pick_valuable_reward(nft_gifts: List[str], allow_nft: bool = True) -> Dict[
         return {"type": "nft", "gift_url": url, "amount": 0, "title": "NFT-подарок!"}
     if random.random() < 0.5:
         amount = random.randint(100, 249)
-        return {"type": "stars", "amount": amount, "title": f"+{amount} ⭐"}
-    return {"type": "stars", "amount": 250, "title": "Джекпот +250 ⭐"}
+        return {"type": "stars", "amount": amount, "title": f"+{amount * 10} choin"}
+    return {"type": "stars", "amount": 250, "title": f"Джекпот +{250 * 10} choin"}
 
 
 def _is_global_valuable_on_cooldown(cooldown_sec: int) -> bool:

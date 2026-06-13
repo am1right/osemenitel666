@@ -31,32 +31,35 @@ def _apply_energy_regen(amount: int, last_regen: int, regen_ms: int) -> tuple:
 
 
 def _ensure_energy_row(cur, user_id: int) -> tuple:
-    """Возвращает (amount, last_regen, regen_mult) с применённой регенерацией."""
-    cur.execute("SELECT amount, last_regen, regen_mult FROM energy WHERE user_id = %s", (user_id,))
+    """Возвращает (amount, last_regen, regen_mult, boost_until) с применённой регенерацией.
+    regen_mult действует только пока now < boost_until (временный бустер на час)."""
+    cur.execute("SELECT amount, last_regen, regen_mult, regen_boost_until FROM energy WHERE user_id = %s", (user_id,))
     row = cur.fetchone()
     if not row:
         now = int(time.time() * 1000)
         cur.execute(
-            "INSERT INTO energy (user_id, amount, last_regen, regen_mult) VALUES (%s, %s, %s, 1.0) "
+            "INSERT INTO energy (user_id, amount, last_regen, regen_mult, regen_boost_until) VALUES (%s, %s, %s, 1.0, 0) "
             "ON CONFLICT (user_id) DO NOTHING",
             (user_id, ENERGY_MAX, now),
         )
-        return ENERGY_MAX, now, 1.0
+        return ENERGY_MAX, now, 1.0, 0
     amount, last_regen = int(row["amount"]), int(row["last_regen"])
-    mult = float(row.get("regen_mult") or 1.0)
+    boost_until = int(row.get("regen_boost_until") or 0)
+    now = int(time.time() * 1000)
+    mult = float(row.get("regen_mult") or 1.0) if now < boost_until else 1.0
     new_amount, new_last = _apply_energy_regen(amount, last_regen, _effective_regen_ms(mult))
     if new_amount != amount or new_last != last_regen:
         cur.execute(
             "UPDATE energy SET amount = %s, last_regen = %s, updated_at = NOW() WHERE user_id = %s",
             (new_amount, new_last, user_id),
         )
-    return new_amount, new_last, mult
+    return new_amount, new_last, mult, boost_until
 
 
 def get_energy(user_id: int) -> Dict[str, Any]:
     conn = get_connection()
     cur  = _cursor(conn)
-    amount, last_regen, mult = _ensure_energy_row(cur, user_id)
+    amount, last_regen, mult, boost_until = _ensure_energy_row(cur, user_id)
     conn.commit()
     cur.close()
     conn.close()
@@ -65,6 +68,7 @@ def get_energy(user_id: int) -> Dict[str, Any]:
     if amount < ENERGY_MAX:
         elapsed          = int(time.time() * 1000) - last_regen
         next_recharge_in = max(0, regen_ms - elapsed)
+    now = int(time.time() * 1000)
     return {
         "amount":           amount,
         "max":              ENERGY_MAX,
@@ -72,13 +76,15 @@ def get_energy(user_id: int) -> Dict[str, Any]:
         "regen_mult":       mult,
         "last_regen":       last_regen,
         "next_recharge_in": next_recharge_in,
+        "boost_active":     now < boost_until,
+        "boost_seconds_left": max(0, (boost_until - now) // 1000) if now < boost_until else 0,
     }
 
 
 def spend_energy(user_id: int, cost: int) -> Dict[str, Any]:
     conn = get_connection()
     cur  = _cursor(conn)
-    amount, last_regen, mult = _ensure_energy_row(cur, user_id)
+    amount, last_regen, mult, boost_until = _ensure_energy_row(cur, user_id)
     if amount < cost:
         cur.close()
         conn.close()
@@ -98,27 +104,29 @@ def spend_energy(user_id: int, cost: int) -> Dict[str, Any]:
     return {"ok": True, "amount": amount, "last_regen": last_regen}
 
 
-def upgrade_regen_speed(user_id: int, mult: float) -> Dict[str, Any]:
-    """Устанавливает множитель скорости восстановления (апгрейд из магазина).
-    Поднимает только вверх (не понижает уже купленный уровень)."""
+REGEN_BOOST_DURATION_MS = 60 * 60 * 1000  # 1 час
+
+
+def boost_regen_speed(user_id: int, mult: float) -> Dict[str, Any]:
+    """Включает временный бустер скорости восстановления на 1 час (покупка из магазина)."""
     conn = get_connection()
     cur  = _cursor(conn)
-    amount, last_regen, cur_mult = _ensure_energy_row(cur, user_id)
-    new_mult = max(float(cur_mult or 1.0), float(mult))
+    amount, last_regen, _cur_mult, _boost_until = _ensure_energy_row(cur, user_id)
+    boost_until = int(time.time() * 1000) + REGEN_BOOST_DURATION_MS
     cur.execute(
-        "UPDATE energy SET regen_mult = %s, updated_at = NOW() WHERE user_id = %s",
-        (new_mult, user_id),
+        "UPDATE energy SET regen_mult = %s, regen_boost_until = %s, updated_at = NOW() WHERE user_id = %s",
+        (float(mult), boost_until, user_id),
     )
     conn.commit()
     cur.close()
     conn.close()
-    return {"ok": True, "regen_mult": new_mult, "amount": amount}
+    return {"ok": True, "regen_mult": float(mult), "amount": amount, "boost_until": boost_until}
 
 
 def admin_adjust_energy(user_id: int, delta: int) -> Dict[str, Any]:
     conn = get_connection()
     cur  = _cursor(conn)
-    amount, last_regen, mult = _ensure_energy_row(cur, user_id)
+    amount, last_regen, mult, boost_until = _ensure_energy_row(cur, user_id)
     conn.commit()  # фиксируем INSERT если строки не было
     # Покупка/выдача складывается с текущим зарядом (можно >100%);
     # реген выше 100% не работает (см. _apply_energy_regen).

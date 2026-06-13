@@ -631,6 +631,19 @@
         }
 
         /* ── STARS INFO BANNER ── */
+        .regen-boost-active {
+            background: rgba(0, 255, 150, 0.08);
+            border: 1px solid rgba(0, 255, 150, 0.35);
+            border-radius: 12px;
+            padding: 10px 14px;
+            margin-bottom: 12px;
+            font-size: 0.8rem;
+            color: #00ff96;
+            text-align: center;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+        }
+
         .stars-info {
             background: rgba(255, 215, 0, 0.06);
             border: 1px solid rgba(255, 215, 0, 0.2);
@@ -873,6 +886,9 @@
 
             <!-- УСКОРЕНИЕ РЕГЕНА -->
             <div class="section-title">Ускорение зарядки</div>
+            <div class="regen-boost-active" id="regenBoostActive" style="display:none;">
+                ⚡ Ускорение ×<span id="regenBoostMult"></span> активно — <span id="regenBoostTimer"></span>
+            </div>
             <div class="packs-grid" id="regenUpgrades"></div>
 
             <!-- INFO BANNER -->
@@ -1143,7 +1159,15 @@
             }
         }
 
-        // ── Апгрейды скорости восстановления энергии ──────────────
+        // ── Бустеры скорости восстановления энергии (на 1 час) ──────────────
+        let _regenBoostInterval = null;
+
+        function _formatBoostTime(sec) {
+            const m = Math.floor(sec / 60);
+            const s = sec % 60;
+            return `${m}:${String(s).padStart(2, '0')}`;
+        }
+
         async function loadRegenUpgrades() {
             const userId = tg.initDataUnsafe?.user?.id;
             if (!userId) return;
@@ -1158,9 +1182,29 @@
                          style="${u.owned ? 'opacity:.45;pointer-events:none' : ''}">
                         <div class="pack-icon"><img src="icons/enegry.webp" alt=""></div>
                         <div class="pack-amount">×${u.mult}</div>
-                        <div class="pack-label">${u.owned ? 'куплено' : 'быстрее'}</div>
+                        <div class="pack-label">${u.owned ? 'активно' : 'на 1 час'}</div>
                         <div class="pack-price"><img class="choin-icon" src="icons/choin.webp" alt=""><span>${u.stars * CHOIN_RATE}</span></div>
                     </div>`).join('');
+
+                const banner = document.getElementById('regenBoostActive');
+                if (_regenBoostInterval) { clearInterval(_regenBoostInterval); _regenBoostInterval = null; }
+                if (data.boost_active) {
+                    let secLeft = data.boost_seconds_left || 0;
+                    document.getElementById('regenBoostMult').textContent = data.current_mult;
+                    document.getElementById('regenBoostTimer').textContent = _formatBoostTime(secLeft);
+                    banner.style.display = '';
+                    _regenBoostInterval = setInterval(() => {
+                        secLeft = Math.max(0, secLeft - 1);
+                        document.getElementById('regenBoostTimer').textContent = _formatBoostTime(secLeft);
+                        if (secLeft <= 0) {
+                            clearInterval(_regenBoostInterval);
+                            _regenBoostInterval = null;
+                            loadRegenUpgrades();
+                        }
+                    }, 1000);
+                } else {
+                    banner.style.display = 'none';
+                }
             } catch (e) {}
         }
 
@@ -1182,7 +1226,7 @@
                 _walletBalance = resp.balance;
                 const wb = document.getElementById('walletBalance'); if (wb) wb.textContent = _walletBalance * CHOIN_RATE;
                 if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-                showToast(`✅ Зарядка ускорена ×${resp.mult}`, 'success');
+                showToast(`✅ Зарядка ускорена ×${resp.mult} на 1 час`, 'success');
                 loadRegenUpgrades();
                 return;
             }

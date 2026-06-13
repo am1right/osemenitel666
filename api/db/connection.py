@@ -295,6 +295,7 @@ def init_db():
         )
     ''')
     cur.execute("ALTER TABLE energy ADD COLUMN IF NOT EXISTS regen_mult REAL NOT NULL DEFAULT 1.0")
+    cur.execute("ALTER TABLE energy ADD COLUMN IF NOT EXISTS regen_boost_until BIGINT NOT NULL DEFAULT 0")
 
     cur.execute('''
         CREATE TABLE IF NOT EXISTS case_settings (

@@ -23,7 +23,7 @@ from api.database import (
     register_referral, claim_referral_reward, get_referral_stats,
     is_already_referred, REFERRAL_CHENT, REFERRAL_ENERGY,
     try_grant_referral_reward, get_referral_by_invitee,
-    admin_adjust_energy, upgrade_regen_speed,
+    admin_adjust_energy, boost_regen_speed,
     get_energy, spend_energy, get_user_flags,
     CASE_PRICE, CASE_PRICES, CASE_NFT_DAILY_LIMIT, CASE_BOT_STARS_ALERT_THRESHOLD,
     grant_case_reward, grant_case1_reward, grant_case2_reward,
@@ -531,24 +531,28 @@ async def api_buy_energy_chent(request: Request, tg_user: dict = Depends(require
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ── Апгрейд скорости восстановления энергии (батарея) ──────────────
+# ── Временный бустер скорости восстановления энергии (батарея, 1 час) ──
 # level → {mult, stars}. mult — во сколько раз быстрее реген (база 3ч):
-#   2× → полный заряд за 1.5ч, 3× → за 1ч.
+#   2× → полный заряд за 1.5ч, 3× → за 1ч. Действует 1 час с момента покупки.
 REGEN_UPGRADES: dict[int, dict] = {
-    2: {"mult": 2.0, "stars": 150},
-    3: {"mult": 3.0, "stars": 350},
+    2: {"mult": 2.0, "stars": 50},
+    3: {"mult": 3.0, "stars": 117},
 }
 
 
 @app.get("/api/shop/regen_upgrades")
 async def api_regen_upgrades(user_id: int):
-    """Список апгрейдов скорости регена + текущий множитель игрока."""
-    cur = get_energy(user_id).get("regen_mult", 1.0)
+    """Список бустеров скорости регена (на 1 час) + статус активного бустера."""
+    energy       = get_energy(user_id)
+    boost_active = energy.get("boost_active", False)
+    cur_mult     = energy.get("regen_mult", 1.0)
     return {
-        "current_mult": cur,
+        "current_mult": cur_mult,
+        "boost_active": boost_active,
+        "boost_seconds_left": energy.get("boost_seconds_left", 0),
         "upgrades": [
             {"level": lvl, "mult": u["mult"], "stars": u["stars"],
-             "owned": cur >= u["mult"]}
+             "owned": boost_active and cur_mult >= u["mult"]}
             for lvl, u in sorted(REGEN_UPGRADES.items())
         ],
     }
@@ -572,7 +576,7 @@ async def api_buy_regen(request: Request, tg_user: dict = Depends(require_webapp
         if wallet["balance"] >= stars:
             res = spend_wallet(user_id, stars, f"Апгрейд скорости энергии ×{up['mult']:g}")
             if res["ok"]:
-                upgrade_regen_speed(user_id, up["mult"])
+                boost_regen_speed(user_id, up["mult"])
                 logger.info(f"[SHOP] wallet regen buy: user={user_id} lvl={level} -{stars}⭐")
                 return {"method": "wallet", "balance": res["balance"], "mult": up["mult"]}
 
@@ -594,7 +598,7 @@ async def api_confirm_regen(request: Request, _: None = Depends(require_internal
         level   = int(data.get("level", 0))
         up = REGEN_UPGRADES.get(level)
         if user_id and up:
-            upgrade_regen_speed(user_id, up["mult"])
+            boost_regen_speed(user_id, up["mult"])
         logger.info(f"[SHOP] confirm_regen: user={user_id} lvl={level}")
         return {"status": "ok"}
     except Exception as e:
