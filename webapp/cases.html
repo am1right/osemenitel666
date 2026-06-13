@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Кейсы — Chin Games</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="js/api.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js" defer></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/navbar.css">
+    <style>
+        * {
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            -webkit-tap-highlight-color: transparent !important;
+            -webkit-touch-callout: none !important;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            overscroll-behavior: none !important;
+            touch-action: none !important;
+            overflow: hidden !important;
+            height: 100% !important;
+            position: fixed !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* ── SCROLL CONTAINER ── */
+        .shop-scroll {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            touch-action: pan-y;
+        }
+
+        .shop-inner {
+            padding: 0 16px calc(24px + env(safe-area-inset-bottom, 0px));
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        /* ── HEADER ── */
+        .shop-header {
+            text-align: center;
+            padding-top: 8px;
+            padding-bottom: 8px;
+        }
+
+        .shop-header h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 0 0 12px rgba(255, 0, 255, 0.9), 0 0 24px rgba(255, 0, 255, 0.4);
+            margin: 0 0 4px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .shop-header p {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1rem;
+            color: rgba(0, 255, 255, 0.8);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 0 0 18px;
+        }
+
+        /* ── SECTION TITLE ── */
+        .section-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            color: rgba(255, 0, 255, 0.7);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin: 0 0 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(255,0,255,0.4), transparent);
+        }
+
+        /* ── PACK CARD (общий стиль из shop.html) ── */
+        .packs-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 28px;
+        }
+
+        .pack-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 0, 255, 0.25);
+            border-radius: 16px;
+            padding: 18px 12px 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            backdrop-filter: blur(6px);
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        .pack-card::before {
+            content: '';
+            position: absolute;
+            top: -60%;
+            left: -20%;
+            width: 140%;
+            height: 140%;
+            background: radial-gradient(ellipse at center, rgba(255,0,255,0.06) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .pack-card.featured {
+            border-color: rgba(255, 215, 0, 0.7);
+            background: linear-gradient(160deg, rgba(255,215,0,0.09) 0%, rgba(255,140,0,0.05) 100%);
+            box-shadow: 0 0 24px rgba(255,215,0,0.18), inset 0 1px 0 rgba(255,215,0,0.15);
+            grid-column: 1 / -1;
+        }
+
+        .pack-card.featured::before {
+            background: radial-gradient(ellipse at 50% 0%, rgba(255,215,0,0.12) 0%, transparent 65%);
+        }
+
+        @keyframes featuredGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(255,215,0,0.18), inset 0 1px 0 rgba(255,215,0,0.15); }
+            50%       { box-shadow: 0 0 36px rgba(255,215,0,0.32), 0 0 60px rgba(255,140,0,0.12), inset 0 1px 0 rgba(255,215,0,0.2); }
+        }
+        .pack-card.featured { animation: featuredGlow 2.4s ease-in-out infinite; }
+        .pack-card.featured:active { animation: none; transform: scale(0.97); }
+
+        .pack-card.featured:hover {
+            border-color: #ffd700;
+            box-shadow: 0 0 36px rgba(255,215,0,0.45);
+            transform: translateY(-4px);
+            animation: none;
+        }
+
+        .pack-card.featured .pack-featured-inner {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            gap: 16px;
+        }
+        .pack-card.featured .pack-featured-left {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .pack-card.featured .pack-featured-mid {
+            flex: 1;
+            text-align: left;
+        }
+        .pack-card.featured .pack-featured-right {
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        .pack-card.featured .pack-featured-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.65rem;
+            color: rgba(255,215,0,0.65);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 2px;
+        }
+        .pack-card.featured .pack-featured-desc {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.45);
+            line-height: 1.4;
+        }
+        .pack-card.featured .pack-amount {
+            font-size: 2rem;
+        }
+
+        .pack-icon {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pack-icon img {
+            width: 36px;
+            height: 36px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.5));
+        }
+
+        .pack-card.featured .pack-icon img {
+            filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.7));
+        }
+
+        .pack-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(45deg, #ffd700, #ff9900);
+            color: #000;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.5rem;
+            font-weight: 700;
+            padding: 3px 7px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+        }
+        .pack-badge.badge-premium {
+            background: linear-gradient(45deg, #bc13fe, #ff00aa);
+            color: #fff;
+            box-shadow: 0 0 8px rgba(188,19,254,0.6);
+        }
+
+        .pack-price {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 0, 255, 0.4);
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #fff;
+            transition: all 0.2s;
+        }
+
+        .pack-card.featured .pack-price {
+            border-color: rgba(255, 215, 0, 0.5);
+            background: rgba(255, 215, 0, 0.08);
+        }
+
+        .pack-price .choin-icon {
+            width: 1rem; height: 1rem; object-fit: contain;
+            filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.8));
+            vertical-align: middle;
+        }
+
+        /* ── WALLET BLOCK (баланс choin/chent) ── */
+        .wallet-block {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,215,0,0.35);
+            border-radius: 16px;
+            padding: 16px 18px;
+            margin-bottom: 16px;
+            backdrop-filter: blur(8px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .wallet-block::before {
+            content: '';
+            position: absolute;
+            top: -40%;
+            right: -20%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(255,215,0,0.07) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .wallet-block__top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .wallet-block__label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.65rem;
+            color: rgba(255,215,0,0.6);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        .wallet-block__sub {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.78rem;
+            color: rgba(255,255,255,0.35);
+        }
+
+        .wallet-block__balance {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .wallet-block__amount {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 900;
+            color: #ffd700;
+            text-shadow: 0 0 12px rgba(255,215,0,0.6);
+            line-height: 1;
+        }
+
+        /* ── CASE CARD + NFT COMPANION ── */
+        .case-section {
+            margin-bottom: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .pack-card.case-card {
+            border-color: rgba(188, 19, 254, 0.55);
+            background: linear-gradient(160deg, rgba(188,19,254,0.1) 0%, rgba(0,255,255,0.04) 100%);
+            box-shadow: 0 0 28px rgba(188, 19, 254, 0.2);
+            animation: caseGlow 2.6s ease-in-out infinite;
+        }
+
+        @keyframes caseGlow {
+            0%, 100% { box-shadow: 0 0 22px rgba(188, 19, 254, 0.18); }
+            50%       { box-shadow: 0 0 40px rgba(188, 19, 254, 0.35), 0 0 60px rgba(0, 255, 255, 0.1); }
+        }
+
+        .pack-card.case-card .pack-icon img {
+            width: 52px;
+            height: 52px;
+            filter: drop-shadow(0 0 14px rgba(188, 19, 254, 0.75));
+        }
+
+        .pack-card.case-card .pack-featured-name {
+            color: #e060ff;
+            text-shadow: 0 0 12px rgba(188, 19, 254, 0.6);
+        }
+
+        .pack-card.case-card .pack-featured-desc {
+            font-style: normal;
+            color: rgba(255, 255, 255, 0.55);
+        }
+
+        .case-desc__lead {
+            margin: 0 0 8px;
+            font-size: 0.82rem;
+            line-height: 1.45;
+            color: rgba(255, 255, 255, 0.72);
+        }
+
+        .case-desc__tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .case-desc__tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 9px;
+            border-radius: 20px;
+            font-size: 0.68rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            background: rgba(188, 19, 254, 0.12);
+            border: 1px solid rgba(188, 19, 254, 0.28);
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .case-desc__tag--stars {
+            background: rgba(255, 215, 0, 0.1);
+            border-color: rgba(255, 215, 0, 0.35);
+            color: #ffe566;
+        }
+
+        .case-desc__tag--nft {
+            background: rgba(0, 255, 255, 0.08);
+            border-color: rgba(0, 255, 255, 0.28);
+            color: #a8ffff;
+        }
+
+        .case-desc__tag img {
+            width: 12px;
+            height: 12px;
+            object-fit: contain;
+        }
+
+        .pack-card.case-card .pack-price {
+            border-color: rgba(188, 19, 254, 0.5);
+            background: rgba(188, 19, 254, 0.1);
+        }
+
+        /* ── NFT COMPANION (случайный Plush Pepe) ── */
+        .case-nft-companion {
+            width: 108px;
+            height: 108px;
+            flex-shrink: 0;
+            border-radius: 18px;
+            background: linear-gradient(145deg, rgba(188, 19, 254, 0.12), rgba(0, 255, 255, 0.06));
+            border: 1px solid rgba(188, 19, 254, 0.35);
+            box-shadow: 0 0 20px rgba(188, 19, 254, 0.25),
+                        inset 0 0 20px rgba(255, 255, 255, 0.04);
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: none;
+            pointer-events: none;
+        }
+
+        .case-nft-companion::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.12) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        @media (max-width: 420px) {
+            .case-nft-companion {
+                width: 82px;
+                height: 82px;
+            }
+        }
+
+        /* ── CASE REWARD MODAL ── */
+        .case-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 9500;
+            background: rgba(0, 0, 0, 0.88);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .case-modal-overlay.show {
+            display: flex;
+        }
+
+        .case-modal {
+            width: min(320px, 92vw);
+            background: linear-gradient(160deg, #0d0024 0%, #1a0040 60%, #0a001a 100%);
+            border: 1px solid rgba(188, 19, 254, 0.45);
+            border-radius: 22px;
+            padding: 24px 20px;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(188, 19, 254, 0.35);
+            animation: caseModalIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes caseModalIn {
+            from { transform: scale(0.9) translateY(20px); opacity: 0; }
+            to   { transform: none; opacity: 1; }
+        }
+
+        .case-modal__icon img {
+            width: 72px;
+            height: 72px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 18px rgba(188, 19, 254, 0.85));
+            margin-bottom: 12px;
+        }
+
+        .case-modal__title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            color: rgba(188, 19, 254, 0.85);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .case-modal__reward {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 0 0 14px rgba(0, 255, 255, 0.7);
+            margin-bottom: 18px;
+        }
+
+        .case-modal__btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #7a04eb, #bc13fe);
+            border: none;
+            border-radius: 12px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #fff;
+            cursor: pointer;
+            letter-spacing: 1px;
+        }
+
+        /* ── NFT MODAL ── */
+        .nft-modal-overlay { display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,0.88);backdrop-filter:blur(14px);align-items:center;justify-content:center;padding:20px; }
+        .nft-modal-overlay.open { display:flex; }
+        .nft-modal { width:min(320px,92vw);background:linear-gradient(160deg,#0d0024,#1a0040 60%,#0a001a);border:1px solid rgba(188,19,254,0.45);border-radius:22px;padding:22px 18px;text-align:center; }
+        .nft-modal__close { position:absolute;top:12px;right:14px;width:28px;height:28px;background:rgba(255,255,255,0.08);border:none;border-radius:50%;color:rgba(255,255,255,0.5);font-size:15px;cursor:pointer; }
+        .nft-modal__anim { width:140px;height:140px;margin:0 auto 10px;position:relative; }
+        .nft-modal__spinner { position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:rgba(255,255,255,0.35);font-family:Orbitron,sans-serif; }
+        .nft-modal__label { font-family:Orbitron,sans-serif;font-size:8px;letter-spacing:1.5px;color:rgba(188,19,254,0.75);text-transform:uppercase;margin-bottom:4px; }
+        .nft-modal__name { font-family:Orbitron,sans-serif;font-size:14px;font-weight:900;color:#fff;margin-bottom:10px; }
+        .nft-modal__open-btn { display:inline-flex;padding:10px 18px;background:linear-gradient(135deg,#7a04eb,#ff00ff);border-radius:11px;font-family:Orbitron,sans-serif;font-size:9px;font-weight:700;color:#fff;text-decoration:none; }
+
+        /* ── TOAST NOTIFICATION ── */
+        .toast {
+            position: fixed;
+            bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(0,0,0,0.85);
+            border: 1px solid rgba(0,255,255,0.4);
+            color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1rem;
+            padding: 12px 20px;
+            border-radius: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 20px rgba(0,255,255,0.2);
+            opacity: 0;
+            transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+            white-space: nowrap;
+            z-index: 9999;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.success { border-color: rgba(0, 255, 100, 0.5); box-shadow: 0 0 20px rgba(0, 255, 100, 0.2); }
+        .toast.error   { border-color: rgba(255, 50, 50, 0.5);  box-shadow: 0 0 20px rgba(255, 50, 50, 0.2); }
+
+    </style>
+</head>
+<body>
+    <div class="background-fx">
+        <div class="stars"></div>
+        <div class="grid-floor"></div>
+    </div>
+
+    <div class="shop-scroll" id="shopScroll">
+        <div class="shop-inner">
+            <!-- HEADER -->
+            <div class="shop-header">
+                <h1>Кейсы</h1>
+                <p>Случайные награды и NFT</p>
+            </div>
+
+            <!-- CHOIN WALLET -->
+            <div class="wallet-block">
+                <div class="wallet-block__top">
+                    <div>
+                        <div class="wallet-block__label">Баланс choin</div>
+                        <div class="wallet-block__sub">Используется при покупках автоматически</div>
+                    </div>
+                    <div class="wallet-block__balance">
+                        <div class="wallet-block__icon"><img src="icons/choin.webp" alt="" style="width:1.4em;height:1.4em;object-fit:contain;vertical-align:middle;"></div>
+                        <div class="wallet-block__amount" id="walletBalance">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CHENT WALLET -->
+            <div class="wallet-block">
+                <div class="wallet-block__top">
+                    <div>
+                        <div class="wallet-block__label">Баланс chent</div>
+                        <div class="wallet-block__sub">Зарабатывай за бонусы и дейлик</div>
+                    </div>
+                    <div class="wallet-block__balance">
+                        <div class="wallet-block__icon"><img src="icons/chent.webp" alt="" style="width:1.4em;height:1.4em;object-fit:contain;vertical-align:middle;"></div>
+                        <div class="wallet-block__amount" id="chentBalance">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CASE -->
+            <div class="section-title">Кейсы</div>
+            <div class="case-section">
+                <div class="pack-card featured case-card" onclick="buyCase()">
+                    <div class="pack-badge badge-premium">🎲 Случайно</div>
+                    <div class="pack-featured-inner">
+                        <div class="pack-featured-left">
+                            <div class="pack-icon" style="margin-bottom:4px;">
+                                <img src="icons/box.webp" alt="Кейс">
+                            </div>
+                        </div>
+                        <div class="pack-featured-mid">
+                            <div class="pack-featured-name">Случайный кейс</div>
+                            <div class="pack-featured-desc case-desc">
+                                <p class="case-desc__lead">Внутри могут ждать choin или редкий NFT-подарок — угадай, что выпадет тебе.</p>
+                                <div class="case-desc__tags">
+                                    <span class="case-desc__tag case-desc__tag--stars">choin</span>
+                                    <span class="case-desc__tag case-desc__tag--nft">NFT-подарок</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pack-featured-right">
+                            <div class="pack-price" style="flex-direction:column;gap:2px;padding:8px 12px; margin-top:-6px;">
+                                <img class="choin-icon" style="width:1.3rem;height:1.3rem;" src="icons/choin.webp" alt="">
+                                <span style="font-size:1.1rem;">5000</span>
+                            </div>
+
+                            <!--
+                                Plush Pepe-компаньон (чисто декоративный).
+                                Размещён под ценником.
+                                Клик по нему запрещён — это просто визуальный декор.
+                            -->
+                            <div class="case-nft-companion" id="case-nft-companion" style="width:68px;height:68px;pointer-events:none;">
+                                <div id="case-nft-lottie" style="width:100%;height:100%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INFO BANNER -->
+            <div class="stars-info" style="display:flex;align-items:flex-start;gap:10px;background:rgba(0,0,0,0.4);border:1px solid rgba(0,255,255,0.25);border-radius:14px;padding:12px 14px;margin-bottom:16px;">
+                <div class="si-icon">ℹ️</div>
+                <p style="font-family:'Rajdhani',sans-serif;font-size:0.85rem;color:rgba(255,255,255,0.6);margin:0;">Оплата производится в <strong>choin</strong> — внутренней валюте Chin Games (1⭐ Telegram = 10 choin). Награды из кейса зачисляются сразу после оплаты.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CASE REWARD MODAL -->
+    <div class="case-modal-overlay" id="caseModal" onclick="if(event.target===this)closeCaseModal()">
+        <div class="case-modal">
+            <div class="case-modal__icon"><img src="icons/box.webp" alt=""></div>
+            <div class="case-modal__title">Кейс открыт</div>
+            <div class="case-modal__reward" id="caseRewardText">—</div>
+            <button type="button" class="case-modal__btn" onclick="closeCaseModal()">Забрать</button>
+        </div>
+    </div>
+
+    <!-- NFT из кейса -->
+    <div class="nft-modal-overlay" id="nft-modal-overlay" onclick="closeShopNftModal(event)">
+        <div class="nft-modal" style="position:relative;">
+            <button type="button" class="nft-modal__close" onclick="closeShopNftModal()">✕</button>
+            <div class="nft-modal__label">Приз из кейса</div>
+            <div class="nft-modal__anim">
+                <div id="shop-nft-spinner" class="nft-modal__spinner">Загрузка...</div>
+                <div id="shop-nft-anim"></div>
+            </div>
+            <div class="nft-modal__name" id="shop-nft-name">NFT-подарок</div>
+            <p style="font-size:12px;color:rgba(255,255,255,0.45);margin:0 0 12px;line-height:1.4;">Подарок отправляется вручную</p>
+            <a class="nft-modal__open-btn" id="shop-nft-link" href="#" target="_blank" rel="noopener">Открыть в Telegram</a>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast"></div>
+
+    <!-- BOTTOM NAVBAR -->
+    <div id="chin-navbar-mount"></div>
+    <script src="js/navbar.js"></script>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        if (typeof window.initTelegramFullscreen === 'function') {
+          window.initTelegramFullscreen();
+        } else {
+          tg.expand();
+        }
+        if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+        tg.enableClosingConfirmation();
+
+        document.addEventListener('touchmove', e => {
+            if (!e.target.closest('#shopScroll')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', e => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) e.preventDefault();
+            lastTouchEnd = now;
+        }, false);
+
+        // ── Top padding (Telegram safe area) ──
+        function applyTopPadding() {
+            const inner = document.querySelector('.shop-inner');
+            if (!inner) return;
+            const tgTop  = tg.contentSafeAreaInsets?.top ?? 0;
+            const sysTop = tg.safeAreaInsets?.top ?? 0;
+            const topPad = Math.max(Math.max(tgTop, sysTop), 120);
+            inner.style.paddingTop = topPad + 'px';
+        }
+        applyTopPadding();
+        setTimeout(applyTopPadding, 300);
+        tg.onEvent('viewportChanged', applyTopPadding);
+        tg.onEvent('safeAreaChanged', applyTopPadding);
+        tg.onEvent('contentSafeAreaChanged', applyTopPadding);
+
+        // ── Toast helper ──────────────────────────────────────
+        let toastTimer = null;
+        function showToast(msg, type = '') {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.className = 'toast show ' + type;
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => { el.className = 'toast'; }, 2800);
+        }
+
+        // ── WALLET (внутр. баланс в звёздах, отображение в choin, 1⭐=10choin) ──
+        const CHOIN_RATE = 10;
+        let _walletBalance = 0;
+        const CASE_PRICE = 500;
+        const SHOP_API = 'https://chingames.duckdns.org';
+        let _shopNftLottie = null;
+
+        async function loadWalletBalance() {
+            const userId = tg.initDataUnsafe?.user?.id;
+            if (!userId) {
+                document.getElementById('walletBalance').textContent = '0';
+                return;
+            }
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api(`/api/wallet/balance?user_id=${userId}`);
+                const data = await res.json();
+                _walletBalance = data.balance ?? 0;
+                document.getElementById('walletBalance').textContent = _walletBalance * CHOIN_RATE;
+            } catch (e) {
+                document.getElementById('walletBalance').textContent = '?';
+            }
+        }
+
+        async function loadChentBalance() {
+            const userId = tg.initDataUnsafe?.user?.id;
+            const el = document.getElementById('chentBalance');
+            if (!userId) { el.textContent = '0'; return; }
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api(`/api/chent/balance?user_id=${userId}`);
+                const data = await res.json();
+                el.textContent = data.balance ?? 0;
+            } catch (e) {
+                el.textContent = '?';
+            }
+        }
+
+        function closeCaseModal() {
+            document.getElementById('caseModal').classList.remove('show');
+        }
+
+        function nftSlugFromUrl(url) {
+            try {
+                const parts = new URL(url).pathname.replace(/^\//, '').split('/');
+                return parts[parts.length - 1].toLowerCase();
+            } catch (e) { return null; }
+        }
+
+        async function openShopNftModal(giftUrl) {
+            if (!giftUrl) return;
+            const overlay = document.getElementById('nft-modal-overlay');
+            const spinner = document.getElementById('shop-nft-spinner');
+            const animBox = document.getElementById('shop-nft-anim');
+            const nameEl = document.getElementById('shop-nft-name');
+            const linkEl = document.getElementById('shop-nft-link');
+
+            if (_shopNftLottie) { _shopNftLottie.destroy(); _shopNftLottie = null; }
+            animBox.innerHTML = '';
+            nameEl.textContent = 'NFT-подарок';
+            linkEl.href = giftUrl;
+            spinner.style.display = 'flex';
+            overlay.classList.add('open');
+
+            const slug = nftSlugFromUrl(giftUrl);
+            if (!slug) { spinner.textContent = '—'; return; }
+
+            try {
+                const api = window.apiFetch || fetch;
+                const [metaRes, lottieRes] = await Promise.all([
+                    api(`${SHOP_API}/api/nft_meta?slug=${encodeURIComponent(slug)}`),
+                    api(`${SHOP_API}/api/nft_lottie?slug=${encodeURIComponent(slug)}`),
+                ]);
+                if (metaRes.ok) {
+                    const meta = await metaRes.json();
+                    if (meta.name) nameEl.textContent = meta.name;
+                }
+                if (lottieRes.ok) {
+                    const lottieData = await lottieRes.json();
+                    spinner.style.display = 'none';
+                    _shopNftLottie = lottie.loadAnimation({
+                        container: animBox,
+                        animationData: lottieData,
+                        renderer: 'canvas',
+                        loop: true,
+                        autoplay: true,
+                    });
+                } else throw new Error('no lottie');
+            } catch (e) {
+                spinner.style.display = 'none';
+                animBox.innerHTML = '<img src="icons/box.webp" style="width:72px;height:72px;object-fit:contain;filter:drop-shadow(0 0 14px rgba(188,19,254,0.8));">';
+            }
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        }
+
+        function closeShopNftModal(event) {
+            if (event && event.target !== document.getElementById('nft-modal-overlay')) return;
+            if (_shopNftLottie) { _shopNftLottie.destroy(); _shopNftLottie = null; }
+            document.getElementById('nft-modal-overlay').classList.remove('open');
+        }
+
+        function showCaseReward(reward) {
+            if (!reward) return;
+            if (reward.type === 'nft' && reward.gift_url) {
+                closeCaseModal();
+                openShopNftModal(reward.gift_url);
+                return;
+            }
+            const title = reward.title || 'Награда';
+            document.getElementById('caseRewardText').textContent = title;
+            document.getElementById('caseModal').classList.add('show');
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        }
+
+        function applyCaseReward(reward) {
+            if (!reward) return;
+            if (reward.type === 'nft') return;
+            if (reward.type === 'stars' && reward.balance != null) {
+                _walletBalance = reward.balance;
+                document.getElementById('walletBalance').textContent = _walletBalance * CHOIN_RATE;
+            }
+        }
+
+        async function buyCase() {
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
+
+            const userId = tg.initDataUnsafe?.user?.id;
+            const firstName = tg.initDataUnsafe?.user?.first_name || '';
+            if (!userId) {
+                showToast('⚠️ Нет доступа к Telegram', 'error');
+                return;
+            }
+
+            let resp;
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api('/api/shop/buy_case', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        stars: CASE_PRICE,
+                        first_name: firstName,
+                    }),
+                });
+                resp = await res.json();
+                if (!res.ok) throw new Error(resp.detail || 'Server error');
+            } catch (err) {
+                console.error('buy_case error:', err);
+                showToast('⚠️ Ошибка покупки', 'error');
+                return;
+            }
+
+            if (resp.method === 'wallet') {
+                _walletBalance = resp.balance;
+                document.getElementById('walletBalance').textContent = _walletBalance * CHOIN_RATE;
+                applyCaseReward(resp.reward);
+                showCaseReward(resp.reward);
+                showToast(`✅ Кейс открыт  −${CASE_PRICE * CHOIN_RATE} choin`, 'success');
+                return;
+            }
+
+            if (resp.method === 'invoice') {
+                if (resp.balance > 0) {
+                    showToast(`💡 На кошельке ${resp.balance * CHOIN_RATE} choin, нужно ещё ${resp.short * CHOIN_RATE}`, '');
+                }
+
+                tg.openInvoice(resp.invoice_url, async (status) => {
+                    if (status === 'paid') {
+                        try {
+                            const api = window.apiFetch || fetch;
+                            const res = await api('/api/shop/confirm_case', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    user_id: userId,
+                                    first_name: firstName,
+                                }),
+                            });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.detail || 'confirm failed');
+                            applyCaseReward(data.reward);
+                            showCaseReward(data.reward);
+                            loadWalletBalance();
+                        } catch (e) {
+                            console.error('confirm_case error:', e);
+                            showToast('Оплата прошла — открой магазин позже', '');
+                        }
+                    } else if (status === 'cancelled') {
+                        showToast('Платёж отменён', '');
+                    } else if (status === 'failed') {
+                        showToast('❌ Ошибка оплаты', 'error');
+                    }
+                });
+            }
+        }
+
+        // ── Список Plush Pepe для визуального компаньона (только для красоты) ──
+        const PLUSH_PEPE_COMPANIONS = [
+            "https://t.me/nft/PlushPepe-2602",
+            "https://t.me/nft/PlushPepe-124",
+            "https://t.me/nft/PlushPepe-2639",
+            "https://t.me/nft/PlushPepe-2274",
+            "https://t.me/nft/PlushPepe-2077",
+            "https://t.me/nft/PlushPepe-2767",
+            "https://t.me/nft/PlushPepe-312",
+            "https://t.me/nft/PlushPepe-249",
+            "https://t.me/nft/PlushPepe-476",
+            "https://t.me/nft/PlushPepe-1468"
+        ];
+
+        // ── Случайный Plush Pepe компаньон возле кейса (чисто визуальный) ─────
+        async function initCaseNftCompanion() {
+            const container = document.getElementById('case-nft-lottie');
+            if (!container) return;
+
+            try {
+                if (!PLUSH_PEPE_COMPANIONS.length) return;
+
+                const randomGift = PLUSH_PEPE_COMPANIONS[
+                    Math.floor(Math.random() * PLUSH_PEPE_COMPANIONS.length)
+                ];
+
+                const slug = nftSlugFromUrl(randomGift);
+                if (!slug) return;
+
+                const api = window.apiFetch || fetch;
+
+                const lottieRes = await api(`/api/nft_lottie?slug=${encodeURIComponent(slug)}`);
+                if (!lottieRes.ok) return;
+
+                const lottieData = await lottieRes.json();
+
+                container.innerHTML = '';
+
+                const anim = lottie.loadAnimation({
+                    container: container,
+                    animationData: lottieData,
+                    renderer: 'svg',
+                    loop: true,
+                    autoplay: true,
+                });
+
+                container._nftAnim = anim;
+
+                container.style.cursor = 'pointer';
+                container.onclick = () => {
+                    if (typeof openShopNftModal === 'function') {
+                        openShopNftModal(randomGift);
+                    }
+                };
+
+                const parent = container.parentElement;
+                if (parent) {
+                    parent.title = "Случайный Plush Pepe (только для настроения)";
+                }
+
+            } catch (e) {
+                console.debug('[NFT Companion] Не удалось загрузить Plush Pepe:', e);
+            }
+        }
+
+        initCaseNftCompanion();
+
+        loadWalletBalance();
+        loadChentBalance();
+
+        if (window.disableGamesNavIfBanned) {
+            window.disableGamesNavIfBanned();
+        }
+
+        if (window.startBanWatcher) {
+            window.startBanWatcher(45000);
+        }
+    </script>
+</body>
+</html>
