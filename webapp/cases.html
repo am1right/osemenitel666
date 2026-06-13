@@ -349,31 +349,67 @@
             box-shadow: 0 0 16px rgba(255, 215, 0, 0.3);
         }
 
-        .case-section {
-            margin-bottom: 28px;
+        /* ── CASE LIST (layout: крупный кейс слева, описание справа) ── */
+        .case-list {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
+            background: linear-gradient(160deg, rgba(188,19,254,0.08) 0%, rgba(0,255,255,0.03) 100%);
+            border: 1px solid rgba(188, 19, 254, 0.35);
+            border-radius: 20px;
+            box-shadow: 0 0 28px rgba(188, 19, 254, 0.15);
+            overflow: hidden;
+        }
+
+        .case-row {
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 14px;
-            flex-wrap: wrap;
+            gap: 16px;
+            padding: 18px 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+            position: relative;
         }
 
-        .pack-card.case-card {
-            border-color: rgba(188, 19, 254, 0.55);
-            background: linear-gradient(160deg, rgba(188,19,254,0.1) 0%, rgba(0,255,255,0.04) 100%);
-            box-shadow: 0 0 28px rgba(188, 19, 254, 0.2);
-            animation: caseGlow 2.6s ease-in-out infinite;
+        .case-row:active {
+            background: rgba(188, 19, 254, 0.08);
         }
 
-        @keyframes caseGlow {
-            0%, 100% { box-shadow: 0 0 22px rgba(188, 19, 254, 0.18); }
-            50%       { box-shadow: 0 0 40px rgba(188, 19, 254, 0.35), 0 0 60px rgba(0, 255, 255, 0.1); }
+        .case-row__box {
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
         }
 
-        .pack-card.case-card .pack-icon img {
-            width: 52px;
-            height: 52px;
-            filter: drop-shadow(0 0 14px rgba(188, 19, 254, 0.75));
+        .case-row__info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .case-divider {
+            height: 1px;
+            margin: 0 16px;
+            background: linear-gradient(90deg, transparent, rgba(188, 19, 254, 0.4) 20%, rgba(0, 255, 255, 0.3) 50%, rgba(188, 19, 254, 0.4) 80%, transparent);
+        }
+
+        .case-row--featured {
+            background: linear-gradient(160deg, rgba(255, 215, 0, 0.06) 0%, rgba(188,19,254,0.06) 100%);
+        }
+
+        .pack-featured-name {
+            color: #e060ff;
+            text-shadow: 0 0 12px rgba(188, 19, 254, 0.6);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .case-row__price {
+            display: inline-flex;
         }
 
         /* ── CASE BOX (body + lid, открывается анимацией) ── */
@@ -381,6 +417,33 @@
             position: relative;
             width: 64px;
             height: 64px;
+        }
+
+        .case-box--lg {
+            width: 96px;
+            height: 96px;
+        }
+
+        .case-box--xl {
+            width: 120px;
+            height: 120px;
+        }
+
+        .case-box__glow {
+            position: absolute;
+            inset: -30%;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(188, 19, 254, 0.35) 0%, rgba(0, 255, 255, 0.12) 45%, transparent 75%);
+            opacity: 0.6;
+            filter: blur(6px);
+            z-index: 0;
+            animation: caseGlowPulse 2.4s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes caseGlowPulse {
+            0%, 100% { opacity: 0.45; transform: scale(0.95); }
+            50%      { opacity: 0.85; transform: scale(1.08); }
         }
 
         .case-box__img {
@@ -392,11 +455,12 @@
             object-fit: contain;
             filter: drop-shadow(0 0 14px rgba(188, 19, 254, 0.75));
             transform-origin: 50% 100%;
+            z-index: 1;
         }
 
         .case-box__lid {
             z-index: 2;
-            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease 0.25s;
+            transition: transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.45s ease 0.2s;
         }
 
         .case-box__body {
@@ -404,36 +468,67 @@
         }
 
         .case-box.open .case-box__lid {
-            transform: translateY(-26px) rotate(-18deg);
+            transform: translateY(-46px) rotate(-26deg) scale(1.05);
             opacity: 0;
+        }
+
+        .case-box.open .case-box__glow {
+            animation: caseGlowBurst 0.7s ease-out forwards;
+        }
+
+        @keyframes caseGlowBurst {
+            0%   { opacity: 0.5; transform: scale(0.9); }
+            35%  { opacity: 1; transform: scale(1.9); filter: blur(10px); }
+            100% { opacity: 0.5; transform: scale(1.1); filter: blur(6px); }
         }
 
         @keyframes caseShake {
             0%, 100% { transform: translateX(0) rotate(0); }
-            20%      { transform: translateX(-2px) rotate(-2deg); }
-            40%      { transform: translateX(2px) rotate(2deg); }
-            60%      { transform: translateX(-2px) rotate(-1deg); }
-            80%      { transform: translateX(2px) rotate(1deg); }
+            15%      { transform: translateX(-4px) rotate(-3deg); }
+            30%      { transform: translateX(4px) rotate(3deg); }
+            45%      { transform: translateX(-4px) rotate(-2deg); }
+            60%      { transform: translateX(4px) rotate(2deg); }
+            75%      { transform: translateX(-2px) rotate(-1deg); }
         }
 
         .case-box.shaking {
-            animation: caseShake 0.35s ease-in-out 2;
+            animation: caseShake 0.4s ease-in-out 2;
+        }
+
+        /* ── Частицы при открытии ── */
+        .case-box__burst {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        .case-box__burst .spark {
+            position: absolute;
+            left: 50%;
+            top: 38%;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 0 8px 2px currentColor;
+            opacity: 0;
+            transform: translate(-50%, -50%);
+        }
+
+        .case-box.open .case-box__burst .spark {
+            animation: sparkFly 0.7s ease-out forwards;
+        }
+
+        @keyframes sparkFly {
+            0%   { opacity: 1; transform: translate(-50%, -50%) translate(0, 0) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(0.3); }
         }
 
         .case-modal .case-box {
-            width: 84px;
-            height: 84px;
+            width: 96px;
+            height: 96px;
             margin: 0 auto 12px;
-        }
-
-        .pack-card.case-card .pack-featured-name {
-            color: #e060ff;
-            text-shadow: 0 0 12px rgba(188, 19, 254, 0.6);
-        }
-
-        .pack-card.case-card .pack-featured-desc {
-            font-style: normal;
-            color: rgba(255, 255, 255, 0.55);
         }
 
         .case-desc__lead {
@@ -489,10 +584,10 @@
 
         /* ── NFT COMPANION (случайный Plush Pepe) ── */
         .case-nft-companion {
-            width: 108px;
-            height: 108px;
+            width: 72px;
+            height: 72px;
             flex-shrink: 0;
-            border-radius: 18px;
+            border-radius: 16px;
             background: linear-gradient(145deg, rgba(188, 19, 254, 0.12), rgba(0, 255, 255, 0.06));
             border: 1px solid rgba(188, 19, 254, 0.35);
             box-shadow: 0 0 20px rgba(188, 19, 254, 0.25),
@@ -513,13 +608,6 @@
             background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.12) 0%, transparent 60%);
             pointer-events: none;
             z-index: 2;
-        }
-
-        @media (max-width: 420px) {
-            .case-nft-companion {
-                width: 82px;
-                height: 82px;
-            }
         }
 
         /* ── CASE REWARD MODAL ── */
@@ -677,92 +765,85 @@
                 </div>
             </div>
 
-            <!-- CASE 1 — 250 choin -->
+            <!-- КЕЙСЫ -->
             <div class="section-title">Кейсы</div>
-            <div class="case-section">
-                <div class="pack-card case-card" onclick="buyCase(1)">
-                    <div class="pack-badge badge-premium">🎲 Кейс 1</div>
-                    <div class="pack-icon">
-                        <div class="case-box" id="caseBox1">
+            <div class="case-list">
+                <!-- CASE 1 — 250 choin -->
+                <div class="case-row" onclick="confirmBuyCase(1)">
+                    <div class="case-row__box">
+                        <div class="case-box case-box--lg" id="caseBox1">
+                            <div class="case-box__glow"></div>
                             <img class="case-box__img case-box__body" src="icons/cases/1_case_body.png" alt="">
                             <img class="case-box__img case-box__lid" src="icons/cases/1_case_lid.png" alt="">
+                            <div class="case-box__burst" id="caseBurst1"></div>
                         </div>
                     </div>
-                    <div class="pack-featured-desc case-desc">
+                    <div class="case-row__info">
                         <p class="case-desc__lead">Chent, choin или подарок Telegram.</p>
                         <div class="case-desc__tags">
                             <span class="case-desc__tag">chent</span>
                             <span class="case-desc__tag case-desc__tag--stars">choin</span>
                             <span class="case-desc__tag case-desc__tag--nft">подарок</span>
                         </div>
-                    </div>
-                    <div class="pack-price">
-                        <img class="choin-icon" src="icons/choin.webp" alt="">
-                        <span>250</span>
+                        <div class="pack-price case-row__price">
+                            <img class="choin-icon" src="icons/choin.webp" alt="">
+                            <span>250</span>
+                        </div>
                     </div>
                 </div>
 
+                <div class="case-divider"></div>
+
                 <!-- CASE 2 — 400 choin -->
-                <div class="pack-card case-card" onclick="buyCase(2)">
-                    <div class="pack-badge badge-premium">🎲 Кейс 2</div>
-                    <div class="pack-icon">
-                        <div class="case-box" id="caseBox2">
+                <div class="case-row" onclick="confirmBuyCase(2)">
+                    <div class="case-row__box">
+                        <div class="case-box case-box--lg" id="caseBox2">
+                            <div class="case-box__glow"></div>
                             <img class="case-box__img case-box__body" src="icons/cases/2_case_body.png" alt="">
                             <img class="case-box__img case-box__lid" src="icons/cases/2_case_lid.png" alt="">
+                            <div class="case-box__burst" id="caseBurst2"></div>
                         </div>
                     </div>
-                    <div class="pack-featured-desc case-desc">
+                    <div class="case-row__info">
                         <p class="case-desc__lead">Больше chent и choin, шанс крупного подарка.</p>
                         <div class="case-desc__tags">
                             <span class="case-desc__tag">chent</span>
                             <span class="case-desc__tag case-desc__tag--stars">choin</span>
                             <span class="case-desc__tag case-desc__tag--nft">подарок</span>
                         </div>
-                    </div>
-                    <div class="pack-price">
-                        <img class="choin-icon" src="icons/choin.webp" alt="">
-                        <span>400</span>
+                        <div class="pack-price case-row__price">
+                            <img class="choin-icon" src="icons/choin.webp" alt="">
+                            <span>400</span>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- CASE 3 — 5000 choin -->
-            <div class="case-section">
-                <div class="pack-card featured case-card" onclick="buyCase(3)">
-                    <div class="pack-badge badge-premium">🎲 Кейс 3</div>
-                    <div class="pack-featured-inner">
-                        <div class="pack-featured-left">
-                            <div class="pack-icon" style="margin-bottom:4px;">
-                                <div class="case-box" id="caseBox3">
-                                    <img class="case-box__img case-box__body" src="icons/cases/3_case_body.png" alt="">
-                                    <img class="case-box__img case-box__lid" src="icons/cases/3_case_lid.png" alt="">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="pack-featured-mid">
-                            <div class="pack-featured-name">Случайный кейс</div>
-                            <div class="pack-featured-desc case-desc">
-                                <p class="case-desc__lead">Внутри могут ждать choin или редкий NFT-подарок — угадай, что выпадет тебе.</p>
-                                <div class="case-desc__tags">
-                                    <span class="case-desc__tag case-desc__tag--stars">choin</span>
-                                    <span class="case-desc__tag case-desc__tag--nft">NFT-подарок</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="pack-featured-right">
-                            <div class="pack-price" style="flex-direction:column;gap:2px;padding:8px 12px; margin-top:-6px;">
-                                <img class="choin-icon" style="width:1.3rem;height:1.3rem;" src="icons/choin.webp" alt="">
-                                <span style="font-size:1.1rem;">5000</span>
-                            </div>
+                <div class="case-divider"></div>
 
-                            <!--
-                                Plush Pepe-компаньон (чисто декоративный).
-                                Размещён под ценником.
-                                Клик по нему запрещён — это просто визуальный декор.
-                            -->
-                            <div class="case-nft-companion" id="case-nft-companion" style="width:68px;height:68px;pointer-events:none;">
-                                <div id="case-nft-lottie" style="width:100%;height:100%;"></div>
-                            </div>
+                <!-- CASE 3 — 5000 choin -->
+                <div class="case-row case-row--featured" onclick="confirmBuyCase(3)">
+                    <div class="case-row__box">
+                        <div class="case-box case-box--lg case-box--xl" id="caseBox3">
+                            <div class="case-box__glow"></div>
+                            <img class="case-box__img case-box__body" src="icons/cases/3_case_body.png" alt="">
+                            <img class="case-box__img case-box__lid" src="icons/cases/3_case_lid.png" alt="">
+                            <div class="case-box__burst" id="caseBurst3"></div>
+                        </div>
+                        <!-- Plush Pepe-компаньон (декоративный) -->
+                        <div class="case-nft-companion" id="case-nft-companion">
+                            <div id="case-nft-lottie" style="width:100%;height:100%;"></div>
+                        </div>
+                    </div>
+                    <div class="case-row__info">
+                        <div class="pack-featured-name">Случайный кейс</div>
+                        <p class="case-desc__lead">Внутри могут ждать choin или редкий NFT-подарок — угадай, что выпадет тебе.</p>
+                        <div class="case-desc__tags">
+                            <span class="case-desc__tag case-desc__tag--stars">choin</span>
+                            <span class="case-desc__tag case-desc__tag--nft">NFT-подарок</span>
+                        </div>
+                        <div class="pack-price case-row__price">
+                            <img class="choin-icon" src="icons/choin.webp" alt="">
+                            <span>5000</span>
                         </div>
                     </div>
                 </div>
@@ -925,6 +1006,8 @@
             [1, 2, 3].forEach(id => {
                 const box = document.getElementById(`caseBox${id}`);
                 if (box) box.classList.remove('open');
+                const burst = document.getElementById(`caseBurst${id}`);
+                if (burst) burst.innerHTML = '';
             });
         }
 
@@ -1015,18 +1098,50 @@
             }
         }
 
+        const SPARK_COLORS = ['#bc13fe', '#00f7ff', '#ffe566', '#ff5fd1'];
+
+        function spawnSparks(caseId) {
+            const burst = document.getElementById(`caseBurst${caseId}`);
+            if (!burst) return;
+            burst.innerHTML = '';
+            const count = 14;
+            for (let i = 0; i < count; i++) {
+                const angle = (Math.PI * 2 * i) / count + (Math.random() * 0.4 - 0.2);
+                const dist = 50 + Math.random() * 40;
+                const spark = document.createElement('div');
+                spark.className = 'spark';
+                spark.style.color = SPARK_COLORS[i % SPARK_COLORS.length];
+                spark.style.background = SPARK_COLORS[i % SPARK_COLORS.length];
+                spark.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
+                spark.style.setProperty('--dy', `${Math.sin(angle) * dist}px`);
+                burst.appendChild(spark);
+            }
+        }
+
         function playCaseOpenAnim(caseId) {
             const box = document.getElementById(`caseBox${caseId}`);
             if (!box) return;
             box.classList.remove('open', 'shaking');
+            spawnSparks(caseId);
             // re-trigger shake
             requestAnimationFrame(() => {
                 box.classList.add('shaking');
                 setTimeout(() => {
                     box.classList.remove('shaking');
                     box.classList.add('open');
-                }, 650);
+                    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('rigid');
+                }, 700);
             });
+        }
+
+        const CASE_NAMES = { 1: 'Кейс 1', 2: 'Кейс 2', 3: 'Случайный кейс' };
+
+        function confirmBuyCase(caseId) {
+            const price = CASE_PRICES[caseId];
+            if (_testMode) { buyCase(caseId); return; }
+            if (confirm(`Открыть «${CASE_NAMES[caseId]}» за ${price} choin?`)) {
+                buyCase(caseId);
+            }
         }
 
         async function buyCase(caseId) {
@@ -1109,6 +1224,8 @@
             if (resp.method === 'insufficient') {
                 const box = document.getElementById(`caseBox${caseId}`);
                 if (box) box.classList.remove('open');
+                const burst = document.getElementById(`caseBurst${caseId}`);
+                if (burst) burst.innerHTML = '';
                 showToast(`💡 Не хватает ${resp.short * CHOIN_RATE} choin. Пополни баланс в магазине`, '');
                 setTimeout(() => { location.href = 'shop.html'; }, 1200);
             }
