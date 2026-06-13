@@ -114,9 +114,9 @@
         <div class="section">
             <div class="section-label">Игра</div>
             <div class="pill-group" id="game-pills">
-                <div class="pill" data-val="math" onclick="selectPill('game',this)"><img src="icons/math.png" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 0 4px rgba(255,255,255,0.3))"> Math</div>
-                <div class="pill" data-val="2048" onclick="selectPill('game',this)"><img src="icons/2048.png" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 0 4px rgba(255,255,255,0.3))"> 2048</div>
-                <div class="pill" data-val="snake" onclick="selectPill('game',this)"><img src="icons/snake.png" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 0 4px rgba(255,255,255,0.3))"> Snake</div>
+                <div class="pill" data-val="math" onclick="selectPill('game',this)"><img src="icons/math.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 0 4px rgba(255,255,255,0.3))"> Math</div>
+                <div class="pill" data-val="2048" onclick="selectPill('game',this)"><img src="icons/2048.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 0 4px rgba(255,255,255,0.3))"> 2048</div>
+                <div class="pill" data-val="snake" onclick="selectPill('game',this)"><img src="icons/snake.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 0 4px rgba(255,255,255,0.3))"> Snake</div>
                 <div class="pill" data-val="flappy" onclick="selectPill('game',this)"><img src="icons/bird.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 0 4px rgba(255,255,255,0.3))"> Flappy</div>
             </div>
         </div>
@@ -171,13 +171,13 @@
                     <label>Подарок</label>
                     <div class="pill-group" id="tg-gift-pills">
                         <div class="pill tg-gift-pill" data-val="bear" onclick="selectPill('tgGift',this)">
-                            <img src="icons/tg_gifts/bear.png" style="width:28px;height:28px;object-fit:contain;display:block;margin:0 auto 4px;">Мишка</div>
+                            <img src="icons/tg_gifts/bear.webp" style="width:28px;height:28px;object-fit:contain;display:block;margin:0 auto 4px;">Мишка</div>
                         <div class="pill tg-gift-pill" data-val="box" onclick="selectPill('tgGift',this)">
-                            <img src="icons/tg_gifts/box.png" style="width:28px;height:28px;object-fit:contain;display:block;margin:0 auto 4px;">Подарок</div>
+                            <img src="icons/tg_gifts/box.webp" style="width:28px;height:28px;object-fit:contain;display:block;margin:0 auto 4px;">Подарок</div>
                         <div class="pill tg-gift-pill" data-val="rocket" onclick="selectPill('tgGift',this)">
-                            <img src="icons/tg_gifts/rocket.png" style="width:28px;height:28px;object-fit:contain;display:block;margin:0 auto 4px;">Ракета</div>
+                            <img src="icons/tg_gifts/rocket.webp" style="width:28px;height:28px;object-fit:contain;display:block;margin:0 auto 4px;">Ракета</div>
                         <div class="pill tg-gift-pill" data-val="diamond" onclick="selectPill('tgGift',this)">
-                            <img src="icons/tg_gifts/diamond.png" style="width:28px;height:28px;object-fit:contain;display:block;margin:0 auto 4px;">Алмаз</div>
+                            <img src="icons/tg_gifts/diamond.webp" style="width:28px;height:28px;object-fit:contain;display:block;margin:0 auto 4px;">Алмаз</div>
                     </div>
                 </div>
                 <div class="hint" style="margin-top:8px;padding:10px 12px;background:rgba(255,170,0,0.08);border:1px solid rgba(255,170,0,0.25);border-radius:8px;color:rgba(255,200,80,0.85);line-height:1.5;">
@@ -455,7 +455,7 @@
                            style="display:flex;align-items:center;gap:8px;text-decoration:none;">
                             <div style="width:32px;height:32px;background:rgba(0,255,200,0.08);border-radius:7px;
                                 display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                <img src="icons/shop.png" style="width:18px;height:18px;object-fit:contain;
+                                <img src="icons/shop.webp" style="width:18px;height:18px;object-fit:contain;
                                     filter:drop-shadow(0 0 5px rgba(0,255,200,0.5));">
                             </div>
                             <div style="font-size:11px;color:rgba(255,255,255,0.4);word-break:break-all;">
@@ -564,7 +564,7 @@
                             <div class="active-card__title" style="display:flex;align-items:center;gap:6px;"><img src="icons/${GAME_ICONS[c.game_name] || c.game_name}.png" style="width:14px;height:14px;object-fit:contain;filter:drop-shadow(0 0 4px rgba(224,0,255,0.5))"> ${GAME_LABELS[c.game_name] || c.game_name} · Топ ${c.winners_count}</div>
                             <div class="active-card__sub" style="display:flex;align-items:center;gap:6px;">${
                                 c.prize_type === 'stars' ? c.prize_value + ' звёзд'
-                                : c.prize_type === 'tg_gift' ? `<img src="icons/tg_gifts/${TG_GIFT_ICONS_MAP[c.gift_id] || 'box'}.png" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;"> ${TG_GIFT_NAMES_MAP[c.gift_id] || c.gift_id || 'TG-подарок'} (вручную)`
+                                : c.prize_type === 'tg_gift' ? `<img src="icons/tg_gifts/${TG_GIFT_ICONS_MAP[c.gift_id] || 'box'}.webp" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;"> ${TG_GIFT_NAMES_MAP[c.gift_id] || c.gift_id || 'TG-подарок'} (вручную)`
                                 : '🎁 NFT-подарок (вручную)'
                             } · ${formatTimer(c.seconds_left)}</div>
                         </div>

@@ -5,7 +5,7 @@ import hashlib
 import logging
 import asyncio
 from datetime import datetime, timezone
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from pathlib import Path
 from fastapi import Depends, FastAPI, Request, HTTPException, Response
 from fastapi.staticfiles import StaticFiles
@@ -614,25 +614,67 @@ async def api_shop_case_status():
 CASE_GRANT_FNS = {1: grant_case1_reward, 2: grant_case2_reward, 3: grant_case_reward}
 
 
+_GIFT_CATALOG_CACHE: Optional[list] = None
+
+
+async def _get_gift_for_stars(bot: Bot, stars_value: int) -> Optional[str]:
+    """Подбирает gift_id из каталога подарков бота по нужной звёздной стоимости."""
+    global _GIFT_CATALOG_CACHE
+    if _GIFT_CATALOG_CACHE is None:
+        gifts = await bot.get_available_gifts()
+        _GIFT_CATALOG_CACHE = sorted(gifts.gifts, key=lambda g: g.star_count)
+    candidates = [g for g in _GIFT_CATALOG_CACHE if g.star_count >= stars_value]
+    chosen = candidates[0] if candidates else (_GIFT_CATALOG_CACHE[-1] if _GIFT_CATALOG_CACHE else None)
+    return chosen.id if chosen else None
+
+
 async def _notify_tg_gift_reward(user_id: int, reward: Dict[str, Any], case_id: int) -> None:
-    """Подарок Telegram из кейса выдаётся вручную админом — уведомляем игрока и админов."""
+    """Подарок Telegram из кейса отправляется ботом автоматически (sendGift).
+    При ошибке (нехватка баланса Stars и т.п.) — зачисляем эквивалент в Choin и алертим админов."""
     stars_value = reward.get("stars_value", 0)
     bot = get_bot()
+    try:
+        gift_id = await _get_gift_for_stars(bot, stars_value)
+        if not gift_id:
+            raise RuntimeError("no gift in catalog")
+        await bot.send_gift(gift_id=gift_id, user_id=user_id,
+                             text="🎁 Подарок из кейса Chin Games!")
+        await bot.send_message(
+            chat_id=user_id,
+            text=f"🎁 Из кейса выпал подарок Telegram (~{stars_value}⭐) — уже отправлен тебе!",
+        )
+        return
+    except Exception as e:
+        logger.warning(f"tg_gift auto-send failed, falling back to choin: {e}")
+
+    # Fallback: зачисляем choin-эквивалент и уведомляем
+    choin_amount = stars_value * 10
+    try:
+        topup_wallet(user_id, "", choin_amount // 10, description="Подарок из кейса (эквивалент)")
+    except Exception as e:
+        logger.warning(f"tg_gift fallback topup failed: {e}")
     try:
         await bot.send_message(
             chat_id=user_id,
             text=(
                 f"🎁 Из кейса выпал подарок Telegram (~{stars_value}⭐)!\n"
-                f"Администратор отправит его тебе в ближайшее время."
+                f"Подарок временно недоступен — начислили {choin_amount} choin вместо него."
             ),
         )
     except Exception as e:
         logger.warning(f"tg_gift notify user failed: {e}")
+    user_label = str(user_id)
+    try:
+        chat = await bot.get_chat(user_id)
+        if chat.username:
+            user_label = f"@{chat.username}"
+    except Exception as e:
+        logger.warning(f"tg_gift get_chat failed: {e}")
     for admin_id in ADMIN_TG_IDS:
         try:
             await bot.send_message(
                 chat_id=admin_id,
-                text=f"🎁 Кейс {case_id}: пользователю {user_id} нужно отправить подарок Telegram ~{stars_value}⭐",
+                text=f"⚠️ Кейс {case_id}: подарок Telegram ~{stars_value}⭐ для {user_label} не отправлен, начислен эквивалент {choin_amount} choin",
             )
         except Exception as e:
             logger.warning(f"tg_gift notify admin failed: {e}")

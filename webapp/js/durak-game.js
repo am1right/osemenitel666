@@ -1406,7 +1406,7 @@
     EMOJIS.forEach((name) => {
       const item = document.createElement('div');
       item.className = 'dg-emoji-item';
-      item.innerHTML = `<img src="icons/emoji/${name}.png" draggable="false">`;
+      item.innerHTML = `<img src="icons/emoji/${name}.webp" draggable="false">`;
       item.onclick = () => {
         sendReaction(name);
         picker.classList.remove('show');
@@ -1446,7 +1446,7 @@
 
     const el = document.createElement('div');
     el.className = 'dg-flying-reaction';
-    el.innerHTML = `<img src="icons/emoji/${name}.png" draggable="false">`;
+    el.innerHTML = `<img src="icons/emoji/${name}.webp" draggable="false">`;
     el.style.left = sx + 'px';
     el.style.top = sy + 'px';
     document.body.appendChild(el);

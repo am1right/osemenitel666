@@ -19,15 +19,15 @@
     const html = `
     <nav class="chin-navbar">
         <a class="${cls('games')}" href="${prefix}index.html">
-            <span class="chin-navbar__icon"><img src="${prefix}icons/games.png" alt="Игры" style="object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,255,255,0.3));"></span>
+            <span class="chin-navbar__icon"><img src="${prefix}icons/games.webp" alt="Игры" style="object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,255,255,0.3));"></span>
             <span>Игры</span>
         </a>
         <a class="${cls('profile')}" href="${prefix}profile.html">
-            <span class="chin-navbar__icon"><img src="${prefix}icons/profile.png" alt="Профиль" style="object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,255,255,0.3));"></span>
+            <span class="chin-navbar__icon"><img src="${prefix}icons/profile.webp" alt="Профиль" style="object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,255,255,0.3));"></span>
             <span>Профиль</span>
         </a>
         <a class="${cls('shop')}" href="${prefix}shop.html">
-            <span class="chin-navbar__icon"><img src="${prefix}icons/shop.png" alt="Магазин" style="object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,255,255,0.3));"></span>
+            <span class="chin-navbar__icon"><img src="${prefix}icons/shop.webp" alt="Магазин" style="object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,255,255,0.3));"></span>
             <span>Магазин</span>
         </a>
         <a class="${cls('cases')}" href="${prefix}cases.html">

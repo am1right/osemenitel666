@@ -787,8 +787,8 @@
                     <div class="case-row__box">
                         <div class="case-box case-box--lg" id="caseBox1">
                             <div class="case-box__glow"></div>
-                            <img class="case-box__img case-box__body" src="icons/cases/1_case_body.png" alt="">
-                            <img class="case-box__img case-box__lid" src="icons/cases/1_case_lid.png" alt="">
+                            <img class="case-box__img case-box__body" src="icons/cases/1_case_body.webp" alt="">
+                            <img class="case-box__img case-box__lid" src="icons/cases/1_case_lid.webp" alt="">
                             <div class="case-box__burst" id="caseBurst1"></div>
                         </div>
                     </div>
@@ -814,8 +814,8 @@
                     <div class="case-row__box">
                         <div class="case-box case-box--lg" id="caseBox2">
                             <div class="case-box__glow"></div>
-                            <img class="case-box__img case-box__body" src="icons/cases/2_case_body.png" alt="">
-                            <img class="case-box__img case-box__lid" src="icons/cases/2_case_lid.png" alt="">
+                            <img class="case-box__img case-box__body" src="icons/cases/2_case_body.webp" alt="">
+                            <img class="case-box__img case-box__lid" src="icons/cases/2_case_lid.webp" alt="">
                             <div class="case-box__burst" id="caseBurst2"></div>
                         </div>
                     </div>
@@ -841,8 +841,8 @@
                     <div class="case-row__box">
                         <div class="case-box case-box--lg case-box--xl" id="caseBox3">
                             <div class="case-box__glow"></div>
-                            <img class="case-box__img case-box__body" src="icons/cases/3_case_body.png" alt="">
-                            <img class="case-box__img case-box__lid" src="icons/cases/3_case_lid.png" alt="">
+                            <img class="case-box__img case-box__body" src="icons/cases/3_case_body.webp" alt="">
+                            <img class="case-box__img case-box__lid" src="icons/cases/3_case_lid.webp" alt="">
                             <div class="case-box__burst" id="caseBurst3"></div>
                         </div>
                         <!-- Plush Pepe-компаньон (декоративный) -->
@@ -879,8 +879,8 @@
         <div class="case-modal">
             <div class="case-modal__icon">
                 <div class="case-box open" id="caseModalBox">
-                    <img class="case-box__img case-box__body" id="caseModalBody" src="icons/cases/1_case_body.png" alt="">
-                    <img class="case-box__img case-box__lid" id="caseModalLid" src="icons/cases/1_case_lid.png" alt="">
+                    <img class="case-box__img case-box__body" id="caseModalBody" src="icons/cases/1_case_body.webp" alt="">
+                    <img class="case-box__img case-box__lid" id="caseModalLid" src="icons/cases/1_case_lid.webp" alt="">
                 </div>
             </div>
             <div class="case-modal__title">Кейс открыт</div>
@@ -1114,14 +1114,14 @@
                 return;
             }
             const id = caseId || 3;
-            document.getElementById('caseModalBody').src = `icons/cases/${id}_case_body.png`;
-            document.getElementById('caseModalLid').src  = `icons/cases/${id}_case_lid.png`;
+            document.getElementById('caseModalBody').src = `icons/cases/${id}_case_body.webp`;
+            document.getElementById('caseModalLid').src  = `icons/cases/${id}_case_lid.webp`;
             const title = reward.title || 'Награда';
             document.getElementById('caseRewardText').innerHTML = formatRewardTitle(title);
             const giftIcon = document.getElementById('caseRewardGiftIcon');
             const giftName = TG_GIFT_ICONS[reward.stars_value];
             if (reward.type === 'tg_gift' && giftName) {
-                giftIcon.src = `icons/tg_gifts/${giftName}.png`;
+                giftIcon.src = `icons/tg_gifts/${giftName}.webp`;
                 giftIcon.style.display = '';
             } else {
                 giftIcon.style.display = 'none';

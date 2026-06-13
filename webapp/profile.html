@@ -387,21 +387,21 @@
         <div class="section-title">🎮 Офлайн-игры</div>
         <div class="stats-card">
             <div class="stats-card__header">
-                <img src="icons/math.png" alt="Math Master" style="width:26px;height:26px;object-fit:contain;">
+                <img src="icons/math.webp" alt="Math Master" style="width:26px;height:26px;object-fit:contain;">
                 <span class="stats-card__game-name">Math Master</span>
             </div>
             <div id="math-stats"><div class="loading-spinner"></div></div>
         </div>
         <div class="stats-card">
             <div class="stats-card__header">
-                <img src="icons/2048.png" alt="2048" style="width:26px;height:26px;object-fit:contain;">
+                <img src="icons/2048.webp" alt="2048" style="width:26px;height:26px;object-fit:contain;">
                 <span class="stats-card__game-name">2048</span>
             </div>
             <div id="stats-2048"><div class="loading-spinner"></div></div>
         </div>
         <div class="stats-card">
             <div class="stats-card__header">
-                <img src="icons/snake.png" alt="Snake" style="width:26px;height:26px;object-fit:contain;">
+                <img src="icons/snake.webp" alt="Snake" style="width:26px;height:26px;object-fit:contain;">
                 <span class="stats-card__game-name">Snake</span>
             </div>
             <div id="snake-stats"><div class="loading-spinner"></div></div>
@@ -573,7 +573,7 @@
                     const TG_GIFT_NAMES = {bear:'Мишка', box:'Подарок', gift:'Подарок', rocket:'Ракета', diamond:'Алмаз'};
                     function tgGiftIcon(slug) {
                         const s = String(slug || '').toLowerCase();
-                        return `icons/tg_gifts/${TG_GIFT_ICONS[s] || 'box'}.png`;
+                        return `icons/tg_gifts/${TG_GIFT_ICONS[s] || 'box'}.webp`;
                     }
                     function tgGiftLabel(slug) {
                         const s = String(slug || '').toLowerCase();
@@ -583,7 +583,7 @@
                     let prizeHtml = '';
                     if (c.prize_type === 'stars') {
                         prizeHtml = `<div class="contest-card__prize" style="color:#ffd700;">
-                            <img src="icons/shop.png" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 0 4px rgba(255,215,0,0.6))">
+                            <img src="icons/shop.webp" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:4px;filter:drop-shadow(0 0 4px rgba(255,215,0,0.6))">
                             ${c.prize_value * 10} choin${c.split_prize ? ' (делится)' : ' каждому'}
                         </div>`;
                     } else if (c.prize_type === 'tg_gift') {
@@ -611,7 +611,7 @@
                             <div id="nft-mini-${c.id}" style="width:48px;height:48px;border-radius:10px;background:rgba(0,0,0,0.4);flex-shrink:0;overflow:hidden;position:relative;">
                                 <canvas id="nft-thumb-${c.id}" width="48" height="48" style="width:48px;height:48px;border-radius:10px;display:none;"></canvas>
                                 <div id="nft-thumb-fallback-${c.id}" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
-                                    <img src="icons/shop.png" style="width:26px;height:26px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(188,19,254,0.8));">
+                                    <img src="icons/shop.webp" style="width:26px;height:26px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(188,19,254,0.8));">
                                 </div>
                             </div>
                             <div style="flex:1;min-width:0;">
@@ -625,7 +625,7 @@
                     return `
                         <div class="contest-card">
                             <div class="contest-card__title" style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
-                                <img src="icons/profile.png" style="width:14px;height:14px;object-fit:contain;filter:drop-shadow(0 0 4px rgba(224,0,255,0.6))">
+                                <img src="icons/profile.webp" style="width:14px;height:14px;object-fit:contain;filter:drop-shadow(0 0 4px rgba(224,0,255,0.6))">
                                 Chin запустил соревнование!
                             </div>
                             <div class="contest-card__game" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
@@ -1261,7 +1261,7 @@
                 } else throw new Error('no lottie');
             } catch(e) {
                 spinner.style.display = 'none';
-                animBox.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><img src="icons/shop.png" style="width:60px;height:60px;object-fit:contain;filter:drop-shadow(0 0 16px rgba(188,19,254,0.8));"></div>';
+                animBox.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><img src="icons/shop.webp" style="width:60px;height:60px;object-fit:contain;filter:drop-shadow(0 0 16px rgba(188,19,254,0.8));"></div>';
             }
         }
 
