@@ -1247,6 +1247,18 @@
                 };
                 const table = tables[caseId] || tables[3];
                 const reward = table[Math.floor(Math.random() * table.length)];
+                if (reward.type === 'nft') {
+                    try {
+                        const uname = tg.initDataUnsafe?.user?.username || '';
+                        const api = window.apiFetch || fetch;
+                        const res = await api(`${API}/api/admin/case/settings?username=${encodeURIComponent(uname)}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            const gifts = data.nft_gifts || [];
+                            if (gifts.length) reward.gift_url = gifts[Math.floor(Math.random() * gifts.length)];
+                        }
+                    } catch (e) {}
+                }
                 await animDone;
                 showCaseReward(reward, caseId);
                 showToast('🧪 Тест-режим: награда не выдана', '');
