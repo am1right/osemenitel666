@@ -571,6 +571,12 @@
             color: #a8ffff;
         }
 
+        .case-desc__tag--empty {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.18);
+            color: rgba(255, 255, 255, 0.45);
+        }
+
         .case-desc__tag img {
             width: 12px;
             height: 12px;
@@ -779,6 +785,7 @@
                         </div>
                     </div>
                     <div class="case-row__info">
+                        <div class="pack-featured-name">Стартовый кейс</div>
                         <p class="case-desc__lead">Chent, choin или подарок Telegram.</p>
                         <div class="case-desc__tags">
                             <span class="case-desc__tag">chent</span>
@@ -805,6 +812,7 @@
                         </div>
                     </div>
                     <div class="case-row__info">
+                        <div class="pack-featured-name">Премиум кейс</div>
                         <p class="case-desc__lead">Больше chent и choin, шанс крупного подарка.</p>
                         <div class="case-desc__tags">
                             <span class="case-desc__tag">chent</span>
@@ -835,11 +843,12 @@
                         </div>
                     </div>
                     <div class="case-row__info">
-                        <div class="pack-featured-name">Случайный кейс</div>
+                        <div class="pack-featured-name">Легендарный кейс</div>
                         <p class="case-desc__lead">Внутри могут ждать choin или редкий NFT-подарок — угадай, что выпадет тебе.</p>
                         <div class="case-desc__tags">
                             <span class="case-desc__tag case-desc__tag--stars">choin</span>
                             <span class="case-desc__tag case-desc__tag--nft">NFT-подарок</span>
+                            <span class="case-desc__tag case-desc__tag--empty" id="caseNftEmptyTag" style="display:none;">пусто</span>
                         </div>
                         <div class="pack-price case-row__price">
                             <img class="choin-icon" src="icons/choin.webp" alt="">
@@ -1134,7 +1143,7 @@
             });
         }
 
-        const CASE_NAMES = { 1: 'Кейс 1', 2: 'Кейс 2', 3: 'Случайный кейс' };
+        const CASE_NAMES = { 1: 'Стартовый кейс', 2: 'Премиум кейс', 3: 'Легендарный кейс' };
 
         function confirmBuyCase(caseId) {
             const price = CASE_PRICES[caseId];
@@ -1297,6 +1306,18 @@
         }
 
         initCaseNftCompanion();
+
+        // ── Показать плашку "пусто", если у кейса 3 нет настроенных NFT ──
+        async function checkCaseNftStatus() {
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api('/api/case/nft_status');
+                const data = await res.json();
+                const tag = document.getElementById('caseNftEmptyTag');
+                if (tag) tag.style.display = data.has_nft ? 'none' : 'inline-flex';
+            } catch (e) {}
+        }
+        checkCaseNftStatus();
 
         loadWalletBalance();
         loadChentBalance();

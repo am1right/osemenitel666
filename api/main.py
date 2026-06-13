@@ -1525,6 +1525,13 @@ async def api_nft_lottie(slug: str):
         raise HTTPException(status_code=502, detail=f"NFT lottie fetch failed: {e}")
 
 
+@app.get("/api/case/nft_status")
+async def api_case_nft_status():
+    """Публичный статус пула NFT-подарков кейса 3 (без раскрытия ссылок)."""
+    settings = get_case_settings()
+    return {"has_nft": bool(settings["nft_gifts"])}
+
+
 # ── Admin: case settings (остаётся в main) ─────────────────────────
 
 @app.get("/api/admin/case/settings")
