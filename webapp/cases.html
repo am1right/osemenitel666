@@ -1104,8 +1104,6 @@
                 .replace(/\bchent\b/gi, '<img src="icons/chent.webp" alt="" style="width:1em;height:1em;object-fit:contain;vertical-align:-2px;">');
         }
 
-        const TG_GIFT_ICONS = { 15: 'bear', 25: 'box', 50: 'rocket', 100: 'diamond' };
-
         function showCaseReward(reward, caseId) {
             if (!reward) return;
             if (reward.type === 'nft' && reward.gift_url) {
@@ -1116,16 +1114,11 @@
             const id = caseId || 3;
             document.getElementById('caseModalBody').src = `icons/cases/${id}_case_body.webp`;
             document.getElementById('caseModalLid').src  = `icons/cases/${id}_case_lid.webp`;
-            const title = reward.title || 'Награда';
+            const title = reward.type === 'tg_gift'
+                ? `Подарок ${reward.stars_value}⭐`
+                : (reward.title || 'Награда');
             document.getElementById('caseRewardText').innerHTML = formatRewardTitle(title);
-            const giftIcon = document.getElementById('caseRewardGiftIcon');
-            const giftName = TG_GIFT_ICONS[reward.stars_value];
-            if (reward.type === 'tg_gift' && giftName) {
-                giftIcon.src = `icons/tg_gifts/${giftName}.webp`;
-                giftIcon.style.display = '';
-            } else {
-                giftIcon.style.display = 'none';
-            }
+            document.getElementById('caseRewardGiftIcon').style.display = 'none';
             document.getElementById('caseModal').classList.add('show');
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         }
@@ -1225,17 +1218,17 @@
                     1: [
                         { type: 'chent', amount: 500, title: '+500 chent' },
                         { type: 'choin', amount: 100, title: '+100 choin' },
-                        { type: 'tg_gift', stars_value: 15, title: 'Мишка 15⭐' },
+                        { type: 'tg_gift', stars_value: 15, title: 'Подарок 15⭐' },
                         { type: 'tg_gift', stars_value: 25, title: 'Подарок 25⭐' },
-                        { type: 'tg_gift', stars_value: 50, title: 'Ракета 50⭐' },
+                        { type: 'tg_gift', stars_value: 50, title: 'Подарок 50⭐' },
                     ],
                     2: [
                         { type: 'chent', amount: 800, title: '+800 chent' },
                         { type: 'choin', amount: 200, title: '+200 choin' },
-                        { type: 'tg_gift', stars_value: 15, title: 'Мишка 15⭐' },
+                        { type: 'tg_gift', stars_value: 15, title: 'Подарок 15⭐' },
                         { type: 'tg_gift', stars_value: 25, title: 'Подарок 25⭐' },
-                        { type: 'tg_gift', stars_value: 50, title: 'Ракета 50⭐' },
-                        { type: 'tg_gift', stars_value: 100, title: 'Алмаз 100⭐' },
+                        { type: 'tg_gift', stars_value: 50, title: 'Подарок 50⭐' },
+                        { type: 'tg_gift', stars_value: 100, title: 'Подарок 100⭐' },
                     ],
                     3: [
                         { type: 'stars', amount: 250, title: 'Джекпот +2500 choin' },

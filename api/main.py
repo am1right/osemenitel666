@@ -24,7 +24,7 @@ from api.database import (
     is_already_referred, REFERRAL_CHENT, REFERRAL_ENERGY,
     try_grant_referral_reward, get_referral_by_invitee,
     admin_adjust_energy, boost_regen_speed,
-    get_energy, spend_energy, get_user_flags,
+    get_energy, spend_energy, get_user_flags, ENERGY_MAX,
     CASE_PRICE, CASE_PRICES, CASE_NFT_DAILY_LIMIT, CASE_BOT_STARS_ALERT_THRESHOLD,
     grant_case_reward, grant_case1_reward, grant_case2_reward,
     get_nft_drop_count_today,
@@ -32,7 +32,7 @@ from api.database import (
     add_announce_chat, remove_announce_chat, get_announce_chats,
     upsert_tg_username, admin_get_all_players,
     get_user_bonus_status, grant_bonus, daily_checkin, get_daily_checkin_status,
-    BONUS_CHANNEL, BONUS_CHAT, BONUS_SHARE,
+    BONUS_CHANNEL, BONUS_CHAT, BONUS_SHARE, BONUS_STARTER_PACK,
     BONUS_CHANNEL_CHENT, BONUS_CHAT_CHENT, BONUS_SHARE_CHENT, DAILY_CHECKIN_CHENT,
     set_sub_verified, get_sub_verified, reset_all_sub_verified, get_all_user_ids,
 )
@@ -764,6 +764,78 @@ async def api_buy_case(request: Request, tg_user: dict = Depends(require_webapp_
         raise
     except Exception as e:
         logger.error(f"buy_case error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+STARTER_PACK_STARS = 20
+STARTER_PACK_CHENT = 500
+
+
+@app.get("/api/shop/starter_pack/status")
+async def api_starter_pack_status(user_id: int, tg_user: dict = Depends(require_webapp_user)):
+    if int(user_id) != int(tg_user["id"]):
+        raise HTTPException(status_code=403, detail="user_id mismatch")
+    status = get_user_bonus_status(user_id)
+    return {"available": not status.get(BONUS_STARTER_PACK, False)}
+
+
+@app.post("/api/shop/buy_starter_pack")
+async def api_buy_starter_pack(request: Request, tg_user: dict = Depends(require_webapp_user)):
+    """Разовый стартер-пак: энергия 100% + кейс 1 + 500 chent за 20⭐ (200 choin)."""
+    try:
+        data = await request.json()
+        user_id = data.get("user_id")
+        stars = int(data.get("stars", 0))
+        first_name = data.get("first_name", "")
+
+        if not user_id:
+            raise HTTPException(status_code=400, detail="Missing user_id")
+        if int(user_id) != int(tg_user["id"]):
+            raise HTTPException(status_code=403, detail="user_id mismatch")
+        if stars != STARTER_PACK_STARS:
+            raise HTTPException(status_code=400, detail=f"Invalid price. Expected: {STARTER_PACK_STARS}")
+
+        status = get_user_bonus_status(user_id)
+        if status.get(BONUS_STARTER_PACK, False):
+            return {"method": "already_used"}
+
+        wallet = get_wallet(user_id)
+        balance = wallet["balance"]
+        if balance < stars:
+            return {"method": "insufficient", "balance": balance, "short": stars - balance}
+
+        result = spend_wallet(user_id=user_id, amount=stars, description="Покупка стартер-пака")
+        if not result["ok"]:
+            return {"method": "insufficient", "balance": result["balance"], "short": stars - result["balance"]}
+
+        grant = grant_bonus(user_id, first_name, BONUS_STARTER_PACK)
+        if not grant["ok"]:
+            return {"method": "already_used"}
+
+        energy = get_energy(user_id)
+        delta = max(0, ENERGY_MAX - energy["amount"])
+        if delta > 0:
+            admin_adjust_energy(user_id, delta)
+
+        topup_chent(user_id, first_name, STARTER_PACK_CHENT, description="Стартер-пак")
+
+        reward = grant_case1_reward(user_id, first_name)
+        if reward.get("type") == "tg_gift":
+            await _notify_tg_gift_reward(user_id, reward, 1)
+
+        logger.info(f"[SHOP] starter_pack: user={user_id} -{stars}⭐ case1_reward={reward['type']}")
+        return {
+            "method": "wallet",
+            "balance": result["balance"],
+            "energy": ENERGY_MAX,
+            "chent": STARTER_PACK_CHENT,
+            "case_reward": reward,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"buy_starter_pack error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

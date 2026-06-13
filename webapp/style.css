@@ -418,6 +418,15 @@ h1.glitch::after {
     50% { transform: translateY(-10px); }
 }
 
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
 @keyframes glitch-anim-1 {
     0% { clip: rect(20px, 9999px, 10px, 0); }
     20% { clip: rect(60px, 9999px, 70px, 0); }

@@ -802,6 +802,31 @@
                 </div>
             </div>
 
+            <!-- STARTER PACK -->
+            <div class="section-title" id="starterPackSection" style="display:none;">Стартовый набор</div>
+            <div class="packs-grid" id="starterPackGrid" style="display:none;">
+                <div class="pack-card featured" onclick="buyStarterPack()">
+                    <div class="pack-badge">✦ Разово</div>
+                    <div class="pack-featured-inner">
+                        <div class="pack-featured-left">
+                            <div class="pack-icon" style="margin-bottom:4px;"><img src="icons/enegry.webp" alt="" style="width:42px;height:42px;"></div>
+                            <div class="pack-amount">100%</div>
+                            <div class="pack-label" style="margin-bottom:0;">+ кейс + 500 chent</div>
+                        </div>
+                        <div class="pack-featured-mid">
+                            <div class="pack-featured-name">Стартовый набор</div>
+                            <div class="pack-featured-desc">Полный заряд, кейс №1 и 500 chent — разово</div>
+                        </div>
+                        <div class="pack-featured-right">
+                            <div class="pack-price" style="flex-direction:column;gap:2px;padding:8px 12px;">
+                                <img class="choin-icon" style="width:1.3rem;height:1.3rem;" src="icons/choin.webp" alt="">
+                                <span style="font-size:1.1rem;">200</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- ENERGY PACKS -->
             <div class="section-title">Пакеты энергии</div>
 
@@ -1410,6 +1435,70 @@
         // Загружаем баланс кошелька при старте
         loadWalletBalance();
         loadChentBalance();
+        checkStarterPack();
+
+        async function checkStarterPack() {
+            const userId = tg.initDataUnsafe?.user?.id;
+            if (!userId) return;
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api(`/api/shop/starter_pack/status?user_id=${userId}`);
+                const data = await res.json();
+                if (data.available) {
+                    document.getElementById('starterPackSection').style.display = '';
+                    document.getElementById('starterPackGrid').style.display = '';
+                }
+            } catch (e) {}
+        }
+
+        async function buyStarterPack() {
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+            const userId = tg.initDataUnsafe?.user?.id;
+            const firstName = tg.initDataUnsafe?.user?.first_name || '';
+            if (!userId) {
+                showToast('⚠️ Нет доступа к Telegram', 'error');
+                return;
+            }
+            let resp;
+            try {
+                const api = window.apiFetch || fetch;
+                const res = await api('/api/shop/buy_starter_pack', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, stars: 20, first_name: firstName })
+                });
+                resp = await res.json();
+                if (!res.ok) throw new Error(resp.detail || 'Server error');
+            } catch (err) {
+                console.error('buy_starter_pack error:', err);
+                showToast('⚠️ Ошибка покупки', 'error');
+                return;
+            }
+
+            if (resp.method === 'wallet') {
+                _addEnergy(100 - Energy.get().current);
+                updateStatus();
+                _walletBalance = resp.balance;
+                document.getElementById('walletBalance').textContent = _walletBalance * CHOIN_RATE;
+                loadChentBalance();
+                document.getElementById('starterPackSection').style.display = 'none';
+                document.getElementById('starterPackGrid').style.display = 'none';
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                showToast('✅ Стартовый набор получен!', 'success');
+                return;
+            }
+
+            if (resp.method === 'insufficient') {
+                showToast(`💡 Не хватает ${resp.short * CHOIN_RATE} choin. Пополни баланс`, '');
+                goToTopup();
+                return;
+            }
+
+            if (resp.method === 'already_used') {
+                document.getElementById('starterPackSection').style.display = 'none';
+                document.getElementById('starterPackGrid').style.display = 'none';
+            }
+        }
 
         // Отключаем кнопку «Игры» в нижней навигации, если пользователь забанен
         if (window.disableGamesNavIfBanned) {

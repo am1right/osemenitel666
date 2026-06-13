@@ -190,6 +190,7 @@
               tg.expand();
             }
             tg.enableClosingConfirmation();
+            if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
 
             // === Кнопка "Назад" в шапке Telegram (как в лобби Дурака) ===
             if (tg.BackButton) {

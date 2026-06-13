@@ -120,7 +120,7 @@ from api.db.admin import (
 )
 
 from api.db.bonuses import (
-    BONUS_CHANNEL, BONUS_CHAT, BONUS_SHARE,
+    BONUS_CHANNEL, BONUS_CHAT, BONUS_SHARE, BONUS_STARTER_PACK,
     BONUS_CHANNEL_CHENT, BONUS_CHAT_CHENT, BONUS_SHARE_CHENT, DAILY_CHECKIN_CHENT,
     get_user_bonus_status, grant_bonus, daily_checkin, get_daily_checkin_status,
 )

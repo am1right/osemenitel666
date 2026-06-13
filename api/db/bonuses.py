@@ -14,6 +14,7 @@ DAILY_CHECKIN_CHENT   = 100
 BONUS_CHANNEL  = "sub_channel"
 BONUS_CHAT     = "sub_chat"
 BONUS_SHARE    = "share_game"
+BONUS_STARTER_PACK = "starter_pack"
 
 
 def get_user_bonus_status(user_id: int) -> Dict[str, bool]:
