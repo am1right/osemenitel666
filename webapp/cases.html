@@ -578,9 +578,10 @@
         }
 
         .case-desc__tag img {
-            width: 12px;
-            height: 12px;
+            width: 14px;
+            height: 14px;
             object-fit: contain;
+            vertical-align: middle;
         }
 
         .pack-card.case-card .pack-price {
@@ -795,8 +796,8 @@
                         <div class="pack-featured-name">Стартовый кейс</div>
                         <p class="case-desc__lead">Chent, choin или подарок Telegram.</p>
                         <div class="case-desc__tags">
-                            <span class="case-desc__tag">chent</span>
-                            <span class="case-desc__tag case-desc__tag--stars">choin</span>
+                            <span class="case-desc__tag"><img src="icons/chent.webp" alt=""></span>
+                            <span class="case-desc__tag case-desc__tag--stars"><img src="icons/choin.webp" alt=""></span>
                             <span class="case-desc__tag case-desc__tag--nft">подарок</span>
                         </div>
                         <div class="pack-price case-row__price">
@@ -822,8 +823,8 @@
                         <div class="pack-featured-name">Премиум кейс</div>
                         <p class="case-desc__lead">Больше chent и choin, шанс крупного подарка.</p>
                         <div class="case-desc__tags">
-                            <span class="case-desc__tag">chent</span>
-                            <span class="case-desc__tag case-desc__tag--stars">choin</span>
+                            <span class="case-desc__tag"><img src="icons/chent.webp" alt=""></span>
+                            <span class="case-desc__tag case-desc__tag--stars"><img src="icons/choin.webp" alt=""></span>
                             <span class="case-desc__tag case-desc__tag--nft">подарок</span>
                         </div>
                         <div class="pack-price case-row__price">
@@ -853,7 +854,7 @@
                         <div class="pack-featured-name">Легендарный кейс</div>
                         <p class="case-desc__lead">Внутри могут ждать choin или редкий NFT-подарок — угадай, что выпадет тебе.</p>
                         <div class="case-desc__tags">
-                            <span class="case-desc__tag case-desc__tag--stars">choin</span>
+                            <span class="case-desc__tag case-desc__tag--stars"><img src="icons/choin.webp" alt=""></span>
                             <span class="case-desc__tag case-desc__tag--nft">NFT-подарок</span>
                             <span class="case-desc__tag case-desc__tag--empty" id="caseNftEmptyTag" style="display:none;">пусто</span>
                         </div>
@@ -892,7 +893,7 @@
     <div class="case-modal-overlay" id="caseConfirmModal" onclick="if(event.target===this)closeCaseConfirm()">
         <div class="case-modal">
             <div class="case-modal__title" id="caseConfirmName">Кейс</div>
-            <div class="case-modal__reward" id="caseConfirmPrice">— choin</div>
+            <div class="case-modal__reward" id="caseConfirmPrice">— <img src="icons/choin.webp" alt="" style="width:1em;height:1em;object-fit:contain;vertical-align:-2px;"></div>
             <button type="button" class="case-modal__btn" id="caseConfirmOpenBtn" onclick="caseConfirmAccept()">Открыть</button>
             <button type="button" class="case-modal__btn case-modal__btn--ghost" onclick="closeCaseConfirm()">Отмена</button>
         </div>
@@ -1096,6 +1097,12 @@
             document.getElementById('nft-modal-overlay').classList.remove('open');
         }
 
+        function formatRewardTitle(title) {
+            return String(title)
+                .replace(/\bchoin\b/gi, '<img src="icons/choin.webp" alt="" style="width:1em;height:1em;object-fit:contain;vertical-align:-2px;">')
+                .replace(/\bchent\b/gi, '<img src="icons/chent.webp" alt="" style="width:1em;height:1em;object-fit:contain;vertical-align:-2px;">');
+        }
+
         function showCaseReward(reward, caseId) {
             if (!reward) return;
             if (reward.type === 'nft' && reward.gift_url) {
@@ -1107,7 +1114,7 @@
             document.getElementById('caseModalBody').src = `icons/cases/${id}_case_body.png`;
             document.getElementById('caseModalLid').src  = `icons/cases/${id}_case_lid.png`;
             const title = reward.title || 'Награда';
-            document.getElementById('caseRewardText').textContent = title;
+            document.getElementById('caseRewardText').innerHTML = formatRewardTitle(title);
             document.getElementById('caseModal').classList.add('show');
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         }
@@ -1172,7 +1179,7 @@
             if (_testMode) { buyCase(caseId); return; }
             _pendingCaseId = caseId;
             document.getElementById('caseConfirmName').textContent = CASE_NAMES[caseId];
-            document.getElementById('caseConfirmPrice').textContent = `${CASE_PRICES[caseId]} choin`;
+            document.getElementById('caseConfirmPrice').innerHTML = `${CASE_PRICES[caseId]} <img src="icons/choin.webp" alt="" style="width:1em;height:1em;object-fit:contain;vertical-align:-2px;">`;
             document.getElementById('caseConfirmModal').classList.add('show');
         }
 

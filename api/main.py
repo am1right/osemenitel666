@@ -536,7 +536,7 @@ async def api_buy_energy_chent(request: Request, tg_user: dict = Depends(require
 #   2× → полный заряд за 1.5ч, 3× → за 1ч. Действует 1 час с момента покупки.
 REGEN_UPGRADES: dict[int, dict] = {
     2: {"mult": 2.0, "stars": 50},
-    3: {"mult": 3.0, "stars": 117},
+    3: {"mult": 3.0, "stars": 130},
 }
 
 
