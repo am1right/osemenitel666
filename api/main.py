@@ -25,7 +25,9 @@ from api.database import (
     try_grant_referral_reward, get_referral_by_invitee,
     admin_adjust_energy, upgrade_regen_speed,
     get_energy, spend_energy, get_user_flags,
-    CASE_PRICE, grant_case_reward, confirm_case_reward,
+    CASE_PRICE, CASE_PRICES, CASE_NFT_DAILY_LIMIT, CASE_BOT_STARS_ALERT_THRESHOLD,
+    grant_case_reward, grant_case1_reward, grant_case2_reward, confirm_case_reward,
+    get_recent_case_reward, get_nft_drop_count_today,
     get_case_settings, save_case_settings, get_case_valuable_cooldown_status,
     add_announce_chat, remove_announce_chat, get_announce_chats,
     upsert_tg_username, admin_get_all_players,
@@ -679,21 +681,81 @@ async def api_shop_case_status():
     return get_case_valuable_cooldown_status()
 
 
+CASE_GRANT_FNS = {1: grant_case1_reward, 2: grant_case2_reward, 3: grant_case_reward}
+
+
+async def _notify_tg_gift_reward(user_id: int, reward: Dict[str, Any], case_id: int) -> None:
+    """Подарок Telegram из кейса выдаётся вручную админом — уведомляем игрока и админов."""
+    stars_value = reward.get("stars_value", 0)
+    bot = get_bot()
+    try:
+        await bot.send_message(
+            chat_id=user_id,
+            text=(
+                f"🎁 Из кейса выпал подарок Telegram (~{stars_value}⭐)!\n"
+                f"Администратор отправит его тебе в ближайшее время."
+            ),
+        )
+    except Exception as e:
+        logger.warning(f"tg_gift notify user failed: {e}")
+    for admin_id in ADMIN_TG_IDS:
+        try:
+            await bot.send_message(
+                chat_id=admin_id,
+                text=f"🎁 Кейс {case_id}: пользователю {user_id} нужно отправить подарок Telegram ~{stars_value}⭐",
+            )
+        except Exception as e:
+            logger.warning(f"tg_gift notify admin failed: {e}")
+
+
+async def _check_nft_drop_alerts(reward: Dict[str, Any], case_id: int) -> None:
+    """Алерт админам про NFT-дроп и про баланс Stars бота ниже порога."""
+    if case_id != 3 or reward.get("type") != "nft":
+        return
+    bot = get_bot()
+    for admin_id in ADMIN_TG_IDS:
+        try:
+            await bot.send_message(
+                chat_id=admin_id,
+                text=f"🎁 NFT-дроп из кейса 3! gift_url={reward.get('gift_url')} (дропов сегодня: {get_nft_drop_count_today()}/{CASE_NFT_DAILY_LIMIT})",
+            )
+        except Exception as e:
+            logger.warning(f"nft drop alert failed: {e}")
+    try:
+        star_balance = await bot.get_my_star_balance()
+        amount = getattr(star_balance, "amount", None)
+        if amount is not None and amount < CASE_BOT_STARS_ALERT_THRESHOLD:
+            for admin_id in ADMIN_TG_IDS:
+                try:
+                    await bot.send_message(
+                        chat_id=admin_id,
+                        text=f"⚠️ Баланс Stars бота низкий: {amount}⭐ (порог {CASE_BOT_STARS_ALERT_THRESHOLD}⭐)",
+                    )
+                except Exception:
+                    pass
+    except Exception as e:
+        logger.debug(f"get_my_star_balance failed: {e}")
+
+
 @app.post("/api/shop/buy_case")
 async def api_buy_case(request: Request, tg_user: dict = Depends(require_webapp_user)):
-    """Покупка случайного кейса за Stars (кошелёк или invoice)."""
+    """Покупка случайного кейса за Choin (кошелёк или invoice)."""
     try:
         data = await request.json()
         user_id = data.get("user_id")
         stars = int(data.get("stars", 0))
         first_name = data.get("first_name", "")
+        case_id = int(data.get("case_id", 3))
 
         if not user_id:
             raise HTTPException(status_code=400, detail="Missing user_id")
         if int(user_id) != int(tg_user["id"]):
             raise HTTPException(status_code=403, detail="user_id mismatch")
-        if stars != CASE_PRICE:
-            raise HTTPException(status_code=400, detail=f"Invalid price. Expected: {CASE_PRICE}")
+        if case_id not in CASE_PRICES:
+            raise HTTPException(status_code=400, detail="Invalid case_id")
+        expected_stars = CASE_PRICES[case_id] // 10
+        if stars != expected_stars:
+            raise HTTPException(status_code=400, detail=f"Invalid price. Expected: {expected_stars}")
 
         wallet = get_wallet(user_id)
         balance = wallet["balance"]
@@ -702,13 +764,16 @@ async def api_buy_case(request: Request, tg_user: dict = Depends(require_webapp_
             result = spend_wallet(
                 user_id=user_id,
                 amount=stars,
-                description="Покупка случайного кейса",
+                description=f"Покупка кейса {case_id}",
             )
             if result["ok"]:
-                reward = grant_case_reward(user_id, first_name)
+                reward = CASE_GRANT_FNS[case_id](user_id, first_name)
                 logger.info(
-                    f"[SHOP] case wallet: user={user_id} -{stars}⭐ reward={reward['type']}:{reward['amount']}"
+                    f"[SHOP] case{case_id} wallet: user={user_id} -{stars}⭐ reward={reward['type']}"
                 )
+                if reward.get("type") == "tg_gift":
+                    await _notify_tg_gift_reward(user_id, reward, case_id)
+                await _check_nft_drop_alerts(reward, case_id)
                 return {
                     "method": "wallet",
                     "balance": result["balance"],
@@ -720,13 +785,13 @@ async def api_buy_case(request: Request, tg_user: dict = Depends(require_webapp_
         label = "Случайный кейс"
         invoice_link = await bot.create_invoice_link(
             title=label,
-            description="Случайная награда: энергия, звёзды или NFT-подарок",
-            payload=f"case:{user_id}:{CASE_PRICE}",
+            description="Случайная награда: chent, choin, подарок Telegram или NFT",
+            payload=f"case:{user_id}:{case_id}:{stars}",
             provider_token="",
             currency="XTR",
             prices=[LabeledPrice(label=label, amount=stars)],
         )
-        logger.info(f"[SHOP] case invoice: user={user_id} stars={stars} short={stars - balance}")
+        logger.info(f"[SHOP] case{case_id} invoice: user={user_id} stars={stars} short={stars - balance}")
         return {
             "method": "invoice",
             "invoice_url": invoice_link,
@@ -748,11 +813,19 @@ async def api_confirm_case(request: Request, _: None = Depends(require_internal)
         data = await request.json()
         user_id = int(data.get("user_id", 0))
         first_name = data.get("first_name", "")
+        case_id = int(data.get("case_id", 3))
         if not user_id:
             raise HTTPException(status_code=400, detail="Missing user_id")
+        if case_id not in CASE_PRICES:
+            raise HTTPException(status_code=400, detail="Invalid case_id")
 
-        reward = confirm_case_reward(user_id, first_name)
-        logger.info(f"[SHOP] case confirm: user={user_id} reward={reward['type']}:{reward['amount']}")
+        recent = get_recent_case_reward(user_id)
+        reward = recent if recent else CASE_GRANT_FNS[case_id](user_id, first_name)
+        logger.info(f"[SHOP] case{case_id} confirm: user={user_id} reward={reward['type']}")
+        if not recent and reward.get("type") == "tg_gift":
+            await _notify_tg_gift_reward(user_id, reward, case_id)
+        if not recent:
+            await _check_nft_drop_alerts(reward, case_id)
         return {"status": "ok", "reward": reward}
     except HTTPException:
         raise

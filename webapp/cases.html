@@ -604,11 +604,49 @@
                 </div>
             </div>
 
-            <!-- CASE -->
+            <!-- CASE 1 — 250 choin -->
             <div class="section-title">Кейсы</div>
             <div class="case-section">
-                <div class="pack-card featured case-card" onclick="buyCase()">
-                    <div class="pack-badge badge-premium">🎲 Случайно</div>
+                <div class="pack-card case-card" onclick="buyCase(1)">
+                    <div class="pack-badge badge-premium">🎲 Кейс 1</div>
+                    <div class="pack-icon"><img src="icons/box.webp" alt="Кейс 1"></div>
+                    <div class="pack-featured-desc case-desc">
+                        <p class="case-desc__lead">Chent, choin или подарок Telegram.</p>
+                        <div class="case-desc__tags">
+                            <span class="case-desc__tag">chent</span>
+                            <span class="case-desc__tag case-desc__tag--stars">choin</span>
+                            <span class="case-desc__tag case-desc__tag--nft">подарок</span>
+                        </div>
+                    </div>
+                    <div class="pack-price">
+                        <img class="choin-icon" src="icons/choin.webp" alt="">
+                        <span>250</span>
+                    </div>
+                </div>
+
+                <!-- CASE 2 — 400 choin -->
+                <div class="pack-card case-card" onclick="buyCase(2)">
+                    <div class="pack-badge badge-premium">🎲 Кейс 2</div>
+                    <div class="pack-icon"><img src="icons/box.webp" alt="Кейс 2"></div>
+                    <div class="pack-featured-desc case-desc">
+                        <p class="case-desc__lead">Больше chent и choin, шанс крупного подарка.</p>
+                        <div class="case-desc__tags">
+                            <span class="case-desc__tag">chent</span>
+                            <span class="case-desc__tag case-desc__tag--stars">choin</span>
+                            <span class="case-desc__tag case-desc__tag--nft">подарок</span>
+                        </div>
+                    </div>
+                    <div class="pack-price">
+                        <img class="choin-icon" src="icons/choin.webp" alt="">
+                        <span>400</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CASE 3 — 5000 choin -->
+            <div class="case-section">
+                <div class="pack-card featured case-card" onclick="buyCase(3)">
+                    <div class="pack-badge badge-premium">🎲 Кейс 3</div>
                     <div class="pack-featured-inner">
                         <div class="pack-featured-left">
                             <div class="pack-icon" style="margin-bottom:4px;">
@@ -736,7 +774,7 @@
         // ── WALLET (внутр. баланс в звёздах, отображение в choin, 1⭐=10choin) ──
         const CHOIN_RATE = 10;
         let _walletBalance = 0;
-        const CASE_PRICE = 500;
+        const CASE_PRICES = { 1: 250, 2: 400, 3: 5000 };
         const SHOP_API = 'https://chingames.duckdns.org';
         let _shopNftLottie = null;
 
@@ -849,14 +887,17 @@
 
         function applyCaseReward(reward) {
             if (!reward) return;
-            if (reward.type === 'nft') return;
-            if (reward.type === 'stars' && reward.balance != null) {
+            if (reward.type === 'nft' || reward.type === 'tg_gift') return;
+            if (reward.balance == null) return;
+            if (reward.type === 'chent') {
+                document.getElementById('chentBalance').textContent = reward.balance;
+            } else {
                 _walletBalance = reward.balance;
                 document.getElementById('walletBalance').textContent = _walletBalance * CHOIN_RATE;
             }
         }
 
-        async function buyCase() {
+        async function buyCase(caseId) {
             if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
 
             const userId = tg.initDataUnsafe?.user?.id;
@@ -866,6 +907,9 @@
                 return;
             }
 
+            const choinPrice = CASE_PRICES[caseId];
+            const starsPrice = choinPrice / 10;
+
             let resp;
             try {
                 const api = window.apiFetch || fetch;
@@ -874,7 +918,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         user_id: userId,
-                        stars: CASE_PRICE,
+                        case_id: caseId,
+                        stars: starsPrice,
                         first_name: firstName,
                     }),
                 });
@@ -891,7 +936,7 @@
                 document.getElementById('walletBalance').textContent = _walletBalance * CHOIN_RATE;
                 applyCaseReward(resp.reward);
                 showCaseReward(resp.reward);
-                showToast(`✅ Кейс открыт  −${CASE_PRICE * CHOIN_RATE} choin`, 'success');
+                showToast(`✅ Кейс открыт  −${choinPrice} choin`, 'success');
                 return;
             }
 
@@ -909,6 +954,7 @@
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                     user_id: userId,
+                                    case_id: caseId,
                                     first_name: firstName,
                                 }),
                             });
@@ -917,6 +963,7 @@
                             applyCaseReward(data.reward);
                             showCaseReward(data.reward);
                             loadWalletBalance();
+                            loadChentBalance();
                         } catch (e) {
                             console.error('confirm_case error:', e);
                             showToast('Оплата прошла — открой магазин позже', '');

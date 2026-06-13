@@ -338,6 +338,7 @@ def init_db():
             created_at  TIMESTAMP DEFAULT NOW()
         )
     ''')
+    cur.execute("ALTER TABLE case_rewards ADD COLUMN IF NOT EXISTS case_id INTEGER NOT NULL DEFAULT 3")
 
     cur.execute('''
         CREATE TABLE IF NOT EXISTS durak_lobbies (
